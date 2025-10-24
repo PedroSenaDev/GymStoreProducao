@@ -27,7 +27,7 @@ const Index = () => {
         <p className="mt-6 max-w-xl text-lg text-white/80 font-light">
           Descubra roupas premium que unem estilo, resistência e performance para seu treino.
         </p>
-        <Button asChild size="lg" className="mt-10 bg-white text-black hover:bg-white/90 rounded-full px-10 py-7 text-base font-semibold transition-transform hover:scale-105">
+        <Button asChild size="lg" className="mt-10 bg-white text-black border-2 border-white rounded-full px-10 py-7 text-base font-semibold transition-all duration-300 hover:scale-105 hover:bg-transparent hover:text-white">
           <Link to="/products">
             Explorar Coleção
           </Link>
