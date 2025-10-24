@@ -51,20 +51,25 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
   };
 
   useEffect(() => {
-    // The onAuthStateChange listener fires immediately with an INITIAL_SESSION event.
-    // This is the recommended way to handle session loading.
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
-        setSession(session);
-        if (session) {
-          await fetchProfile(session.user);
-        } else {
-          setProfile(null);
-        }
-        // The initial loading is finished after the first auth event is processed.
-        // This ensures the loader is shown only on the very first page load.
-        if (isLoading) {
-          setIsLoading(false);
+        try {
+          setSession(session);
+          if (session) {
+            await fetchProfile(session.user);
+          } else {
+            setProfile(null);
+          }
+        } catch (error) {
+            console.error("Error handling auth state change:", error);
+            setSession(null);
+            setProfile(null);
+        } finally {
+            // This is the crucial part. It runs regardless of success or failure.
+            // We use a check to ensure we only set it to false once.
+            if (isLoading) {
+                setIsLoading(false);
+            }
         }
       }
     );
