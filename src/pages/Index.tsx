@@ -1,17 +1,38 @@
-// Update this page (the content is just a fallback if you fail to update the page)
-
-import { MadeWithDyad } from "@/components/made-with-dyad";
+import { useSession } from "@/context/SessionContext";
+import { Navigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const Index = () => {
+  const { session, profile, logout } = useSession();
+
+  if (!session) {
+    return <Navigate to="/login" replace />;
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">
-          Start building your amazing project here!
-        </p>
-      </div>
-      <MadeWithDyad />
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Bem-vindo!</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p>Você está logado como:</p>
+          <div className="p-4 bg-muted rounded-md">
+            <p><strong>Email:</strong> {session.user.email}</p>
+            {profile && (
+              <>
+                <p><strong>Nome:</strong> {profile.full_name}</p>
+                <p><strong>CPF:</strong> {profile.cpf}</p>
+                <p><strong>Telefone:</strong> {profile.phone}</p>
+              </>
+            )}
+          </div>
+          <Button onClick={logout} className="w-full">
+            Sair
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 };
