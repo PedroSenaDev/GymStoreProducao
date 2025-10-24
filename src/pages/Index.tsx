@@ -1,48 +1,37 @@
-import { useSession } from "@/context/SessionContext";
-import { Navigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShieldCheck } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Index = () => {
-  const { session, profile, logout } = useSession();
-
-  if (!session) {
-    return <Navigate to="/login" replace />;
-  }
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Bem-vindo!</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p>Você está logado como:</p>
-          <div className="p-4 bg-muted rounded-md">
-            <p><strong>Email:</strong> {session.user.email}</p>
-            {profile && (
-              <>
-                <p><strong>Nome:</strong> {profile.full_name}</p>
-                <p><strong>CPF:</strong> {profile.cpf}</p>
-                <p><strong>Telefone:</strong> {profile.phone}</p>
-              </>
-            )}
-          </div>
-          {profile?.isAdmin && (
-            <Button asChild className="w-full">
-              <Link to="/admin">
-                <ShieldCheck className="mr-2 h-4 w-4" />
-                Acessar Painel Admin
-              </Link>
-            </Button>
-          )}
-          <Button onClick={logout} className="w-full" variant="outline">
-            Sair
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
+    <section className="relative h-screen w-full flex items-center justify-center text-center text-white">
+      {/* Background Image */}
+      <div className="absolute top-0 left-0 w-full h-full z-0">
+        <img
+          src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+          alt="Woman practicing yoga"
+          className="w-full h-full object-cover grayscale"
+        />
+        {/* Overlay */}
+        <div className="absolute top-0 left-0 w-full h-full bg-black/70"></div>
+      </div>
+
+      {/* Content */}
+      <div className="relative z-10 flex flex-col items-center px-4">
+        <h1 className="text-5xl md:text-7xl font-extrabold uppercase tracking-tight">
+          Projetado para
+          <br />
+          Desempenho
+        </h1>
+        <p className="mt-4 max-w-xl text-lg text-white/80">
+          Descubra roupas premium que unem estilo, resistência e performance para seu treino.
+        </p>
+        <Button asChild size="lg" className="mt-8 bg-zinc-900 text-white hover:bg-zinc-800 rounded-md px-8 py-6 text-base font-semibold">
+          <Link to="/products">
+            Explorar Coleção
+          </Link>
+        </Button>
+      </div>
+    </section>
   );
 };
 
