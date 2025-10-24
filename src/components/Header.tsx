@@ -18,7 +18,7 @@ export const Header = () => {
   const { session, logout } = useSessionStore();
 
   return (
-    <header className="fixed top-0 z-50 w-full border-b bg-white/80 shadow-sm backdrop-blur-sm">
+    <header className="fixed top-0 z-50 w-full border-b bg-white/60 shadow-sm backdrop-blur-sm">
       <div className="container flex h-24 items-center">
         <div className="mr-4 hidden md:flex">
           <Logo />
