@@ -51,22 +51,8 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
   };
 
   useEffect(() => {
-    const getInitialSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        setSession(session);
-        if (session) {
-          await fetchProfile(session.user);
-        }
-      } catch (error) {
-        console.error("Error getting initial session:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    getInitialSession();
-
+    // The onAuthStateChange listener fires immediately with an INITIAL_SESSION event.
+    // This is the recommended way to handle session loading.
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setSession(session);
@@ -74,6 +60,11 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
           await fetchProfile(session.user);
         } else {
           setProfile(null);
+        }
+        // The initial loading is finished after the first auth event is processed.
+        // This ensures the loader is shown only on the very first page load.
+        if (isLoading) {
+          setIsLoading(false);
         }
       }
     );
@@ -98,8 +89,8 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
 
   if (isLoading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="flex h-screen w-full items-center justify-center bg-black">
+        <Loader2 className="h-8 w-8 animate-spin text-white" />
       </div>
     );
   }
