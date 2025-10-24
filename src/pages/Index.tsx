@@ -1,7 +1,8 @@
 import { useSession } from "@/context/SessionContext";
-import { Navigate } from "react-router-dom";
+import { Navigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ShieldCheck } from "lucide-react";
 
 const Index = () => {
   const { session, profile, logout } = useSession();
@@ -28,7 +29,15 @@ const Index = () => {
               </>
             )}
           </div>
-          <Button onClick={logout} className="w-full">
+          {profile?.isAdmin && (
+            <Button asChild className="w-full">
+              <Link to="/admin">
+                <ShieldCheck className="mr-2 h-4 w-4" />
+                Acessar Painel Admin
+              </Link>
+            </Button>
+          )}
+          <Button onClick={logout} className="w-full" variant="outline">
             Sair
           </Button>
         </CardContent>

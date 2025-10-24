@@ -7,6 +7,7 @@ type Profile = {
   full_name: string;
   cpf: string;
   phone: string;
+  isAdmin: boolean;
 } | null;
 
 type SessionContextType = {
@@ -46,7 +47,6 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
       }
     );
 
-    // Sync logout across tabs
     const channel = new BroadcastChannel('auth-logout');
     channel.onmessage = () => {
       supabase.auth.signOut();
@@ -59,17 +59,29 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
   }, []);
 
   const fetchProfile = async (user: User) => {
-    const { data, error } = await supabase
+    const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .select('full_name, cpf, phone')
       .eq('id', user.id)
       .single();
 
-    if (error) {
-      console.error('Error fetching profile:', error);
-    } else {
-      setProfile(data);
+    if (profileError) {
+      console.error('Error fetching profile:', profileError);
+      setProfile(null);
+      return;
     }
+
+    const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin', {
+      p_user_id: user.id,
+    });
+
+    if (adminError) {
+      console.error('Error checking admin status:', adminError);
+      setProfile({ ...profileData, isAdmin: false });
+      return;
+    }
+
+    setProfile({ ...profileData, isAdmin: !!isAdmin });
   };
 
   const logout = async () => {

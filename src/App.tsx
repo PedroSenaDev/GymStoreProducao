@@ -3,10 +3,21 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import LoginPage from "./pages/Login";
 import { SessionProvider } from "./context/SessionContext";
+
+// Layouts
+import { PublicLayout } from "./components/layouts/PublicLayout";
+import AdminDashboardLayout from "./pages/admin/AdminDashboard";
+
+// Public Pages
+import Index from "./pages/Index";
+import LoginPage from "./pages/Login";
+import ProductsPage from "./pages/Products";
+import ContactPage from "./pages/Contact";
+import NotFound from "./pages/NotFound";
+
+// Admin Pages
+import DashboardHomePage from "./pages/admin/DashboardHomePage";
 
 const queryClient = new QueryClient();
 
@@ -18,9 +29,23 @@ const App = () => (
       <BrowserRouter>
         <SessionProvider>
           <Routes>
-            <Route path="/" element={<Index />} />
+            {/* Public Routes */}
+            <Route element={<PublicLayout />}>
+              <Route path="/" element={<Index />} />
+              <Route path="/products" element={<ProductsPage />} />
+              <Route path="/contact" element={<ContactPage />} />
+            </Route>
+
+            {/* Auth Routes (no layout) */}
             <Route path="/login" element={<LoginPage />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+
+            {/* Admin Routes */}
+            <Route path="/admin" element={<AdminDashboardLayout />}>
+               <Route index element={<DashboardHomePage />} />
+               {/* Add other admin routes here, e.g., /admin/products */}
+            </Route>
+
+            {/* Catch-all */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </SessionProvider>
