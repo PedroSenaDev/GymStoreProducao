@@ -2,10 +2,10 @@ import { Link } from 'react-router-dom';
 import { Logo } from './Logo';
 import { Button } from './ui/button';
 import { ShoppingCart, User, LogOut } from 'lucide-react';
-import { useSession } from '@/context/SessionContext';
+import { useSessionStore } from '@/store/sessionStore';
 
 export const Header = () => {
-  const { session, logout } = useSession();
+  const { session, logout } = useSessionStore();
 
   return (
     <header className="absolute top-0 z-50 w-full">

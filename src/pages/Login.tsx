@@ -23,12 +23,12 @@ import { SignUpForm } from "@/components/auth/SignUpForm";
 import { Button } from "@/components/ui/button";
 import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 import { useState } from "react";
-import { useSession } from "@/context/SessionContext";
+import { useSessionStore } from "@/store/sessionStore";
 import { Navigate } from "react-router-dom";
 
 export default function LoginPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const { session } = useSession();
+  const session = useSessionStore((state) => state.session);
 
   if (session) {
     return <Navigate to="/" replace />;

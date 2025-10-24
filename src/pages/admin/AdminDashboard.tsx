@@ -1,10 +1,10 @@
-import { useSession } from '@/context/SessionContext';
+import { useProfile } from '@/hooks/useProfile';
 import { Navigate, Outlet } from 'react-router-dom';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { Loader2 } from 'lucide-react';
 
 export default function AdminDashboardLayout() {
-  const { profile, isLoading } = useSession();
+  const { data: profile, isLoading } = useProfile();
 
   if (isLoading) {
     return (
@@ -15,7 +15,7 @@ export default function AdminDashboardLayout() {
   }
 
   if (!profile?.isAdmin) {
-    // Redirect to home if not an admin
+    // Redirect to home if not an admin or if profile failed to load
     return <Navigate to="/" replace />;
   }
 
