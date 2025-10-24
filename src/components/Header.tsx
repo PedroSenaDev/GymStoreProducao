@@ -1,9 +1,12 @@
 import { Link } from 'react-router-dom';
 import { Logo } from './Logo';
 import { Button } from './ui/button';
-import { ShoppingCart, User } from 'lucide-react';
+import { ShoppingCart, User, LogOut } from 'lucide-react';
+import { useSession } from '@/context/SessionContext';
 
 export const Header = () => {
+  const { session, logout } = useSession();
+
   return (
     <header className="absolute top-0 z-50 w-full">
       <div className="container flex h-20 items-center text-white">
@@ -23,11 +26,17 @@ export const Header = () => {
             <Button variant="ghost" size="icon" className="hover:bg-white/10">
                 <ShoppingCart className="h-5 w-5" />
             </Button>
-            <Link to="/login">
-                <Button variant="ghost" size="icon" className="hover:bg-white/10">
-                    <User className="h-5 w-5" />
-                </Button>
-            </Link>
+            {session ? (
+              <Button variant="ghost" size="icon" className="hover:bg-white/10" onClick={logout}>
+                  <LogOut className="h-5 w-5" />
+              </Button>
+            ) : (
+              <Link to="/login">
+                  <Button variant="ghost" size="icon" className="hover:bg-white/10">
+                      <User className="h-5 w-5" />
+                  </Button>
+              </Link>
+            )}
         </div>
       </div>
     </header>
