@@ -5,9 +5,12 @@ import { ShoppingCart, User, LogOut } from 'lucide-react';
 import { useSessionStore } from '@/store/sessionStore';
 
 const NavLink = ({ to, children }: { to: string; children: React.ReactNode }) => (
-  <Link to={to} className="relative text-sm font-medium text-white/90 transition-colors hover:text-white group">
+  <Link
+    to={to}
+    className="relative z-10 text-sm font-medium text-zinc-900 transition-colors duration-300 ease-out hover:text-white group px-3 py-2 rounded-md"
+  >
     {children}
-    <span className="absolute bottom-[-4px] left-0 h-[2px] w-full scale-x-0 bg-white transition-transform duration-300 ease-out group-hover:scale-x-100" />
+    <span className="absolute inset-0 h-full w-full bg-black rounded-md -z-10 scale-x-0 origin-left transition-transform duration-300 ease-out group-hover:scale-x-100" />
   </Link>
 );
 
@@ -15,8 +18,8 @@ export const Header = () => {
   const { session, logout } = useSessionStore();
 
   return (
-    <header className="absolute top-0 z-50 w-full">
-      <div className="container flex h-24 items-center text-white">
+    <header className="fixed top-0 z-50 w-full border-b bg-white/80 shadow-sm backdrop-blur-sm">
+      <div className="container flex h-24 items-center">
         <div className="mr-4 hidden md:flex">
           <Logo />
         </div>
@@ -30,17 +33,17 @@ export const Header = () => {
             <Logo />
         </div>
         <div className="flex items-center justify-end space-x-2">
-            <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 hover:bg-white/10 transition-colors">
-                <ShoppingCart className="h-5 w-5" />
+            <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 hover:bg-zinc-200 transition-colors">
+                <ShoppingCart className="h-5 w-5 text-zinc-900" />
             </Button>
             {session ? (
-              <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 hover:bg-white/10 transition-colors" onClick={logout}>
-                  <LogOut className="h-5 w-5" />
+              <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 hover:bg-zinc-200 transition-colors" onClick={logout}>
+                  <LogOut className="h-5 w-5 text-zinc-900" />
               </Button>
             ) : (
               <Link to="/login">
-                  <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 hover:bg-white/10 transition-colors">
-                      <User className="h-5 w-5" />
+                  <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 hover:bg-zinc-200 transition-colors">
+                      <User className="h-5 w-5 text-zinc-900" />
                   </Button>
               </Link>
             )}
