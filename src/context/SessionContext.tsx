@@ -24,14 +24,45 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
   const [profile, setProfile] = useState<Profile>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const fetchProfile = async (user: User) => {
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('full_name, cpf, phone')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      console.error('Error fetching profile:', profileError.message);
+      setProfile(null);
+      return;
+    }
+
+    const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin', {
+      p_user_id: user.id,
+    });
+
+    if (adminError) {
+      console.error('Error checking admin status:', adminError.message);
+      setProfile({ ...profileData, isAdmin: false });
+      return;
+    }
+
+    setProfile({ ...profileData, isAdmin: !!isAdmin });
+  };
+
   useEffect(() => {
     const getInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      if (session) {
-        await fetchProfile(session.user);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
+        if (session) {
+          await fetchProfile(session.user);
+        }
+      } catch (error) {
+        console.error("Error getting initial session:", error);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
     getInitialSession();
@@ -57,32 +88,6 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
       channel.close();
     };
   }, []);
-
-  const fetchProfile = async (user: User) => {
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('full_name, cpf, phone')
-      .eq('id', user.id)
-      .single();
-
-    if (profileError) {
-      console.error('Error fetching profile:', profileError);
-      setProfile(null);
-      return;
-    }
-
-    const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin', {
-      p_user_id: user.id,
-    });
-
-    if (adminError) {
-      console.error('Error checking admin status:', adminError);
-      setProfile({ ...profileData, isAdmin: false });
-      return;
-    }
-
-    setProfile({ ...profileData, isAdmin: !!isAdmin });
-  };
 
   const logout = async () => {
     await supabase.auth.signOut();
