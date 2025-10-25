@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Product } from "@/types/product";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -28,7 +29,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Loader2, PlusCircle, MoreHorizontal } from "lucide-react";
+import { Loader2, PlusCircle, MoreHorizontal, Search } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,12 +51,20 @@ async function fetchProducts(): Promise<Product[]> {
 export default function AdminProductsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | undefined>(undefined);
+  const [searchTerm, setSearchTerm] = useState("");
   const queryClient = useQueryClient();
 
   const { data: products, isLoading } = useQuery({
     queryKey: ["products"],
     queryFn: fetchProducts,
   });
+
+  const filteredProducts = useMemo(() => {
+    if (!products) return [];
+    return products.filter(product =>
+      product.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [products, searchTerm]);
 
   const { mutate: deleteProduct } = useMutation({
     mutationFn: async (id: string) => {
@@ -96,12 +105,24 @@ export default function AdminProductsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">Produtos</h1>
-        <Button onClick={handleAddNew}>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Adicionar Produto
-        </Button>
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
+        <h1 className="text-3xl font-bold self-start md:self-center">Produtos</h1>
+        <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
+          <div className="relative w-full sm:w-auto">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Buscar por nome..."
+              className="pl-10 w-full sm:w-64"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <Button onClick={handleAddNew} className="w-full sm:w-auto">
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Adicionar Produto
+          </Button>
+        </div>
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -133,7 +154,7 @@ export default function AdminProductsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {products?.map((product) => (
+              {filteredProducts?.map((product) => (
                 <TableRow key={product.id}>
                   <TableCell>
                     <img src={product.image_urls?.[0] || '/placeholder.svg'} alt={product.name} className="h-12 w-12 object-cover rounded-md" />
