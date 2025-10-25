@@ -99,18 +99,3 @@
     @apply bg-background text-foreground;
   }
 }
-
-@layer utilities {
-  @keyframes star-btn {
-    0% {
-      offset-distance: 0%;
-    }
-    100% {
-      offset-distance: 100%;
-    }
-  }
-
-  .animate-star-btn {
-    animation: star-btn calc(var(--duration) * 1s) linear infinite;
-  }
-}

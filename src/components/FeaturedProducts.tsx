@@ -4,7 +4,7 @@ import { Product } from '@/types/product';
 import { ProductCard } from '@/components/ProductCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useNavigate } from 'react-router-dom';
-import { StarButton } from './ui/star-button';
+import { ShineButton } from './ui/shine-button';
 
 async function fetchFeaturedProducts(): Promise<Product[]> {
   const { data, error } = await supabase
@@ -62,14 +62,12 @@ export const FeaturedProducts = () => {
             )}
 
             <div className="mt-16 text-center">
-                <StarButton 
+                <ShineButton 
                     onClick={() => navigate('/products')} 
-                    className="px-8 py-6 text-base bg-white"
-                    backgroundColor="#000"
-                    textClassName="text-white"
+                    className="px-8 py-6 text-base"
                 >
                     Ver todos os produtos
-                </StarButton>
+                </ShineButton>
             </div>
         </div>
     </section>
