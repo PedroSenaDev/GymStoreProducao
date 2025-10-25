@@ -20,7 +20,7 @@ function StarBackground({ color }: StarBackgroundProps) {
       <g clipPath="url(#clip0_408_119)">
         <path
           d="M32.34 26.68C32.34 26.3152 32.0445 26.02 31.68 26.02C31.3155 26.02 31.02 26.3152 31.02 26.68C31.02 27.0448 31.3155 27.34 31.68 27.34C32.0445 27.34 32.34 27.0448 32.34 26.68Z"
-          fill="black"
+          fill={color || "currentColor"}
         />
         <path
           fillRule="evenodd"
@@ -107,10 +107,7 @@ export function StarButton({
       >
         <StarBackground color={backgroundColor} />
       </div>
-      <span className={cn(
-        "z-10 relative bg-gradient-to-t dark:from-white dark:to-neutral-500 from-black to-neutral-400 inline-block text-transparent bg-clip-text",
-        textClassName
-        )}>
+      <span className={cn("z-10 relative", textClassName)}>
         {children}
       </span>
     </button>
