@@ -31,11 +31,10 @@ async function fetchProductById(id: string): Promise<Product & { categories?: { 
 }
 
 async function fetchDisplayPolicies(): Promise<Policy[]> {
-  const policyTitles = ['Atendimento e Prazos', 'Instruções para Troca'];
   const { data, error } = await supabase
     .from('policies')
     .select('*')
-    .in('title', policyTitles);
+    .in('display_area', ['product', 'both']);
   
   if (error) throw new Error(error.message);
   return data;

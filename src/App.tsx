@@ -16,6 +16,7 @@ import LoginPage from "./pages/Login";
 import ProductsPage from "./pages/Products";
 import ProductDetailPage from "./pages/ProductDetailPage";
 import ContactPage from "./pages/Contact";
+import PolicyPage from "./pages/PolicyPage";
 import NotFound from "./pages/NotFound";
 
 // Admin Pages
@@ -41,6 +42,7 @@ const App = () => (
               <Route path="/products" element={<ProductsPage />} />
               <Route path="/product/:id" element={<ProductDetailPage />} />
               <Route path="/contact" element={<ContactPage />} />
+              <Route path="/policy/:id" element={<PolicyPage />} />
             </Route>
 
             {/* Auth Routes (no layout) */}

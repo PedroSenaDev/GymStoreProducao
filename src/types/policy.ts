@@ -3,4 +3,5 @@ export interface Policy {
   title: string;
   content: string;
   created_at: string;
+  display_area: 'product' | 'footer' | 'both';
 }

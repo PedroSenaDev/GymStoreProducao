@@ -14,6 +14,13 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { showError, showSuccess } from "@/utils/toast";
 import { Policy } from "@/types/policy";
 import { Loader2 } from "lucide-react";
@@ -21,6 +28,7 @@ import { Loader2 } from "lucide-react";
 const formSchema = z.object({
   title: z.string().min(3, { message: "O título deve ter pelo menos 3 caracteres." }),
   content: z.string().min(10, { message: "O conteúdo deve ter pelo menos 10 caracteres." }),
+  display_area: z.enum(['product', 'footer', 'both']),
 });
 
 interface PolicyFormProps {
@@ -35,6 +43,7 @@ export default function PolicyForm({ policy, onFinished }: PolicyFormProps) {
     defaultValues: {
       title: policy?.title || "",
       content: policy?.content || "",
+      display_area: policy?.display_area || 'product',
     },
   });
 
@@ -86,6 +95,28 @@ export default function PolicyForm({ policy, onFinished }: PolicyFormProps) {
               <FormControl>
                 <Textarea placeholder="Descreva a política..." {...field} rows={10} />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="display_area"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Exibir Em</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione onde exibir a política" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="product">Página do Produto</SelectItem>
+                  <SelectItem value="footer">Rodapé</SelectItem>
+                  <SelectItem value="both">Ambos</SelectItem>
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
