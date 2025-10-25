@@ -80,6 +80,13 @@ export default function AdminProductsPage() {
 
   const { mutate: toggleFeatured } = useMutation({
     mutationFn: async (product: Product) => {
+      const featuredCount = products?.filter(p => p.is_featured).length ?? 0;
+
+      // Block featuring a new product if the limit is reached
+      if (!product.is_featured && featuredCount >= 3) {
+        throw new Error("Você só pode ter 3 produtos em destaque. Desmarque um para adicionar um novo.");
+      }
+
       const { error } = await supabase
         .from("products")
         .update({ is_featured: !product.is_featured })
