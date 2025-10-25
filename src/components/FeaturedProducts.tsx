@@ -36,8 +36,8 @@ export const FeaturedProducts = () => {
     <section className="bg-gray-50 dark:bg-gray-900">
         <div className="container py-16 md:py-24">
             <div className="mx-auto max-w-2xl text-center mb-12">
-                <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Produtos em Destaque</h2>
-                <p className="mt-4 text-lg text-muted-foreground">
+                <h2 className="text-4xl font-bold tracking-tight sm:text-5xl">Produtos em Destaque</h2>
+                <p className="mt-4 text-xl text-muted-foreground">
                     Peças selecionadas que elevam seu treino a um novo patamar.
                 </p>
             </div>
