@@ -162,7 +162,7 @@ export const SidebarHeader = ({ children }: { children: React.ReactNode }) => {
     const { open, animate } = useSidebar();
     return (
         <motion.div 
-            className="flex items-center gap-2 px-2 mb-10 h-8"
+            className="flex items-center gap-2 px-2 mb-10 h-8 overflow-hidden"
             animate={{
                 justifyContent: animate ? (open ? "flex-start" : "center") : "flex-start",
             }}
@@ -196,25 +196,29 @@ export const SidebarLink = ({
       to={link.to}
       onClick={handleClick}
       className={cn(
-        "flex items-center justify-start gap-4 group/sidebar p-3 rounded-lg transition-colors",
+        "flex items-center justify-start gap-4 group/sidebar p-3 rounded-lg transition-colors overflow-hidden",
         isActive 
           ? "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90" 
           : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-        !open && "justify-center",
+        !open && animate && "justify-center",
         className
       )}
       {...props}
     >
-      {link.icon}
-      <motion.span
-        animate={{
-          display: animate ? (open ? "inline-block" : "none") : "inline-block",
-          opacity: animate ? (open ? 1 : 0) : 1,
-        }}
-        className="text-sm font-medium whitespace-pre"
-      >
-        {link.label}
-      </motion.span>
+      <div className="flex-shrink-0">{link.icon}</div>
+      <AnimatePresence>
+        {open && (
+          <motion.span
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className="text-sm font-medium whitespace-pre"
+          >
+            {link.label}
+          </motion.span>
+        )}
+      </AnimatePresence>
     </Link>
   );
 };
