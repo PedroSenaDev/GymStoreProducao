@@ -18,11 +18,11 @@ export const ProductCard = ({ product }: ProductCardProps) => {
     <Link to={`/product/${product.id}`} className="group">
       <Card className="overflow-hidden transition-all duration-300 group-hover:shadow-xl group-hover:-translate-y-1">
         <CardHeader className="p-0">
-          <div className="aspect-square overflow-hidden">
+          <div className="aspect-square overflow-hidden bg-secondary">
             <img
               src={product.image_urls?.[0] || '/placeholder.svg'}
               alt={product.name}
-              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+              className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
             />
           </div>
         </CardHeader>
