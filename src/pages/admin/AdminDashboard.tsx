@@ -1,7 +1,14 @@
 import { useProfile } from '@/hooks/useProfile';
 import { Navigate, Outlet } from 'react-router-dom';
-import { AdminSidebar } from '@/components/admin/AdminSidebar';
-import { Loader2 } from 'lucide-react';
+import { Loader2, LayoutDashboard, Package, Tags, ExternalLink } from 'lucide-react';
+import { Sidebar, SidebarBody, SidebarLink } from '@/components/admin/AnimatedSidebar';
+import { Separator } from '@/components/ui/separator';
+
+const links = [
+  { to: '/admin', label: 'Dashboard', icon: <LayoutDashboard /> },
+  { to: '/admin/products', label: 'Produtos', icon: <Package /> },
+  { to: '/admin/categories', label: 'Categorias', icon: <Tags /> },
+];
 
 export default function AdminDashboardLayout() {
   const { data: profile, isLoading } = useProfile();
@@ -15,16 +22,30 @@ export default function AdminDashboardLayout() {
   }
 
   if (!profile?.isAdmin) {
-    // Redirect to home if not an admin or if profile failed to load
     return <Navigate to="/" replace />;
   }
 
   return (
-    <div className="flex min-h-screen">
-      <AdminSidebar />
-      <main className="flex-1 p-6">
-        <Outlet />
-      </main>
-    </div>
+    <Sidebar>
+      <div className="flex flex-col md:flex-row min-h-screen w-full">
+        <SidebarBody className="border-r">
+          <div className="flex flex-col justify-between h-full p-2">
+            <div className="flex flex-col">
+              <h2 className="mb-4 text-lg font-semibold tracking-tight p-2">Admin</h2>
+              {links.map((link, idx) => (
+                <SidebarLink key={idx} link={link} />
+              ))}
+            </div>
+            <div>
+              <Separator className="my-4" />
+              <SidebarLink link={{ to: '/', label: 'Ver Site', icon: <ExternalLink /> }} />
+            </div>
+          </div>
+        </SidebarBody>
+        <main className="flex-1 p-6">
+          <Outlet />
+        </main>
+      </div>
+    </Sidebar>
   );
 }
