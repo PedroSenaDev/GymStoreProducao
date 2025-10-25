@@ -69,7 +69,7 @@ export default function ProductDetailPage() {
       <div className="mb-8">
         <Link to="/products" className="inline-flex items-center text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar para todos os produtos
+          Voltar para Produtos
         </Link>
       </div>
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2 md:gap-16">
