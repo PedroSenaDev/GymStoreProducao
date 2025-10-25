@@ -80,11 +80,6 @@ export default function ProductDetailPage() {
           
           <Separator />
 
-          <div className="space-y-4">
-            <h3 className="font-semibold">Descrição</h3>
-            <p className="text-muted-foreground">{product.description || "Nenhuma descrição disponível."}</p>
-          </div>
-
           {product.sizes && product.sizes.length > 0 && (
             <div className="space-y-3">
               <Label className="font-semibold">Tamanho</Label>
@@ -121,7 +116,7 @@ export default function ProductDetailPage() {
               <span className="w-12 text-center font-medium">{quantity}</span>
               <Button variant="ghost" size="icon" onClick={() => setQuantity(q => Math.min(product.stock, q + 1))}>+</Button>
             </div>
-            <Button size="lg" className="flex-1">
+            <Button className="flex-1">
               <ShoppingCart className="mr-2 h-5 w-5" />
               Adicionar ao Carrinho
             </Button>
@@ -131,6 +126,13 @@ export default function ProductDetailPage() {
           ) : (
             <p className="text-sm font-semibold text-destructive">Produto esgotado</p>
           )}
+
+          <Separator />
+          
+          <div className="space-y-4">
+            <h3 className="font-semibold">Descrição</h3>
+            <p className="text-muted-foreground">{product.description || "Nenhuma descrição disponível."}</p>
+          </div>
         </div>
       </div>
     </div>
