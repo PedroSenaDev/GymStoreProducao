@@ -62,7 +62,12 @@ export const FeaturedProducts = () => {
             )}
 
             <div className="mt-16 text-center">
-                <StarButton onClick={() => navigate('/products')} className="px-8 py-6 text-base">
+                <StarButton 
+                    onClick={() => navigate('/products')} 
+                    className="px-8 py-6 text-base bg-black hover:bg-gray-800"
+                    backgroundColor="#fff"
+                    textClassName="from-white to-neutral-300"
+                >
                     Ver todos os produtos
                 </StarButton>
             </div>

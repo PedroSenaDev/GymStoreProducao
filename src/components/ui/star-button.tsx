@@ -46,6 +46,7 @@ interface StarButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> 
   backgroundColor?: string;
   borderWidth?: number;
   className?: string;
+  textClassName?: string;
 }
 
 export function StarButton({
@@ -56,6 +57,7 @@ export function StarButton({
   backgroundColor = "currentColor",
   borderWidth = 2,
   className,
+  textClassName,
   ...props
 }: StarButtonProps) {
   const pathRef = useRef<HTMLButtonElement>(null);
@@ -105,7 +107,10 @@ export function StarButton({
       >
         <StarBackground color={backgroundColor} />
       </div>
-      <span className="z-10 relative bg-gradient-to-t dark:from-white dark:to-neutral-500 from-black to-neutral-400 inline-block text-transparent bg-clip-text">
+      <span className={cn(
+        "z-10 relative bg-gradient-to-t dark:from-white dark:to-neutral-500 from-black to-neutral-400 inline-block text-transparent bg-clip-text",
+        textClassName
+        )}>
         {children}
       </span>
     </button>
