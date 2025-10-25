@@ -70,7 +70,7 @@ export default function LoginPage() {
             </h1>
             <p className="text-balance text-muted-foreground">
               {formType === 'signin'
-                ? 'Insira seus dados para acessar o universo GYMSTORE'
+                ? 'Insira seus dados para acessar'
                 : 'Preencha os campos para começar sua jornada'}
             </p>
           </div>
@@ -120,7 +120,7 @@ export default function LoginPage() {
       </div>
       <div className="hidden bg-muted lg:block">
         <img
-          src="https://images.unsplash.com/photo-1583454110551-21f2fa2a8a14?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+          src="https://images.unsplash.com/photo-1583454110551-21f2fa2a8a14?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG9тby1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
           alt="Pessoa se exercitando em uma academia"
           className="h-screen w-full object-cover"
         />
