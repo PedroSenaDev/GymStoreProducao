@@ -20,8 +20,8 @@ export function ProductImageGallery({ images }: ProductImageGalleryProps) {
         {imageList.map((src, index) => (
           <CarouselItem key={index}>
             <Card className="overflow-hidden rounded-lg">
-              <CardContent className="flex aspect-square items-center justify-center p-0">
-                <img src={src} alt={`Imagem do produto ${index + 1}`} className="h-full w-full object-cover" />
+              <CardContent className="flex aspect-square items-center justify-center p-0 bg-secondary">
+                <img src={src} alt={`Imagem do produto ${index + 1}`} className="h-full w-full object-contain" />
               </CardContent>
             </Card>
           </CarouselItem>
