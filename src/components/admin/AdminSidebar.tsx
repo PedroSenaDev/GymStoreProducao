@@ -1,12 +1,14 @@
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, Package, Users } from 'lucide-react';
+import { LayoutDashboard, Package, Users, Tags, ShoppingCart } from 'lucide-react';
 
 const navItems = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/products', label: 'Produtos', icon: Package },
-  { href: '/admin/users', label: 'Usuários', icon: Users },
+  { href: '/admin/categories', label: 'Categorias', icon: Tags },
+  // { href: '/admin/orders', label: 'Pedidos', icon: ShoppingCart }, // Placeholder for future
+  // { href: '/admin/users', label: 'Usuários', icon: Users }, // Placeholder for future
 ];
 
 export const AdminSidebar = () => {
@@ -20,7 +22,7 @@ export const AdminSidebar = () => {
           <Button
             key={item.href}
             asChild
-            variant={location.pathname === item.href ? 'secondary' : 'ghost'}
+            variant={location.pathname.startsWith(item.href) && (item.href !== '/admin' || location.pathname === '/admin') ? 'secondary' : 'ghost'}
             className="w-full justify-start"
           >
             <Link to={item.href}>
