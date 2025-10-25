@@ -11,7 +11,7 @@ export const PublicLayout = () => {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
-      <main className={cn('flex-grow', !isHomePage && 'pt-20')}>
+      <main className={cn('flex-grow', !isHomePage && 'pt-20 md:pt-24')}>
         <Outlet />
       </main>
       <WhatsAppButton />
