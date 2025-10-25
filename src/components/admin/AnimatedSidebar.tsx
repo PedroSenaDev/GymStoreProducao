@@ -6,6 +6,7 @@ import React, { useState, createContext, useContext } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { Logo } from "../Logo";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Links {
   label: string;
@@ -161,7 +162,7 @@ export const SidebarHeader = ({ children }: { children: React.ReactNode }) => {
     const { open, animate } = useSidebar();
     return (
         <motion.div 
-            className="flex items-center gap-2 px-2 mb-10"
+            className="flex items-center gap-2 px-2 mb-10 h-8"
             animate={{
                 justifyContent: animate ? (open ? "flex-start" : "center") : "flex-start",
             }}
@@ -179,13 +180,21 @@ export const SidebarLink = ({
   link: Links;
   className?: string;
 }) => {
-  const { open, animate } = useSidebar();
+  const { open, animate, setOpen } = useSidebar();
   const location = useLocation();
+  const isMobile = useIsMobile();
   const isActive = location.pathname === link.to;
+
+  const handleClick = () => {
+    if (isMobile) {
+      setOpen(false);
+    }
+  };
 
   return (
     <Link
       to={link.to}
+      onClick={handleClick}
       className={cn(
         "flex items-center justify-start gap-4 group/sidebar p-3 rounded-lg transition-colors",
         isActive 

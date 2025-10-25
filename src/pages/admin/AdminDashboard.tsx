@@ -1,9 +1,9 @@
 import { useProfile } from '@/hooks/useProfile';
-import { Navigate, Outlet } from 'react-router-dom';
-import { Loader2, LayoutDashboard, Package, Tags, ExternalLink } from 'lucide-react';
+import { Link, Navigate, Outlet } from 'react-router-dom';
+import { Loader2, LayoutDashboard, Package, Tags, ExternalLink, Dumbbell } from 'lucide-react';
 import { Sidebar, SidebarBody, SidebarHeader, SidebarLink, useSidebar } from '@/components/admin/AnimatedSidebar';
 import { Separator } from '@/components/ui/separator';
-import { Logo } from '@/components/Logo';
+import { motion } from 'framer-motion';
 
 const links = [
   { to: '/admin', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
@@ -11,15 +11,33 @@ const links = [
   { to: '/admin/categories', label: 'Categorias', icon: <Tags size={20} /> },
 ];
 
+const SidebarLogo = () => {
+  const { open, animate } = useSidebar();
+  return (
+    <Link to="/" className="flex items-center gap-2 text-2xl font-semibold tracking-widest uppercase transition-opacity hover:opacity-80 text-sidebar-foreground">
+      <Dumbbell className="h-7 w-7 flex-shrink-0" />
+      <motion.div
+        animate={{
+          display: animate ? (open ? "inline-block" : "none") : "inline-block",
+          opacity: animate ? (open ? 1 : 0) : 1,
+        }}
+        className="whitespace-pre"
+      >
+        <span className="font-black">GYM</span>
+        <span className="font-light">STORE</span>
+      </motion.div>
+    </Link>
+  )
+}
+
 const AdminLayoutContent = () => {
-  const { open } = useSidebar();
   return (
     <div className="flex flex-col md:flex-row min-h-screen w-full bg-muted/40">
       <SidebarBody className="border-r border-sidebar-border">
         <div className="flex flex-col justify-between h-full text-sidebar-foreground">
           <div>
             <SidebarHeader>
-              <Logo />
+              <SidebarLogo />
             </SidebarHeader>
             <div className="flex flex-col gap-1 px-2">
               {links.map((link, idx) => (
