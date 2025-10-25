@@ -67,12 +67,10 @@ export default function ProductDetailPage() {
   return (
     <div className="container mx-auto max-w-6xl px-4 py-8 md:py-16">
       <div className="mb-8">
-        <Button asChild>
-          <Link to="/products">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar para Produtos
-          </Link>
-        </Button>
+        <Link to="/products" className="inline-flex items-center text-sm font-medium text-foreground transition-opacity hover:opacity-75">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Voltar para Produtos
+        </Link>
       </div>
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2 md:gap-16">
         <ProductImageGallery images={product.image_urls || []} />
