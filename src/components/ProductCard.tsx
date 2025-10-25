@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Product } from '@/types/product';
 
 interface ProductCardProps {
@@ -15,23 +15,26 @@ export const ProductCard = ({ product }: ProductCardProps) => {
   };
 
   return (
-    <Link to={`/product/${product.id}`} className="group">
-      <Card className="overflow-hidden transition-all duration-300 group-hover:shadow-xl group-hover:-translate-y-1">
+    <Link to={`/product/${product.id}`} className="group block">
+      <Card className="overflow-hidden border-2 border-transparent bg-white transition-all duration-300 group-hover:border-black group-hover:shadow-2xl">
         <CardHeader className="p-0">
-          <div className="aspect-square overflow-hidden bg-secondary">
+          <div className="aspect-square overflow-hidden bg-gray-100">
             <img
               src={product.image_urls?.[0] || '/placeholder.svg'}
               alt={product.name}
-              className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
             />
           </div>
         </CardHeader>
-        <CardContent className="p-4">
-          <h3 className="font-semibold text-lg truncate">{product.name}</h3>
+        <CardContent className="bg-black p-4 text-white">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="font-bold text-lg truncate">{product.name}</h3>
+              <p className="text-sm text-gray-400">Ver detalhes</p>
+            </div>
+            <p className="flex-shrink-0 font-semibold text-lg">{formatCurrency(product.price)}</p>
+          </div>
         </CardContent>
-        <CardFooter className="p-4 pt-0">
-          <p className="text-xl font-bold text-primary">{formatCurrency(product.price)}</p>
-        </CardFooter>
       </Card>
     </Link>
   );
