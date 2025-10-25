@@ -4,6 +4,7 @@ import { Loader2, LayoutDashboard, Package, Tags, ExternalLink, Dumbbell } from 
 import { Sidebar, SidebarBody, SidebarHeader, SidebarLink, useSidebar } from '@/components/admin/AnimatedSidebar';
 import { Separator } from '@/components/ui/separator';
 import { motion } from 'framer-motion';
+import { useState } from 'react';
 
 const links = [
   { to: '/admin', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
@@ -62,6 +63,7 @@ const AdminLayoutContent = () => {
 
 export default function AdminDashboardLayout() {
   const { data: profile, isLoading } = useProfile();
+  const [open, setOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -76,7 +78,7 @@ export default function AdminDashboardLayout() {
   }
 
   return (
-    <Sidebar>
+    <Sidebar open={open} setOpen={setOpen}>
       <AdminLayoutContent />
     </Sidebar>
   );
