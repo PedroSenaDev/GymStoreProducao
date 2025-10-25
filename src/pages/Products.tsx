@@ -64,8 +64,8 @@ export default function ProductsPage() {
         <p className="mt-4 text-lg text-muted-foreground">Confira nossa coleção premium de roupas de performance.</p>
       </div>
 
-      <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-10">
-        <div className="relative w-full md:max-w-xs">
+      <div className="flex flex-col items-center gap-6 mb-10">
+        <div className="relative w-full max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           <Input
             type="search"
@@ -75,7 +75,7 @@ export default function ProductsPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 w-full md:w-auto">
+        <div className="flex items-center justify-center flex-wrap gap-2">
           <Button
             variant={!selectedCategory ? 'default' : 'outline'}
             onClick={() => setSelectedCategory(null)}
