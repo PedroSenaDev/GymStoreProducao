@@ -41,7 +41,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
         <CardContent className="p-4 space-y-2">
           <h3 className="font-semibold text-base truncate">{product.name}</h3>
           <div className="flex items-baseline justify-between">
-            <p className="text-lg font-bold">{formatCurrency(product.price)}</p>
+            <p className="text-base md:text-lg font-bold">{formatCurrency(product.price)}</p>
             <div className={cn(
               "flex items-center font-medium text-primary opacity-0 transition-opacity duration-300 group-hover:opacity-100",
               isMobile ? "text-xs" : "text-sm"
