@@ -13,6 +13,7 @@ import AdminDashboardLayout from "./pages/admin/AdminDashboard";
 import Index from "./pages/Index";
 import LoginPage from "./pages/Login";
 import ProductsPage from "./pages/Products";
+import ProductDetailPage from "./pages/ProductDetailPage";
 import ContactPage from "./pages/Contact";
 import NotFound from "./pages/NotFound";
 
@@ -35,6 +36,7 @@ const App = () => (
             <Route element={<PublicLayout />}>
               <Route path="/" element={<Index />} />
               <Route path="/products" element={<ProductsPage />} />
+              <Route path="/product/:id" element={<ProductDetailPage />} />
               <Route path="/contact" element={<ContactPage />} />
             </Route>
 
