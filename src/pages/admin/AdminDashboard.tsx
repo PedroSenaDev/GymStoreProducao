@@ -1,10 +1,10 @@
 import { useProfile } from '@/hooks/useProfile';
 import { Link, Navigate, Outlet } from 'react-router-dom';
 import { Loader2, LayoutDashboard, Package, Tags, ExternalLink, Dumbbell } from 'lucide-react';
-import { Sidebar, SidebarBody, SidebarHeader, SidebarLink, useSidebar } from '@/components/admin/AnimatedSidebar';
+import { Sidebar, SidebarBody, SidebarHeader, SidebarLink, useSidebar } from '@/components/admin/AdminSidebar';
 import { Separator } from '@/components/ui/separator';
-import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
+import { cn } from '@/lib/utils';
 
 const links = [
   { to: '/admin', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
@@ -17,20 +17,15 @@ const SidebarLogo = () => {
   return (
     <Link to="/" className="flex items-center gap-2 text-2xl font-semibold tracking-widest uppercase transition-opacity hover:opacity-80 text-sidebar-foreground">
       <Dumbbell className="h-7 w-7 flex-shrink-0" />
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
-            className="whitespace-pre"
-          >
-            <span className="font-black">GYM</span>
-            <span className="font-light">STORE</span>
-          </motion.div>
+      <div
+        className={cn(
+            "whitespace-pre transition-opacity duration-200",
+            open ? "opacity-100" : "opacity-0 pointer-events-none"
         )}
-      </AnimatePresence>
+      >
+        <span className="font-black">GYM</span>
+        <span className="font-light">STORE</span>
+      </div>
     </Link>
   )
 }

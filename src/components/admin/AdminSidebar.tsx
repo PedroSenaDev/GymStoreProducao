@@ -3,7 +3,6 @@
 import { cn } from "@/lib/utils";
 import { Link, useLocation } from "react-router-dom";
 import React, { useState, createContext, useContext } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { Logo } from "../Logo";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -17,7 +16,6 @@ interface Links {
 interface SidebarContextProps {
   open: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  animate: boolean;
 }
 
 const SidebarContext = createContext<SidebarContextProps | undefined>(
@@ -36,12 +34,10 @@ export const SidebarProvider = ({
   children,
   open: openProp,
   setOpen: setOpenProp,
-  animate = true,
 }: {
   children: React.ReactNode;
   open?: boolean;
   setOpen?: React.Dispatch<React.SetStateAction<boolean>>;
-  animate?: boolean;
 }) => {
   const [openState, setOpenState] = useState(false);
 
@@ -49,7 +45,7 @@ export const SidebarProvider = ({
   const setOpen = setOpenProp !== undefined ? setOpenProp : setOpenState;
 
   return (
-    <SidebarContext.Provider value={{ open, setOpen, animate }}>
+    <SidebarContext.Provider value={{ open, setOpen }}>
       {children}
     </SidebarContext.Provider>
   );
@@ -59,25 +55,23 @@ export const Sidebar = ({
   children,
   open,
   setOpen,
-  animate,
 }: {
   children: React.ReactNode;
   open?: boolean;
   setOpen?: React.Dispatch<React.SetStateAction<boolean>>;
-  animate?: boolean;
 }) => {
   return (
-    <SidebarProvider open={open} setOpen={setOpen} animate={animate}>
+    <SidebarProvider open={open} setOpen={setOpen}>
       {children}
     </SidebarProvider>
   );
 };
 
-export const SidebarBody = (props: React.ComponentProps<typeof motion.div>) => {
+export const SidebarBody = (props: React.HTMLAttributes<HTMLDivElement>) => {
   return (
     <>
       <DesktopSidebar {...props} />
-      <MobileSidebar {...(props as React.ComponentProps<"div">)} />
+      <MobileSidebar {...props} />
     </>
   );
 };
@@ -86,23 +80,21 @@ export const DesktopSidebar = ({
   className,
   children,
   ...props
-}: React.ComponentProps<typeof motion.div>) => {
-  const { open, setOpen, animate } = useSidebar();
+}: React.HTMLAttributes<HTMLDivElement>) => {
+  const { open, setOpen } = useSidebar();
   return (
-    <motion.div
+    <div
       className={cn(
-        "h-full px-4 py-6 hidden md:flex md:flex-col bg-sidebar w-[260px] flex-shrink-0",
+        "h-full px-4 py-6 hidden md:flex md:flex-col bg-sidebar flex-shrink-0 transition-all duration-300 ease-in-out",
+        open ? "w-[260px]" : "w-[72px]",
         className
       )}
-      animate={{
-        width: animate ? (open ? "260px" : "72px") : "260px",
-      }}
-      onMouseEnter={() => animate && setOpen(true)}
-      onMouseLeave={() => animate && setOpen(false)}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
       {...props}
     >
       {children}
-    </motion.div>
+    </div>
   );
 };
 
@@ -110,7 +102,7 @@ export const MobileSidebar = ({
   className,
   children,
   ...props
-}: React.ComponentProps<"div">) => {
+}: React.HTMLAttributes<"div">) => {
   const { open, setOpen } = useSidebar();
   return (
     <>
@@ -124,51 +116,41 @@ export const MobileSidebar = ({
           <Logo />
         </div>
         <button onClick={() => setOpen(!open)} className="p-2 rounded-md hover:bg-sidebar-accent">
-          <Menu
-            className="text-sidebar-foreground"
-          />
+          <Menu className="text-sidebar-foreground" />
         </button>
       </div>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ x: "-100%", opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: "-100%", opacity: 0 }}
-            transition={{
-              duration: 0.3,
-              ease: "easeInOut",
-            }}
-            className={cn(
-              "fixed h-full w-full inset-0 bg-background p-10 z-[100] flex flex-col justify-between",
-              className
-            )}
+      {open && (
+        <div
+          className={cn(
+            "fixed h-full w-full inset-0 bg-background p-10 z-[100] flex flex-col justify-between",
+            className
+          )}
+        >
+          <div
+            className="absolute right-10 top-10 z-50 text-foreground cursor-pointer"
+            onClick={() => setOpen(!open)}
           >
-            <div
-              className="absolute right-10 top-10 z-50 text-foreground cursor-pointer"
-              onClick={() => setOpen(!open)}
-            >
-              <X />
-            </div>
-            {children}
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <X />
+          </div>
+          {children}
+        </div>
+      )}
     </>
   );
 };
 
+
 export const SidebarHeader = ({ children }: { children: React.ReactNode }) => {
-    const { open, animate } = useSidebar();
+    const { open } = useSidebar();
     return (
-        <motion.div 
-            className="flex items-center gap-2 px-2 mb-10 h-8 overflow-hidden"
-            animate={{
-                justifyContent: animate ? (open ? "flex-start" : "center") : "flex-start",
-            }}
+        <div 
+            className={cn(
+                "flex items-center gap-2 px-2 mb-10 h-8 overflow-hidden",
+                open ? "justify-start" : "justify-center"
+            )}
         >
             {children}
-        </motion.div>
+        </div>
     );
 }
 
@@ -180,7 +162,7 @@ export const SidebarLink = ({
   link: Links;
   className?: string;
 }) => {
-  const { open, animate, setOpen } = useSidebar();
+  const { open, setOpen } = useSidebar();
   const location = useLocation();
   const isMobile = useIsMobile();
   const isActive = location.pathname === link.to;
@@ -196,29 +178,24 @@ export const SidebarLink = ({
       to={link.to}
       onClick={handleClick}
       className={cn(
-        "flex items-center justify-start gap-4 group/sidebar p-3 rounded-lg transition-colors overflow-hidden",
+        "flex items-center justify-start gap-4 group/sidebar p-3 rounded-lg transition-colors",
         isActive 
           ? "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90" 
           : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-        !open && animate && "justify-center",
+        !open && "justify-center",
         className
       )}
       {...props}
     >
       <div className="flex-shrink-0">{link.icon}</div>
-      <AnimatePresence>
-        {open && (
-          <motion.span
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
-            className="text-sm font-medium whitespace-pre"
-          >
-            {link.label}
-          </motion.span>
+      <span
+        className={cn(
+            "text-sm font-medium whitespace-pre transition-opacity duration-200",
+            open ? "opacity-100" : "opacity-0 pointer-events-none"
         )}
-      </AnimatePresence>
+      >
+        {link.label}
+      </span>
     </Link>
   );
 };
