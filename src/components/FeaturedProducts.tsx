@@ -3,8 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Product } from '@/types/product';
 import { ProductCard } from '@/components/ProductCard';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from './ui/button';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { StarButton } from './ui/star-button';
 
 async function fetchFeaturedProducts(): Promise<Product[]> {
   const { data, error } = await supabase
@@ -26,6 +26,7 @@ export const FeaturedProducts = () => {
     queryKey: ['featuredProducts'],
     queryFn: fetchFeaturedProducts,
   });
+  const navigate = useNavigate();
 
   if (isError || (!isLoading && (!products || products.length === 0))) {
     // Não renderiza a seção se houver um erro ou nenhum produto em destaque
@@ -61,9 +62,9 @@ export const FeaturedProducts = () => {
             )}
 
             <div className="mt-16 text-center">
-                <Button asChild size="lg">
-                    <Link to="/products">Ver todos os produtos</Link>
-                </Button>
+                <StarButton onClick={() => navigate('/products')} className="px-8 py-6 text-base">
+                    Ver todos os produtos
+                </StarButton>
             </div>
         </div>
     </section>
