@@ -1,6 +1,6 @@
 import { useProfile } from '@/hooks/useProfile';
 import { Link, Navigate, Outlet } from 'react-router-dom';
-import { Loader2, LayoutDashboard, Package, Tags, ExternalLink, Dumbbell } from 'lucide-react';
+import { Loader2, LayoutDashboard, Package, Tags, ExternalLink } from 'lucide-react';
 import { Sidebar, SidebarBody, SidebarHeader, SidebarLink } from '@/components/admin/AdminSidebar';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -13,8 +13,7 @@ const links = [
 
 const SidebarLogo = () => {
   return (
-    <Link to="/" className="flex items-center gap-2 text-2xl font-semibold tracking-widest uppercase transition-opacity hover:opacity-80 text-sidebar-foreground">
-      <Dumbbell className="h-7 w-7 flex-shrink-0" />
+    <Link to="/" className="flex items-center text-2xl font-semibold tracking-widest uppercase transition-opacity hover:opacity-80 text-sidebar-foreground">
       <div
         className={cn(
             "whitespace-pre"
