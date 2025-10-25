@@ -22,6 +22,7 @@ import NotFound from "./pages/NotFound";
 import DashboardHomePage from "./pages/admin/DashboardHomePage";
 import AdminProductsPage from "./pages/admin/AdminProductsPage";
 import AdminCategoriesPage from "./pages/admin/AdminCategoriesPage";
+import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 
 const queryClient = new QueryClient();
 
@@ -50,6 +51,7 @@ const App = () => (
                <Route index element={<DashboardHomePage />} />
                <Route path="products" element={<AdminProductsPage />} />
                <Route path="categories" element={<AdminCategoriesPage />} />
+               <Route path="settings" element={<AdminSettingsPage />} />
             </Route>
 
             {/* Catch-all */}

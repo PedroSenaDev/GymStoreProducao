@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Product } from '@/types/product';
+import { Policy } from '@/types/policy';
 import { Loader2, ShoppingCart, ArrowLeft } from 'lucide-react';
 import { ProductImageGallery } from '@/components/ProductImageGallery';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +12,12 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 async function fetchProductById(id: string): Promise<Product & { categories?: { name: string } }> {
   const { data, error } = await supabase
@@ -19,6 +26,17 @@ async function fetchProductById(id: string): Promise<Product & { categories?: { 
     .eq('id', id)
     .single();
 
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function fetchDisplayPolicies(): Promise<Policy[]> {
+  const policyTitles = ['Atendimento e Prazos', 'Instruções para Troca'];
+  const { data, error } = await supabase
+    .from('policies')
+    .select('*')
+    .in('title', policyTitles);
+  
   if (error) throw new Error(error.message);
   return data;
 }
@@ -33,6 +51,11 @@ export default function ProductDetailPage() {
     queryKey: ['product', id],
     queryFn: () => fetchProductById(id!),
     enabled: !!id,
+  });
+
+  const { data: policies } = useQuery({
+    queryKey: ['displayPolicies'],
+    queryFn: fetchDisplayPolicies,
   });
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -137,6 +160,19 @@ export default function ProductDetailPage() {
             <h3 className="font-semibold">Descrição</h3>
             <p className="text-muted-foreground">{product.description || "Nenhuma descrição disponível."}</p>
           </div>
+
+          {policies && policies.length > 0 && (
+            <Accordion type="single" collapsible className="w-full">
+              {policies.map(policy => (
+                <AccordionItem value={policy.id} key={policy.id}>
+                  <AccordionTrigger>{policy.title}</AccordionTrigger>
+                  <AccordionContent className="prose prose-sm max-w-none text-muted-foreground">
+                    <p style={{ whiteSpace: 'pre-line' }}>{policy.content}</p>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          )}
         </div>
       </div>
     </div>
