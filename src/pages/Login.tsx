@@ -25,6 +25,9 @@ import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 import { useState } from "react";
 import { useSessionStore } from "@/store/sessionStore";
 import { Navigate } from "react-router-dom";
+import { GoogleIcon } from "@/components/icons/GoogleIcon";
+import { supabase } from "@/integrations/supabase/client";
+import { showError } from "@/utils/toast";
 
 export default function LoginPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -33,6 +36,37 @@ export default function LoginPage() {
   if (session) {
     return <Navigate to="/" replace />;
   }
+
+  async function signInWithGoogle() {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/`,
+      },
+    });
+    if (error) {
+      showError(`Erro ao entrar com Google: ${error.message}`);
+    }
+  }
+
+  const SocialLoginButton = () => (
+    <>
+      <div className="relative my-6">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-card px-2 text-muted-foreground">
+            Ou continue com
+          </span>
+        </div>
+      </div>
+      <Button variant="outline" className="w-full" onClick={signInWithGoogle}>
+        <GoogleIcon className="mr-2 h-5 w-5" />
+        Google
+      </Button>
+    </>
+  );
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-gray-900">
@@ -51,9 +85,10 @@ export default function LoginPage() {
             </CardHeader>
             <CardContent className="space-y-2">
               <SignInForm />
+              <SocialLoginButton />
               <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="link" className="px-0">
+                  <Button variant="link" className="px-0 pt-4">
                     Esqueceu sua senha?
                   </Button>
                 </DialogTrigger>
@@ -77,6 +112,7 @@ export default function LoginPage() {
             </CardHeader>
             <CardContent>
               <SignUpForm />
+              <SocialLoginButton />
             </CardContent>
           </Card>
         </TabsContent>
