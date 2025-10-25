@@ -26,49 +26,49 @@ export const Footer = () => {
   });
 
   return (
-    <footer className="bg-gray-50 dark:bg-gray-900 border-t">
+    <footer className="bg-black text-gray-300 border-t border-gray-800">
       <div className="container py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="flex flex-col gap-4 items-center md:items-start">
-            <Logo />
-            <p className="text-sm text-muted-foreground text-center md:text-left">
+            <Logo className="text-white" />
+            <p className="text-sm text-center md:text-left">
               Roupas de performance que unem estilo, resistência e conforto para o seu treino.
             </p>
           </div>
           <div className="text-center md:text-left">
-            <h3 className="font-semibold mb-4">Navegação</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link to="/" className="hover:text-primary">Início</Link></li>
-              <li><Link to="/products" className="hover:text-primary">Produtos</Link></li>
-              <li><Link to="/contact" className="hover:text-primary">Contato</Link></li>
+            <h3 className="font-semibold text-white mb-4">Navegação</h3>
+            <ul className="space-y-2 text-sm">
+              <li><Link to="/" className="hover:text-white transition-colors">Início</Link></li>
+              <li><Link to="/products" className="hover:text-white transition-colors">Produtos</Link></li>
+              <li><Link to="/contact" className="hover:text-white transition-colors">Contato</Link></li>
             </ul>
           </div>
           <div className="text-center md:text-left">
-            <h3 className="font-semibold mb-4">Políticas</h3>
+            <h3 className="font-semibold text-white mb-4">Políticas</h3>
             {policies && policies.length > 0 ? (
-              <ul className="space-y-2 text-sm text-muted-foreground">
+              <ul className="space-y-2 text-sm">
                 {policies.map(policy => (
                   <li key={policy.id}>
-                    <Link to={`/policy/${policy.id}`} className="hover:text-primary">
+                    <Link to={`/policy/${policy.id}`} className="hover:text-white transition-colors">
                       {policy.title}
                     </Link>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-muted-foreground">Nenhuma política disponível.</p>
+              <p className="text-sm">Nenhuma política disponível.</p>
             )}
           </div>
           <div className="text-center md:text-left">
-            <h3 className="font-semibold mb-4">Contato</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
+            <h3 className="font-semibold text-white mb-4">Contato</h3>
+            <ul className="space-y-2 text-sm">
               <li>contato@gymstore.com</li>
               <li>(11) 99999-9999</li>
             </ul>
           </div>
         </div>
-        <Separator className="my-8" />
-        <div className="text-center text-sm text-muted-foreground">
+        <Separator className="my-8 bg-gray-800" />
+        <div className="text-center text-sm">
           © {new Date().getFullYear()} GYMSTORE. Todos os direitos reservados.
         </div>
       </div>
