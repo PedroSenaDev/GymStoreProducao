@@ -36,7 +36,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
         </CardHeader>
         <CardContent className="p-4 space-y-2">
           <h3 className="font-semibold text-base truncate">{product.name}</h3>
-          <div className="flex items-center justify-between">
+          <div className="flex items-baseline justify-between">
             <p className="text-lg font-bold">{formatCurrency(product.price)}</p>
             <div className="flex items-center text-sm font-medium text-primary opacity-0 transition-opacity duration-300 group-hover:opacity-100">
               Ver detalhes
