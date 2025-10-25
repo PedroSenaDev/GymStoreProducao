@@ -33,12 +33,14 @@ export const ProductCard = ({ product }: ProductCardProps) => {
             {/* @ts-ignore */}
             {product.categories?.name && (
               // @ts-ignore
-              <Badge variant="secondary" className="absolute top-3 left-3">{product.categories.name}</Badge>
+              <Badge variant="secondary" className="absolute top-2 left-2 text-[11px] px-2 py-0.5">
+                {product.categories.name}
+              </Badge>
             )}
           </div>
         </CardHeader>
-        <CardContent className="p-4 space-y-2">
-          <h3 className="font-semibold text-base h-12">{product.name}</h3>
+        <CardContent className="p-3 md:p-4 space-y-1 md:space-y-2">
+          <h3 className="font-semibold text-sm md:text-base h-12">{product.name}</h3>
           <div className="flex items-baseline justify-between">
             <p className="text-base md:text-lg font-bold">{formatCurrency(product.price)}</p>
             {!isMobile && (
