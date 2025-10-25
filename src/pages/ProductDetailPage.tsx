@@ -108,15 +108,13 @@ export default function ProductDetailPage() {
             </div>
           )}
 
-          <Separator />
-
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 pt-4">
             <div className="flex items-center rounded-md border">
               <Button variant="ghost" size="icon" onClick={() => setQuantity(q => Math.max(1, q - 1))}>-</Button>
               <span className="w-12 text-center font-medium">{quantity}</span>
               <Button variant="ghost" size="icon" onClick={() => setQuantity(q => Math.min(product.stock, q + 1))}>+</Button>
             </div>
-            <Button className="flex-1">
+            <Button size="sm" className="flex-1">
               <ShoppingCart className="mr-2 h-5 w-5" />
               Adicionar ao Carrinho
             </Button>
