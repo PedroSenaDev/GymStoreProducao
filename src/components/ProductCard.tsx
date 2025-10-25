@@ -1,9 +1,12 @@
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Product } from '@/types/product';
+import { Badge } from '@/components/ui/badge';
+import { ArrowRight } from 'lucide-react';
 
 interface ProductCardProps {
-  product: Product;
+  // The product object has a nested categories object from the query
+  product: Product & { categories?: { name: string } };
 }
 
 export const ProductCard = ({ product }: ProductCardProps) => {
@@ -15,24 +18,30 @@ export const ProductCard = ({ product }: ProductCardProps) => {
   };
 
   return (
-    <Link to={`/product/${product.id}`} className="group block">
-      <Card className="overflow-hidden border-2 border-transparent bg-white transition-all duration-300 group-hover:border-black group-hover:shadow-2xl">
+    <Link to={`/product/${product.id}`} className="group block outline-none">
+      <Card className="overflow-hidden rounded-lg border bg-card text-card-foreground transition-all duration-300 group-hover:shadow-xl group-focus-visible:ring-2 group-focus-visible:ring-ring group-focus-visible:ring-offset-2">
         <CardHeader className="p-0">
-          <div className="aspect-square overflow-hidden bg-gray-100">
+          <div className="aspect-square overflow-hidden relative">
             <img
               src={product.image_urls?.[0] || '/placeholder.svg'}
               alt={product.name}
               className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
             />
+            {/* @ts-ignore */}
+            {product.categories?.name && (
+              // @ts-ignore
+              <Badge variant="secondary" className="absolute top-3 left-3">{product.categories.name}</Badge>
+            )}
           </div>
         </CardHeader>
-        <CardContent className="bg-black p-4 text-white">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h3 className="font-bold text-lg truncate">{product.name}</h3>
-              <p className="text-sm text-gray-400">Ver detalhes</p>
+        <CardContent className="p-4 space-y-2">
+          <h3 className="font-semibold text-base truncate">{product.name}</h3>
+          <div className="flex items-center justify-between">
+            <p className="text-lg font-bold">{formatCurrency(product.price)}</p>
+            <div className="flex items-center text-sm font-medium text-primary opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+              Ver detalhes
+              <ArrowRight className="ml-1 h-4 w-4" />
             </div>
-            <p className="flex-shrink-0 font-semibold text-lg">{formatCurrency(product.price)}</p>
           </div>
         </CardContent>
       </Card>
