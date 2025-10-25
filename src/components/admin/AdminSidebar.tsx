@@ -14,7 +14,7 @@ interface Links {
 }
 
 interface SidebarContextProps {
-  open: boolean;
+  open: boolean; // This will now be for the mobile overlay
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
@@ -30,19 +30,13 @@ export const useSidebar = () => {
   return context;
 };
 
+// The provider now just manages the mobile menu state.
 export const SidebarProvider = ({
   children,
-  open: openProp,
-  setOpen: setOpenProp,
 }: {
   children: React.ReactNode;
-  open?: boolean;
-  setOpen?: React.Dispatch<React.SetStateAction<boolean>>;
 }) => {
-  const [openState, setOpenState] = useState(false);
-
-  const open = openProp !== undefined ? openProp : openState;
-  const setOpen = setOpenProp !== undefined ? setOpenProp : setOpenState;
+  const [open, setOpen] = useState(false);
 
   return (
     <SidebarContext.Provider value={{ open, setOpen }}>
@@ -51,17 +45,14 @@ export const SidebarProvider = ({
   );
 };
 
+// The Sidebar component is now just a wrapper for the provider.
 export const Sidebar = ({
   children,
-  open,
-  setOpen,
 }: {
   children: React.ReactNode;
-  open?: boolean;
-  setOpen?: React.Dispatch<React.SetStateAction<boolean>>;
 }) => {
   return (
-    <SidebarProvider open={open} setOpen={setOpen}>
+    <SidebarProvider>
       {children}
     </SidebarProvider>
   );
@@ -76,21 +67,18 @@ export const SidebarBody = (props: React.HTMLAttributes<HTMLDivElement>) => {
   );
 };
 
+// DesktopSidebar is now static. No hover, no transitions.
 export const DesktopSidebar = ({
   className,
   children,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => {
-  const { open, setOpen } = useSidebar();
   return (
     <div
       className={cn(
-        "h-full px-4 py-6 hidden md:flex md:flex-col bg-sidebar flex-shrink-0 transition-all duration-300 ease-in-out",
-        open ? "w-[260px]" : "w-[72px]",
+        "h-full px-4 py-6 hidden md:flex md:flex-col bg-sidebar flex-shrink-0 w-[260px]",
         className
       )}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
       {...props}
     >
       {children}
@@ -98,6 +86,7 @@ export const DesktopSidebar = ({
   );
 };
 
+// MobileSidebar still uses the context to show/hide.
 export const MobileSidebar = ({
   className,
   children,
@@ -139,14 +128,12 @@ export const MobileSidebar = ({
   );
 };
 
-
+// SidebarHeader is now static on desktop.
 export const SidebarHeader = ({ children }: { children: React.ReactNode }) => {
-    const { open } = useSidebar();
     return (
         <div 
             className={cn(
-                "flex items-center gap-2 px-2 mb-10 h-8 overflow-hidden",
-                open ? "justify-start" : "justify-center"
+                "flex items-center gap-2 px-2 mb-10 h-8 overflow-hidden justify-start"
             )}
         >
             {children}
@@ -154,6 +141,7 @@ export const SidebarHeader = ({ children }: { children: React.ReactNode }) => {
     );
 }
 
+// SidebarLink text is now always visible on desktop.
 export const SidebarLink = ({
   link,
   className,
@@ -162,7 +150,7 @@ export const SidebarLink = ({
   link: Links;
   className?: string;
 }) => {
-  const { open, setOpen } = useSidebar();
+  const { setOpen } = useSidebar();
   const location = useLocation();
   const isMobile = useIsMobile();
   const isActive = location.pathname === link.to;
@@ -178,11 +166,10 @@ export const SidebarLink = ({
       to={link.to}
       onClick={handleClick}
       className={cn(
-        "flex items-center justify-start gap-4 group/sidebar p-3 rounded-lg transition-colors",
+        "flex items-center justify-start gap-4 group/sidebar p-3 rounded-lg",
         isActive 
           ? "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90" 
           : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-        !open && "justify-center",
         className
       )}
       {...props}
@@ -190,8 +177,7 @@ export const SidebarLink = ({
       <div className="flex-shrink-0">{link.icon}</div>
       <span
         className={cn(
-            "text-sm font-medium whitespace-pre transition-opacity duration-200",
-            open ? "opacity-100" : "opacity-0 pointer-events-none"
+            "text-sm font-medium whitespace-pre"
         )}
       >
         {link.label}

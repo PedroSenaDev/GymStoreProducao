@@ -1,9 +1,8 @@
 import { useProfile } from '@/hooks/useProfile';
 import { Link, Navigate, Outlet } from 'react-router-dom';
 import { Loader2, LayoutDashboard, Package, Tags, ExternalLink, Dumbbell } from 'lucide-react';
-import { Sidebar, SidebarBody, SidebarHeader, SidebarLink, useSidebar } from '@/components/admin/AdminSidebar';
+import { Sidebar, SidebarBody, SidebarHeader, SidebarLink } from '@/components/admin/AdminSidebar';
 import { Separator } from '@/components/ui/separator';
-import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
 const links = [
@@ -13,14 +12,12 @@ const links = [
 ];
 
 const SidebarLogo = () => {
-  const { open } = useSidebar();
   return (
     <Link to="/" className="flex items-center gap-2 text-2xl font-semibold tracking-widest uppercase transition-opacity hover:opacity-80 text-sidebar-foreground">
       <Dumbbell className="h-7 w-7 flex-shrink-0" />
       <div
         className={cn(
-            "whitespace-pre transition-opacity duration-200",
-            open ? "opacity-100" : "opacity-0 pointer-events-none"
+            "whitespace-pre"
         )}
       >
         <span className="font-black">GYM</span>
@@ -62,7 +59,6 @@ const AdminLayoutContent = () => {
 
 export default function AdminDashboardLayout() {
   const { data: profile, isLoading } = useProfile();
-  const [open, setOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -77,7 +73,7 @@ export default function AdminDashboardLayout() {
   }
 
   return (
-    <Sidebar open={open} setOpen={setOpen}>
+    <Sidebar>
       <AdminLayoutContent />
     </Sidebar>
   );
