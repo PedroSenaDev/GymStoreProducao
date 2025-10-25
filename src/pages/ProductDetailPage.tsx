@@ -1,8 +1,8 @@
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Product } from '@/types/product';
-import { Loader2, ShoppingCart } from 'lucide-react';
+import { Loader2, ShoppingCart, ArrowLeft } from 'lucide-react';
 import { ProductImageGallery } from '@/components/ProductImageGallery';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -66,6 +66,12 @@ export default function ProductDetailPage() {
 
   return (
     <div className="container mx-auto max-w-6xl px-4 py-8 md:py-16">
+      <div className="mb-8">
+        <Link to="/products" className="inline-flex items-center text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Voltar para todos os produtos
+        </Link>
+      </div>
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2 md:gap-16">
         <ProductImageGallery images={product.image_urls || []} />
 
