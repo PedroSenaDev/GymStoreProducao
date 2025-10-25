@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Product } from '@/types/product';
 import { Badge } from '@/components/ui/badge';
 import { ArrowRight } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ProductCardProps {
   // The product object has a nested categories object from the query
@@ -10,6 +11,8 @@ interface ProductCardProps {
 }
 
 export const ProductCard = ({ product }: ProductCardProps) => {
+  const isMobile = useIsMobile();
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -39,7 +42,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           <div className="flex items-baseline justify-between">
             <p className="text-lg font-bold">{formatCurrency(product.price)}</p>
             <div className="flex items-center text-sm font-medium text-primary opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-              Ver detalhes
+              {isMobile ? 'Detalhes' : 'Ver detalhes'}
               <ArrowRight className="ml-1 h-4 w-4" />
             </div>
           </div>
