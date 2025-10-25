@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
 import { Logo } from './Logo';
 import { Button } from './ui/button';
-import { ShoppingCart, User, LogOut } from 'lucide-react';
+import { ShoppingCart, User, LogOut, LayoutDashboard } from 'lucide-react';
 import { useSessionStore } from '@/store/sessionStore';
+import { useProfile } from '@/hooks/useProfile';
 
 const NavLink = ({ to, children }: { to: string; children: React.ReactNode }) => (
   <Link
@@ -16,6 +17,7 @@ const NavLink = ({ to, children }: { to: string; children: React.ReactNode }) =>
 
 export const Header = () => {
   const { session, logout } = useSessionStore();
+  const { data: profile } = useProfile();
 
   return (
     <header className="fixed top-0 z-50 w-full border-b bg-white/60 shadow-sm backdrop-blur-sm">
@@ -36,6 +38,15 @@ export const Header = () => {
             <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 transition-colors hover:bg-zinc-200">
                 <ShoppingCart className="h-5 w-5 text-zinc-900" />
             </Button>
+
+            {profile?.isAdmin && (
+              <Link to="/admin">
+                <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 transition-colors hover:bg-zinc-200">
+                  <LayoutDashboard className="h-5 w-5 text-zinc-900" />
+                </Button>
+              </Link>
+            )}
+
             {session ? (
               <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 transition-colors hover:bg-zinc-200" onClick={logout}>
                   <LogOut className="h-5 w-5 text-zinc-900" />
