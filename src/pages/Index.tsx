@@ -1,13 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { FeaturedProducts } from "@/components/FeaturedProducts";
+import { StoreDescription } from "@/components/StoreDescription";
 
-const Index = () => {
+const HeroSection = () => {
   return (
-    <section className="relative h-screen w-full flex items-center justify-center text-center text-white overflow-hidden">
+    <section className="relative min-h-screen w-full flex items-center justify-center text-center text-white overflow-hidden">
       {/* Background Image */}
       <div className="absolute top-0 left-0 w-full h-full z-0">
         <img
-          src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+          src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=2070&auto=format&fit=crop&ixlib-rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
           alt="Woman practicing yoga"
           className="w-full h-full object-cover"
         />
@@ -34,6 +36,17 @@ const Index = () => {
         </Button>
       </div>
     </section>
+  );
+};
+
+
+const Index = () => {
+  return (
+    <div>
+      <HeroSection />
+      <FeaturedProducts />
+      <StoreDescription />
+    </div>
   );
 };
 

@@ -2,6 +2,7 @@ import { Header } from '@/components/Header';
 import { Outlet, useLocation } from 'react-router-dom';
 import { WhatsAppButton } from '../WhatsAppButton';
 import { cn } from '@/lib/utils';
+import { Footer } from '../Footer';
 
 export const PublicLayout = () => {
   const location = useLocation();
@@ -14,6 +15,7 @@ export const PublicLayout = () => {
         <Outlet />
       </main>
       <WhatsAppButton />
+      <Footer />
     </div>
   );
 };
