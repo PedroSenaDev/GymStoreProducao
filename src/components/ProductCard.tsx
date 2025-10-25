@@ -4,7 +4,6 @@ import { Product } from '@/types/product';
 import { Badge } from '@/components/ui/badge';
 import { ArrowRight } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { cn } from '@/lib/utils';
 
 interface ProductCardProps {
   // The product object has a nested categories object from the query
@@ -39,16 +38,15 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           </div>
         </CardHeader>
         <CardContent className="p-4 space-y-2">
-          <h3 className="font-semibold text-base truncate">{product.name}</h3>
+          <h3 className="font-semibold text-base h-12">{product.name}</h3>
           <div className="flex items-baseline justify-between">
             <p className="text-base md:text-lg font-bold">{formatCurrency(product.price)}</p>
-            <div className={cn(
-              "flex items-center font-medium text-primary opacity-0 transition-opacity duration-300 group-hover:opacity-100",
-              isMobile ? "text-xs" : "text-sm"
-            )}>
-              {isMobile ? 'Detalhes' : 'Ver detalhes'}
-              <ArrowRight className="ml-1 h-4 w-4" />
-            </div>
+            {!isMobile && (
+                <div className="flex items-center font-medium text-primary opacity-0 transition-opacity duration-300 group-hover:opacity-100 text-sm">
+                    Ver detalhes
+                    <ArrowRight className="ml-1 h-4 w-4" />
+                </div>
+            )}
           </div>
         </CardContent>
       </Card>
