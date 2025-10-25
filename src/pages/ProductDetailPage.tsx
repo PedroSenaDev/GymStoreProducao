@@ -114,7 +114,7 @@ export default function ProductDetailPage() {
               <span className="w-12 text-center font-medium">{quantity}</span>
               <Button variant="ghost" size="icon" onClick={() => setQuantity(q => Math.min(product.stock, q + 1))}>+</Button>
             </div>
-            <Button size="sm">
+            <Button size="sm" className="flex-1">
               <ShoppingCart className="mr-2 h-5 w-5" />
               Adicionar ao Carrinho
             </Button>
