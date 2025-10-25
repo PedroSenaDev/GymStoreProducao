@@ -19,7 +19,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
 
   return (
     <Link to={`/product/${product.id}`} className="group block outline-none">
-      <Card className="overflow-hidden rounded-lg border bg-card text-card-foreground transition-all duration-300 group-hover:shadow-xl group-focus-visible:ring-2 group-focus-visible:ring-ring group-focus-visible:ring-offset-2">
+      <Card className="overflow-hidden rounded-lg border bg-card text-card-foreground transition-all duration-300 group-hover:shadow-2xl group-hover:shadow-black/20 group-focus-visible:ring-2 group-focus-visible:ring-ring group-focus-visible:ring-offset-2">
         <CardHeader className="p-0">
           <div className="aspect-square overflow-hidden relative">
             <img
