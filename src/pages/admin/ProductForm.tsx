@@ -26,6 +26,7 @@ import { Product } from "@/types/product";
 import { Category } from "@/types/category";
 import { Loader2 } from "lucide-react";
 import ImageUpload from "@/components/admin/ImageUpload";
+import ColorPickerInput from "@/components/admin/ColorPickerInput";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "O nome deve ter pelo menos 2 caracteres." }),
@@ -35,7 +36,7 @@ const formSchema = z.object({
   category_id: z.string().uuid({ message: "Selecione uma categoria válida." }),
   image_urls: z.array(z.string().url()).optional().default([]),
   sizes: z.string().optional(), // Comma-separated
-  colors: z.string().optional(), // Comma-separated
+  colors: z.array(z.string()).optional().default([]),
 });
 
 interface ProductFormProps {
@@ -55,7 +56,7 @@ export default function ProductForm({ product, onFinished }: ProductFormProps) {
       category_id: product?.category_id || "",
       image_urls: product?.image_urls || [],
       sizes: product?.sizes?.join(", ") || "",
-      colors: product?.colors?.join(", ") || "",
+      colors: product?.colors || [],
     },
   });
 
@@ -73,7 +74,6 @@ export default function ProductForm({ product, onFinished }: ProductFormProps) {
       const processedValues = {
         ...values,
         sizes: values.sizes?.split(",").map(s => s.trim()).filter(Boolean) || [],
-        colors: values.colors?.split(",").map(c => c.trim()).filter(Boolean) || [],
       };
 
       const { data, error } = await (product?.id
@@ -166,30 +166,30 @@ export default function ProductForm({ product, onFinished }: ProductFormProps) {
                 </FormItem>
             )}
         />
-        <div className="grid grid-cols-2 gap-4">
-            <FormField
-                control={form.control}
-                name="sizes"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Tamanhos</FormLabel>
-                    <FormControl><Input placeholder="P, M, G (separados por vírgula)" {...field} /></FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-            />
-            <FormField
-                control={form.control}
-                name="colors"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Cores</FormLabel>
-                    <FormControl><Input placeholder="Preto, Branco (separados por vírgula)" {...field} /></FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-            />
-        </div>
+        <FormField
+            control={form.control}
+            name="sizes"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Tamanhos</FormLabel>
+                <FormControl><Input placeholder="P, M, G (separados por vírgula)" {...field} /></FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+        />
+        <FormField
+            control={form.control}
+            name="colors"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Cores</FormLabel>
+                <FormControl>
+                    <ColorPickerInput value={field.value} onChange={field.onChange} />
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+        />
         <FormField
             control={form.control}
             name="image_urls"
