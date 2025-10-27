@@ -2,9 +2,14 @@ import { Link } from 'react-router-dom';
 import { Button } from './ui/button';
 import { User } from 'lucide-react';
 import { useSessionStore } from '@/store/sessionStore';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export const UserNav = () => {
-    const { session } = useSessionStore();
+    const { session, isLoading } = useSessionStore();
+
+    if (isLoading) {
+        return <Skeleton className="h-10 w-10 rounded-full" />;
+    }
 
     if (!session) {
         return (
