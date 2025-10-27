@@ -21,7 +21,7 @@ import { useSessionStore } from "@/store/sessionStore";
 import { useEffect, useState } from "react";
 
 const formSchema = z.object({
-  zip_code: z.string().length(8, "CEP deve ter 8 dígitos."),
+  zip_code: z.string().length(8, "CEP deve ter 8 dígitos, apenas números."),
   street: z.string().min(1, "Rua é obrigatória."),
   number: z.string().optional(),
   complement: z.string().optional(),
@@ -59,10 +59,11 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
 
   useEffect(() => {
     const fetchCep = async () => {
-      if (cep?.length === 8) {
+      const cleanedCep = cep?.replace(/\D/g, '');
+      if (cleanedCep?.length === 8) {
         setIsFetchingCep(true);
         try {
-          const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+          const response = await fetch(`https://viacep.com.br/ws/${cleanedCep}/json/`);
           const data = await response.json();
           if (data.erro) {
             showError("CEP não encontrado.");
@@ -75,10 +76,10 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
             return;
           }
 
-          form.setValue("street", data.logouro);
-          form.setValue("neighborhood", data.bairro);
-          form.setValue("city", data.localidade);
-          form.setValue("state", data.uf);
+          form.setValue("street", data.logouro, { shouldValidate: true });
+          form.setValue("neighborhood", data.bairro, { shouldValidate: true });
+          form.setValue("city", data.localidade, { shouldValidate: true });
+          form.setValue("state", data.uf, { shouldValidate: true });
         } catch (error) {
           showError("Erro ao buscar CEP. Tente novamente.");
         } finally {
@@ -93,7 +94,7 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
     mutationFn: async (values: z.infer<typeof formSchema>) => {
       if (!session?.user.id) throw new Error("Usuário não autenticado.");
       
-      const payload = { ...values, user_id: session.user.id };
+      const payload = { ...values, user_id: session.user.id, zip_code: values.zip_code.replace(/\D/g, '') };
 
       const { data, error } = await (address?.id
         ? supabase.from("addresses").update(payload).eq("id", address.id)
@@ -138,7 +139,7 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
                 render={({ field }) => (
                     <FormItem className="col-span-2">
                     <FormLabel>Rua</FormLabel>
-                    <FormControl><Input {...field} readOnly /></FormControl>
+                    <FormControl><Input {...field} readOnly className="bg-muted/50" /></FormControl>
                     <FormMessage />
                     </FormItem>
                 )}
@@ -172,7 +173,7 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
             render={({ field }) => (
                 <FormItem>
                 <FormLabel>Bairro</FormLabel>
-                <FormControl><Input {...field} readOnly /></FormControl>
+                <FormControl><Input {...field} readOnly className="bg-muted/50" /></FormControl>
                 <FormMessage />
                 </FormItem>
             )}
@@ -184,7 +185,7 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
                 render={({ field }) => (
                     <FormItem className="col-span-2">
                     <FormLabel>Cidade</FormLabel>
-                    <FormControl><Input {...field} readOnly /></FormControl>
+                    <FormControl><Input {...field} readOnly className="bg-muted/50" /></FormControl>
                     <FormMessage />
                     </FormItem>
                 )}
@@ -195,7 +196,7 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
                 render={({ field }) => (
                     <FormItem>
                     <FormLabel>Estado</FormLabel>
-                    <FormControl><Input {...field} readOnly /></FormControl>
+                    <FormControl><Input {...field} readOnly className="bg-muted/50" /></FormControl>
                     <FormMessage />
                     </FormItem>
                 )}
