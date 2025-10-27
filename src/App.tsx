@@ -2,12 +2,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./components/auth/AuthProvider";
 import ScrollToTop from "./components/ScrollToTop";
 
 // Layouts
 import { PublicLayout } from "./components/layouts/PublicLayout";
+import { ProfileLayout } from "./components/layouts/ProfileLayout";
 import AdminDashboardLayout from "./pages/admin/AdminDashboard";
 
 // Public Pages
@@ -18,6 +19,11 @@ import ProductDetailPage from "./pages/ProductDetailPage";
 import ContactPage from "./pages/Contact";
 import PolicyPage from "./pages/PolicyPage";
 import NotFound from "./pages/NotFound";
+
+// Profile Pages
+import ProfileDetailsPage from "./pages/profile/ProfileDetailsPage";
+import AddressesPage from "./pages/profile/AddressesPage";
+import OrdersPage from "./pages/profile/OrdersPage";
 
 // Admin Pages
 import DashboardHomePage from "./pages/admin/DashboardHomePage";
@@ -43,6 +49,14 @@ const App = () => (
               <Route path="/product/:id" element={<ProductDetailPage />} />
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/policy/:id" element={<PolicyPage />} />
+
+              {/* Profile Routes */}
+              <Route path="/profile" element={<ProfileLayout />}>
+                <Route index element={<Navigate to="details" replace />} />
+                <Route path="details" element={<ProfileDetailsPage />} />
+                <Route path="addresses" element={<AddressesPage />} />
+                <Route path="orders" element={<OrdersPage />} />
+              </Route>
             </Route>
 
             {/* Auth Routes (no layout) */}
