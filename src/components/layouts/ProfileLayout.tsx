@@ -17,17 +17,17 @@ export const ProfileLayout = () => {
   }
 
   return (
-    <div className="container py-12 md:py-16">
-      <div className="flex flex-col space-y-8 lg:flex-row lg:space-x-12 lg:space-y-0">
-        <aside className="-mx-4 lg:w-1/5">
-          <nav className="flex space-x-2 lg:flex-col lg:space-x-0 lg:space-y-1">
+    <div className="container py-8 md:py-12">
+      <div className="flex flex-col gap-8 md:flex-row md:gap-12">
+        <aside className="md:w-1/4 lg:w-1/5">
+          <nav className="flex space-x-2 overflow-x-auto pb-2 md:flex-col md:space-x-0 md:space-y-1 md:overflow-x-visible">
             {navLinks.map(({ to, label, icon: Icon }) => (
               <NavLink
                 key={to}
                 to={to}
                 className={({ isActive }) =>
                   cn(
-                    'inline-flex items-center whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-muted hover:text-primary',
+                    'inline-flex items-center whitespace-nownowrap rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-muted hover:text-primary flex-shrink-0',
                     isActive ? 'bg-muted font-semibold text-primary' : 'text-muted-foreground'
                   )
                 }
@@ -38,7 +38,7 @@ export const ProfileLayout = () => {
             ))}
           </nav>
         </aside>
-        <main className="flex-1 lg:max-w-4xl">
+        <main className="flex-1">
           <Outlet />
         </main>
       </div>

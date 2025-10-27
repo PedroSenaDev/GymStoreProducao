@@ -109,9 +109,9 @@ export default function ProfileDetailsForm({ profile, onFinished }: ProfileDetai
                     />
                 </div>
             </CardContent>
-            <CardFooter className="flex justify-end gap-2">
-                <Button type="button" variant="ghost" onClick={onFinished}>Cancelar</Button>
-                <Button type="submit" disabled={isPending}>
+            <CardFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                <Button type="button" variant="ghost" onClick={onFinished} className="w-full sm:w-auto">Cancelar</Button>
+                <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
                     {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Salvar Alterações
                 </Button>

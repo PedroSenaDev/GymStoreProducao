@@ -152,12 +152,12 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
             </FormItem>
           )}
         />
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <FormField
             control={form.control}
             name="street"
             render={({ field }) => (
-              <FormItem className="col-span-2">
+              <FormItem className="sm:col-span-2">
                 <FormLabel>Rua</FormLabel>
                 <FormControl><Input {...field} /></FormControl>
                 <FormMessage />
@@ -198,12 +198,12 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
             </FormItem>
           )}
         />
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <FormField
             control={form.control}
             name="city"
             render={({ field }) => (
-              <FormItem className="col-span-2">
+              <FormItem className="sm:col-span-2">
                 <FormLabel>Cidade</FormLabel>
                 <FormControl><Input {...field} /></FormControl>
                 <FormMessage />

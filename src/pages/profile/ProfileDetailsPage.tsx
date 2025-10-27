@@ -9,9 +9,9 @@ import ProfileDetailsForm from "./ProfileDetailsForm";
 import { Separator } from "@/components/ui/separator";
 
 const ProfileInfo = ({ label, value }: { label: string, value?: string }) => (
-    <div className="flex flex-col space-y-1 sm:flex-row sm:items-center sm:justify-between">
-        <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
-        <dd className="text-sm">{value || '-'}</dd>
+    <div className="grid gap-1 py-3 sm:grid-cols-3 sm:gap-4">
+        <dt className="font-medium text-muted-foreground">{label}</dt>
+        <dd className="sm:col-span-2">{value || '-'}</dd>
     </div>
 );
 
@@ -41,37 +41,36 @@ export default function ProfileDetailsPage() {
             <ProfileDetailsForm profile={profile} onFinished={() => setIsEditing(false)} />
         ) : (
             <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
+                <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <CardTitle className="text-base">Informações Pessoais</CardTitle>
-                        <CardDescription className="text-xs">Seus dados cadastrais</CardDescription>
+                        <CardTitle>Informações Pessoais</CardTitle>
+                        <CardDescription>Seus dados cadastrais</CardDescription>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-                        <Edit className="mr-2 h-3 w-3" />
+                    <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} className="self-start sm:self-auto">
+                        <Edit className="mr-2 h-4 w-4" />
                         Editar
                     </Button>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="divide-y">
                     <ProfileInfo label="Nome Completo" value={profile?.full_name} />
-                    <Separator />
                     <ProfileInfo label="Email" value={useSessionStore.getState().session?.user.email} />
-                    <Separator />
                     <ProfileInfo label="CPF" value={profile?.cpf} />
-                    <Separator />
                     <ProfileInfo label="Telefone" value={profile?.phone} />
                 </CardContent>
-                <CardFooter className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pt-4">
-                    {profile?.isAdmin && (
-                    <Button asChild variant="outline" size="sm">
-                        <Link to="/admin">
-                        <LayoutDashboard className="mr-2 h-4 w-4" />
-                        Painel Admin
-                        </Link>
-                    </Button>
-                    )}
-                    <Button variant="destructive" onClick={logout} size="sm" className="sm:ml-auto">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Sair
+                <CardFooter className="flex flex-col-reverse sm:flex-row items-center gap-4 pt-6">
+                    <div className="flex-1 w-full sm:w-auto">
+                        {profile?.isAdmin && (
+                        <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
+                            <Link to="/admin">
+                            <LayoutDashboard className="mr-2 h-4 w-4" />
+                            Painel Admin
+                            </Link>
+                        </Button>
+                        )}
+                    </div>
+                    <Button variant="destructive" onClick={logout} size="sm" className="w-full sm:w-auto">
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Sair
                     </Button>
                 </CardFooter>
             </Card>

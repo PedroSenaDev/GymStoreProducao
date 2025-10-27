@@ -105,7 +105,7 @@ export default function AddressesPage() {
             </div>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
-                    <Button onClick={handleAddNew} className="mt-4 sm:mt-0">
+                    <Button onClick={handleAddNew} className="mt-4 sm:mt-0 w-full sm:w-auto">
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Adicionar Novo
                     </Button>
@@ -131,33 +131,35 @@ export default function AddressesPage() {
           <div className="grid gap-6 sm:grid-cols-1">
             {addresses.map((address) => (
               <Card key={address.id}>
-                <CardHeader className="flex flex-row items-start justify-between">
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <CardTitle className="text-base">
-                                {address.street}, {address.number || 'S/N'}
-                            </CardTitle>
-                            {address.is_default && <Badge>Padrão</Badge>}
+                <CardHeader>
+                    <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                            <div className="flex flex-wrap items-center gap-2 mb-1">
+                                <CardTitle className="text-base leading-tight">
+                                    {address.street}, {address.number || 'S/N'}
+                                </CardTitle>
+                                {address.is_default && <Badge>Padrão</Badge>}
+                            </div>
+                            <CardDescription>
+                                {address.neighborhood} - {address.city}, {address.state}
+                            </CardDescription>
                         </div>
-                        <CardDescription className="text-xs">
-                            {address.neighborhood} - {address.city}, {address.state}
-                        </CardDescription>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0 flex-shrink-0">
+                                <MoreVertical className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleEdit(address)}>
+                                    <Edit className="mr-2 h-4 w-4" /> Editar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDeleteClick(address.id)} className="text-red-600">
+                                    <Trash2 className="mr-2 h-4 w-4" /> Excluir
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreVertical className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEdit(address)}>
-                                <Edit className="mr-2 h-4 w-4" /> Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDeleteClick(address.id)} className="text-red-600">
-                                <Trash2 className="mr-2 h-4 w-4" /> Excluir
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
                 </CardHeader>
               </Card>
             ))}
