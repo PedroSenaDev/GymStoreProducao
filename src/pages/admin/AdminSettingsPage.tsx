@@ -98,11 +98,14 @@ export default function AdminSettingsPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <span>Políticas do Site</span>
+              <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <CardTitle>Políticas do Site</CardTitle>
+                  <CardDescription className="pt-1.5">Gerencie as políticas de privacidade, troca, etc.</CardDescription>
+                </div>
                 <Dialog open={isPolicyDialogOpen} onOpenChange={setIsPolicyDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button onClick={handleAddNewPolicy} size="sm" className="w-full sm:w-auto">
+                    <Button onClick={handleAddNewPolicy} size="sm" className="w-full flex-shrink-0 sm:w-auto">
                       <PlusCircle className="mr-2 h-4 w-4" />
                       Adicionar Política
                     </Button>
@@ -117,8 +120,7 @@ export default function AdminSettingsPage() {
                     />
                   </DialogContent>
                 </Dialog>
-              </CardTitle>
-              <CardDescription>Gerencie as políticas de privacidade, troca, etc.</CardDescription>
+              </div>
             </CardHeader>
             <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {policies?.map((policy) => (
