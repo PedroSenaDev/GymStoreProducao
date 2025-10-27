@@ -3,6 +3,7 @@ import { useCartStore } from "@/store/cartStore";
 import { Button } from "./ui/button";
 import { Checkbox } from "./ui/checkbox";
 import { Trash2 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 interface CartItemCardProps {
   item: CartItem;
@@ -27,7 +28,9 @@ export const CartItemCard = ({ item }: CartItemCardProps) => {
         className="h-20 w-20 rounded-md object-cover"
       />
       <div className="flex-1">
-        <h4 className="font-semibold text-sm">{item.name}</h4>
+        <Link to={`/product/${item.id}`} className="hover:underline">
+            <h4 className="font-semibold text-sm">{item.name}</h4>
+        </Link>
         <div className="text-xs text-muted-foreground space-x-2">
           {item.selectedSize && <span>Tamanho: {item.selectedSize.toUpperCase()}</span>}
           {item.selectedColor && (

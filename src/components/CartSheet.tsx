@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "./ui/button";
 import { Checkbox } from "./ui/checkbox";
 import { Separator } from "./ui/separator";
+import { ScrollArea } from "./ui/scroll-area";
 import { useCartStore } from "@/store/cartStore";
 import { CartItemCard } from "./CartItemCard";
 import { ShoppingBag } from 'lucide-react';
@@ -18,45 +19,55 @@ export const CartSheet = ({ open, onOpenChange }: { open: boolean, onOpenChange:
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="flex w-full flex-col pr-0 sm:max-w-lg">
-        <SheetHeader className="px-6">
+      <SheetContent className="flex w-full flex-col p-0 sm:max-w-lg">
+        <SheetHeader className="p-6 pb-4">
           <SheetTitle>Carrinho de Compras</SheetTitle>
+          {items.length > 0 && (
+            <SheetDescription>
+              Você tem {items.length} item(ns) no seu carrinho.
+            </SheetDescription>
+          )}
         </SheetHeader>
-        <Separator />
+        
         {items.length > 0 ? (
           <>
-            <div className="flex-1 overflow-y-auto px-6">
-              <div className="flex items-center justify-between py-4">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="select-all"
-                    checked={areAllSelected}
-                    onCheckedChange={(checked) => toggleSelectAll(Boolean(checked))}
-                  />
-                  <label htmlFor="select-all" className="text-sm font-medium">
-                    Selecionar Todos
-                  </label>
-                </div>
-                {areAllSelected && (
-                  <Button variant="destructive" size="sm" onClick={removeSelectedItems}>
-                    Excluir Selecionados
-                  </Button>
-                )}
+            <div className="flex items-center justify-between px-6 py-2 border-y bg-muted/50">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="select-all"
+                  checked={areAllSelected}
+                  onCheckedChange={(checked) => toggleSelectAll(Boolean(checked))}
+                />
+                <label htmlFor="select-all" className="text-sm font-medium">
+                  Selecionar Todos
+                </label>
               </div>
-              <Separator />
-              <div className="divide-y">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={removeSelectedItems}
+                disabled={selectedItems.length === 0}
+              >
+                Excluir
+              </Button>
+            </div>
+
+            <ScrollArea className="flex-1">
+              <div className="divide-y px-6">
                 {items.map(item => (
                   <CartItemCard key={item.cartItemId} item={item} />
                 ))}
               </div>
-            </div>
-            <Separator />
-            <SheetFooter className="bg-background p-6 space-y-4">
+            </ScrollArea>
+            
+            <SheetFooter className="bg-background p-6 border-t flex flex-col gap-4">
               <div className="flex justify-between text-base font-medium">
                 <p>Subtotal</p>
                 <p>{formatCurrency(subtotal)}</p>
               </div>
-              <Button className="w-full" size="lg">Finalizar Compra</Button>
+              <Button className="w-full" size="lg" disabled={selectedItems.length === 0}>
+                Finalizar Compra
+              </Button>
             </SheetFooter>
           </>
         ) : (
