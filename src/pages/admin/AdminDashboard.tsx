@@ -1,9 +1,19 @@
 import { useProfile } from '@/hooks/useProfile';
 import { Link, Navigate, Outlet } from 'react-router-dom';
-import { Loader2, LayoutDashboard, Package, Tags, ExternalLink, Settings } from 'lucide-react';
+import { Loader2, LayoutDashboard, Package, Tags, User, LogOut, Settings, ExternalLink } from 'lucide-react';
 import { Sidebar, SidebarBody, SidebarHeader, SidebarLink } from '@/components/admin/AdminSidebar';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useSessionStore } from '@/store/sessionStore';
 
 const links = [
   { to: '/admin', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
@@ -28,6 +38,8 @@ const SidebarLogo = () => {
 }
 
 const AdminLayoutContent = () => {
+  const { logout } = useSessionStore();
+
   return (
     <div className="flex flex-col md:flex-row min-h-screen w-full bg-muted/40">
       <SidebarBody className="border-r border-sidebar-border">
@@ -42,17 +54,43 @@ const AdminLayoutContent = () => {
               ))}
             </div>
           </div>
-          <div>
-            <Separator className="my-4 bg-sidebar-border" />
-            <div className="px-2">
-              <SidebarLink link={{ to: '/', label: 'Ver Site', icon: <ExternalLink size={20} /> }} />
-            </div>
-          </div>
         </div>
       </SidebarBody>
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">
-        <Outlet />
-      </main>
+      <div className="flex flex-col flex-1">
+        <header className="flex h-16 items-center justify-end gap-4 border-b bg-background px-6">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="rounded-full h-10 w-10">
+                <User className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <Link to="/profile">
+                <DropdownMenuItem className="cursor-pointer">
+                  <Settings className="mr-2 h-4 w-4" />
+                  <span>Gerenciar Perfil</span>
+                </DropdownMenuItem>
+              </Link>
+              <Link to="/">
+                <DropdownMenuItem className="cursor-pointer">
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  <span>Ver Site</span>
+                </DropdownMenuItem>
+              </Link>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={logout} className="cursor-pointer text-red-600">
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Sair</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </header>
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">
+          <Outlet />
+        </main>
+      </div>
     </div>
   )
 }
