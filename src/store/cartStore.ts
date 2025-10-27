@@ -127,25 +127,32 @@ export const useCartStore = create<CartState>()(
       },
       removeSelectedItems: async () => {
         const itemsToRemove = get().items.filter(item => item.selected);
+        const itemsToKeep = get().items.filter(item => !item.selected);
         const session = useSessionStore.getState().session;
-
-        set({ items: get().items.filter((item) => !item.selected) });
-
+      
+        // Optimistic UI update
+        set({ items: itemsToKeep });
+      
+        // Sync with DB if logged in
         if (session && itemsToRemove.length > 0) {
-            const { error } = await supabase
-                .from('cart_items')
-                .delete()
-                .in('id', itemsToRemove.map(item => {
-                    // This part is tricky as we don't have the cart_item.id
-                    // A better approach would be to match on the composite key parts
-                    // For simplicity here, we'll just log it. A real-world app might need a function call.
-                    console.warn("DB removal for multiple items needs a more robust implementation.");
-                    return null;
-                }));
-            // A simple loop is more reliable here without the DB IDs
-            for (const item of itemsToRemove) {
-                await get().removeItem(item.cartItemId);
-            }
+          // Build a complex 'or' filter to delete multiple unique rows in one go
+          const filters = itemsToRemove.map(item => {
+            const sizeFilter = item.selectedSize ? `selected_size.eq.${item.selectedSize}` : 'selected_size.is.null';
+            const colorFilter = item.selectedColor ? `selected_color.eq.${item.selectedColor}` : 'selected_color.is.null';
+            return `and(product_id.eq.${item.id},${sizeFilter},${colorFilter})`;
+          }).join(',');
+      
+          const { error } = await supabase
+            .from('cart_items')
+            .delete()
+            .eq('user_id', session.user.id)
+            .or(filters);
+      
+          if (error) {
+            console.error("Error removing selected items from DB:", error);
+            // Optional: Revert UI change on failure
+            set({ items: [...itemsToKeep, ...itemsToRemove] });
+          }
         }
       },
       clearCart: () => {
