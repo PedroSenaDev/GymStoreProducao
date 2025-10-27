@@ -6,12 +6,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const setSession = useSessionStore((state) => state.setSession);
 
   useEffect(() => {
-    // Fetch initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
-
-    // Listen for auth state changes
+    // onAuthStateChange lida com a verificação da sessão inicial (evento INITIAL_SESSION)
+    // e também com mudanças subsequentes. É mais robusto do que chamar getSession() separadamente.
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setSession(session);
