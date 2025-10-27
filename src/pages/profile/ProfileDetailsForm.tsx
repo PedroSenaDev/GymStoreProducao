@@ -13,6 +13,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { showError, showSuccess } from "@/utils/toast";
 import { Profile } from "@/types/profile";
 import { Loader2 } from "lucide-react";
@@ -65,47 +66,57 @@ export default function ProfileDetailsForm({ profile, onFinished }: ProfileDetai
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit((v) => mutate(v))} className="space-y-6">
-        <FormField
-          control={form.control}
-          name="full_name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Nome Completo</FormLabel>
-              <FormControl><Input {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="cpf"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>CPF</FormLabel>
-              <FormControl><Input placeholder="000.000.000-00" {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="phone"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Telefone</FormLabel>
-              <FormControl><Input placeholder="(00) 00000-0000" {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <div className="flex justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={onFinished}>Cancelar</Button>
-            <Button type="submit" disabled={isPending}>
-                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Salvar Alterações
-            </Button>
-        </div>
+      <form onSubmit={form.handleSubmit((v) => mutate(v))}>
+        <Card>
+            <CardHeader>
+                <CardTitle>Editar Informações</CardTitle>
+                <CardDescription>Faça as alterações no seu perfil aqui. Clique em salvar quando terminar.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <FormField
+                    control={form.control}
+                    name="full_name"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Nome Completo</FormLabel>
+                        <FormControl><Input {...field} /></FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField
+                        control={form.control}
+                        name="cpf"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>CPF</FormLabel>
+                            <FormControl><Input placeholder="000.000.000-00" {...field} /></FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="phone"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Telefone</FormLabel>
+                            <FormControl><Input placeholder="(00) 00000-0000" {...field} /></FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
+            </CardContent>
+            <CardFooter className="flex justify-end gap-2">
+                <Button type="button" variant="ghost" onClick={onFinished}>Cancelar</Button>
+                <Button type="submit" disabled={isPending}>
+                    {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Salvar Alterações
+                </Button>
+            </CardFooter>
+        </Card>
       </form>
     </Form>
   );

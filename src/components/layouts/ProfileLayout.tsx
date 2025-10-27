@@ -18,27 +18,27 @@ export const ProfileLayout = () => {
 
   return (
     <div className="container py-12 md:py-16">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-        <aside className="md:col-span-1">
-          <nav className="flex flex-col space-y-2">
+      <div className="flex flex-col space-y-8 lg:flex-row lg:space-x-12 lg:space-y-0">
+        <aside className="-mx-4 lg:w-1/5">
+          <nav className="flex space-x-2 lg:flex-col lg:space-x-0 lg:space-y-1">
             {navLinks.map(({ to, label, icon: Icon }) => (
               <NavLink
                 key={to}
                 to={to}
                 className={({ isActive }) =>
                   cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary',
-                    isActive && 'bg-muted text-primary font-semibold'
+                    'inline-flex items-center whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-muted hover:text-primary',
+                    isActive ? 'bg-muted font-semibold text-primary' : 'text-muted-foreground'
                   )
                 }
               >
-                <Icon className="h-5 w-5" />
+                <Icon className="mr-2 h-4 w-4" />
                 {label}
               </NavLink>
             ))}
           </nav>
         </aside>
-        <main className="md:col-span-3">
+        <main className="flex-1 lg:max-w-4xl">
           <Outlet />
         </main>
       </div>

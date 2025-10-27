@@ -4,8 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Address } from "@/types/address";
 import { useSessionStore } from "@/store/sessionStore";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, PlusCircle, MoreVertical, Trash2, Edit } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2, PlusCircle, MoreVertical, Trash2, Edit, Home } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -28,9 +28,9 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
-    AlertDialogTrigger,
   } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { showError, showSuccess } from "@/utils/toast";
 import AddressForm from "./AddressForm";
 
@@ -39,6 +39,7 @@ async function fetchAddresses(userId: string): Promise<Address[]> {
     .from("addresses")
     .select("*")
     .eq("user_id", userId)
+    .order("is_default", { ascending: false })
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
   return data;
@@ -47,6 +48,9 @@ async function fetchAddresses(userId: string): Promise<Address[]> {
 export default function AddressesPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState<Address | undefined>(undefined);
+  const [isDeleteAlertOpen, setDeleteAlertOpen] = useState(false);
+  const [addressToDelete, setAddressToDelete] = useState<string | null>(null);
+
   const session = useSessionStore((state) => state.session);
   const queryClient = useQueryClient();
   const userId = session?.user.id;
@@ -79,91 +83,109 @@ export default function AddressesPage() {
     setIsDialogOpen(true);
   };
 
+  const handleDeleteClick = (id: string) => {
+    setAddressToDelete(id);
+    setDeleteAlertOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (addressToDelete) {
+      deleteAddress(addressToDelete);
+    }
+  };
+
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Meus Endereços</CardTitle>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={handleAddNew}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Adicionar Novo
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{selectedAddress ? "Editar" : "Adicionar"} Endereço</DialogTitle>
-            </DialogHeader>
-            <AddressForm
-              address={selectedAddress}
-              onFinished={() => setIsDialogOpen(false)}
-            />
-          </DialogContent>
-        </Dialog>
-      </CardHeader>
-      <CardContent>
+    <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h3 className="text-lg font-medium">Meus Endereços</h3>
+                <p className="text-sm text-muted-foreground">
+                    Gerencie seus endereços de entrega.
+                </p>
+            </div>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                    <Button onClick={handleAddNew} className="mt-4 sm:mt-0">
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Adicionar Novo
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[480px]">
+                    <DialogHeader>
+                    <DialogTitle>{selectedAddress ? "Editar" : "Adicionar"} Endereço</DialogTitle>
+                    </DialogHeader>
+                    <AddressForm
+                    address={selectedAddress}
+                    onFinished={() => setIsDialogOpen(false)}
+                    />
+                </DialogContent>
+            </Dialog>
+        </div>
+        <Separator />
+
         {isLoading ? (
           <div className="flex justify-center items-center h-40">
             <Loader2 className="h-8 w-8 animate-spin" />
           </div>
         ) : addresses && addresses.length > 0 ? (
-          <div className="space-y-4">
+          <div className="grid gap-6 sm:grid-cols-1">
             {addresses.map((address) => (
-              <div key={address.id} className="border rounded-lg p-4 flex justify-between items-start">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="font-semibold">
-                      {address.street}, {address.number || 'S/N'}
-                    </p>
-                    {address.is_default && <Badge>Padrão</Badge>}
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {address.neighborhood} - {address.city}, {address.state}
-                  </p>
-                  <p className="text-sm text-muted-foreground">CEP: {address.zip_code}</p>
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleEdit(address)}>
-                      <Edit className="mr-2 h-4 w-4" /> Editar
-                    </DropdownMenuItem>
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600">
+              <Card key={address.id}>
+                <CardHeader className="flex flex-row items-start justify-between">
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <CardTitle className="text-base">
+                                {address.street}, {address.number || 'S/N'}
+                            </CardTitle>
+                            {address.is_default && <Badge>Padrão</Badge>}
+                        </div>
+                        <CardDescription className="text-xs">
+                            {address.neighborhood} - {address.city}, {address.state}
+                        </CardDescription>
+                    </div>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                            <MoreVertical className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEdit(address)}>
+                                <Edit className="mr-2 h-4 w-4" /> Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDeleteClick(address.id)} className="text-red-600">
                                 <Trash2 className="mr-2 h-4 w-4" /> Excluir
                             </DropdownMenuItem>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    Esta ação não pode ser desfeita. O endereço será excluído permanentemente.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => deleteAddress(address.id)}>
-                                    Excluir
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </CardHeader>
+              </Card>
             ))}
           </div>
         ) : (
-          <div className="text-center py-10">
-            <p className="text-muted-foreground">Nenhum endereço cadastrado.</p>
+          <div className="text-center py-16 border-2 border-dashed rounded-lg">
+            <Home className="mx-auto h-12 w-12 text-muted-foreground" />
+            <h3 className="mt-4 text-lg font-semibold">Nenhum endereço cadastrado</h3>
+            <p className="mt-1 text-sm text-muted-foreground">Adicione um endereço para futuras compras.</p>
           </div>
         )}
-      </CardContent>
-    </Card>
+
+        <AlertDialog open={isDeleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Esta ação não pode ser desfeita. O endereço será excluído permanentemente.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={confirmDelete}>
+                        Excluir
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    </div>
   );
 }

@@ -119,7 +119,7 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit((v) => mutate(v))} className="space-y-4">
+      <form onSubmit={form.handleSubmit((v) => mutate(v))} className="space-y-6 pt-4">
         <FormField
           control={form.control}
           name="zip_code"
@@ -136,12 +136,12 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
             </FormItem>
           )}
         />
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <FormField
                 control={form.control}
                 name="street"
                 render={({ field }) => (
-                    <FormItem className="col-span-2">
+                    <FormItem className="sm:col-span-2">
                     <FormLabel>Rua</FormLabel>
                     <FormControl><Input {...field} /></FormControl>
                     <FormMessage />
@@ -182,12 +182,12 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
                 </FormItem>
             )}
         />
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <FormField
                 control={form.control}
                 name="city"
                 render={({ field }) => (
-                    <FormItem className="col-span-2">
+                    <FormItem className="sm:col-span-2">
                     <FormLabel>Cidade</FormLabel>
                     <FormControl><Input {...field} /></FormControl>
                     <FormMessage />
@@ -220,10 +220,13 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
             </FormItem>
           )}
         />
-        <Button type="submit" disabled={isPending} className="w-full">
-          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Salvar Endereço
-        </Button>
+        <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="ghost" onClick={onFinished}>Cancelar</Button>
+            <Button type="submit" disabled={isPending}>
+                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Salvar Endereço
+            </Button>
+        </div>
       </form>
     </Form>
   );
