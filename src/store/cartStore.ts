@@ -4,6 +4,7 @@ import { CartItem } from '@/types/cart';
 import { Product } from '@/types/product';
 import { supabase } from '@/integrations/supabase/client';
 import { useSessionStore } from './sessionStore';
+import { showError } from '@/utils/toast';
 
 interface CartState {
   items: CartItem[];
@@ -126,32 +127,39 @@ export const useCartStore = create<CartState>()(
         });
       },
       removeSelectedItems: async () => {
-        const itemsToRemove = get().items.filter(item => item.selected);
-        const itemsToKeep = get().items.filter(item => !item.selected);
+        const allItems = get().items;
+        const itemsToRemove = allItems.filter(item => item.selected);
+        const itemsToKeep = allItems.filter(item => !item.selected);
         const session = useSessionStore.getState().session;
+      
+        if (itemsToRemove.length === 0) return;
       
         // Optimistic UI update
         set({ items: itemsToKeep });
       
         // Sync with DB if logged in
-        if (session && itemsToRemove.length > 0) {
-          // Build a complex 'or' filter to delete multiple unique rows in one go
-          const filters = itemsToRemove.map(item => {
-            const sizeFilter = item.selectedSize ? `selected_size.eq.${item.selectedSize}` : 'selected_size.is.null';
-            const colorFilter = item.selectedColor ? `selected_color.eq.${item.selectedColor}` : 'selected_color.is.null';
-            return `and(product_id.eq.${item.id},${sizeFilter},${colorFilter})`;
-          }).join(',');
+        if (session) {
+          const deletePromises = itemsToRemove.map(item =>
+            supabase
+              .from('cart_items')
+              .delete()
+              .match({
+                user_id: session.user.id,
+                product_id: item.id,
+                selected_size: item.selectedSize,
+                selected_color: item.selectedColor,
+              })
+          );
       
-          const { error } = await supabase
-            .from('cart_items')
-            .delete()
-            .eq('user_id', session.user.id)
-            .or(filters);
+          const results = await Promise.all(deletePromises);
       
-          if (error) {
-            console.error("Error removing selected items from DB:", error);
-            // Optional: Revert UI change on failure
-            set({ items: [...itemsToKeep, ...itemsToRemove] });
+          const failedDeletions = results.filter(result => result.error);
+      
+          if (failedDeletions.length > 0) {
+            console.error("Failed to delete some items from DB:", failedDeletions.map(f => f.error));
+            // Revert the optimistic update on failure
+            set({ items: allItems });
+            showError("Ocorreu um erro ao remover alguns itens. Tente novamente.");
           }
         }
       },
