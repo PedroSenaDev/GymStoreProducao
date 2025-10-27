@@ -18,6 +18,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { useCartStore } from '@/store/cartStore';
+import { showError, showSuccess } from '@/utils/toast';
 
 async function fetchProductById(id: string): Promise<Product & { categories?: { name: string } }> {
   const { data, error } = await supabase
@@ -45,6 +47,7 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const addItemToCart = useCartStore(state => state.addItem);
 
   const { data: product, isLoading, isError } = useQuery({
     queryKey: ['product', id],
@@ -58,6 +61,20 @@ export default function ProductDetailPage() {
   });
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+
+  const handleAddToCart = () => {
+    if (!product) return;
+    if (product.sizes && product.sizes.length > 0 && !selectedSize) {
+      showError("Por favor, selecione um tamanho.");
+      return;
+    }
+    if (product.colors && product.colors.length > 0 && !selectedColor) {
+      showError("Por favor, selecione uma cor.");
+      return;
+    }
+    addItemToCart(product, quantity, selectedSize, selectedColor);
+    showSuccess(`${product.name} adicionado ao carrinho!`);
+  };
 
   if (isLoading) {
     return (
@@ -85,6 +102,8 @@ export default function ProductDetailPage() {
       </div>
     );
   }
+
+  const isAddToCartDisabled = product.stock <= 0;
 
   return (
     <div className="container mx-auto max-w-6xl px-4 py-8 md:py-16">
@@ -142,7 +161,7 @@ export default function ProductDetailPage() {
               <span className="w-12 text-center font-medium">{quantity}</span>
               <Button variant="ghost" size="icon" onClick={() => setQuantity(q => Math.min(product.stock, q + 1))}>+</Button>
             </div>
-            <Button size="sm" className="flex-1">
+            <Button size="sm" className="flex-1" onClick={handleAddToCart} disabled={isAddToCartDisabled}>
               <ShoppingCart className="mr-2 h-5 w-5" />
               Adicionar ao Carrinho
             </Button>

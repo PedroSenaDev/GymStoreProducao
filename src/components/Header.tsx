@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Logo } from './Logo';
 import { Button } from './ui/button';
@@ -9,6 +10,9 @@ import {
   SheetClose
 } from "@/components/ui/sheet";
 import { UserNav } from './UserNav';
+import { useCartStore } from '@/store/cartStore';
+import { CartSheet } from './CartSheet';
+import { Badge } from './ui/badge';
 
 const NavLink = ({ to, children }: { to: string; children: React.ReactNode }) => (
   <Link
@@ -21,6 +25,8 @@ const NavLink = ({ to, children }: { to: string; children: React.ReactNode }) =>
 );
 
 export const Header = () => {
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const cartItems = useCartStore(state => state.items);
   const navItems = [
     { to: '/', label: 'Início' },
     { to: '/products', label: 'Produtos' },
@@ -42,9 +48,15 @@ export const Header = () => {
         
         {/* Right: Icons & Mobile Nav */}
         <div className="flex items-center justify-end space-x-2">
-            <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 transition-colors hover:bg-zinc-200">
+            <Button variant="ghost" size="icon" className="relative rounded-full h-10 w-10 transition-colors hover:bg-zinc-200" onClick={() => setIsCartOpen(true)}>
                 <ShoppingCart className="h-5 w-5 text-zinc-900" />
+                {cartItems.length > 0 && (
+                  <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 justify-center rounded-full p-0 text-xs">
+                    {cartItems.length}
+                  </Badge>
+                )}
             </Button>
+            <CartSheet open={isCartOpen} onOpenChange={setIsCartOpen} />
 
             <UserNav />
 
