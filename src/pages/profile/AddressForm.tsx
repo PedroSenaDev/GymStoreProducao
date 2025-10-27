@@ -56,6 +56,7 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
   });
 
   const cep = form.watch("zip_code");
+  const { setValue } = form;
 
   useEffect(() => {
     const fetchCep = async () => {
@@ -72,14 +73,17 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
           
           if (data.localidade !== "Montes Claros" || data.uf !== "MG") {
             showError("Desculpe, no momento só aceitamos endereços de Montes Claros, MG.");
-            form.reset({ ...form.getValues(), zip_code: cep, street: "", neighborhood: "", city: "", state: "" });
+            setValue("street", "", { shouldValidate: true });
+            setValue("neighborhood", "", { shouldValidate: true });
+            setValue("city", "", { shouldValidate: true });
+            setValue("state", "", { shouldValidate: true });
             return;
           }
 
-          form.setValue("street", data.logouro, { shouldValidate: true });
-          form.setValue("neighborhood", data.bairro, { shouldValidate: true });
-          form.setValue("city", data.localidade, { shouldValidate: true });
-          form.setValue("state", data.uf, { shouldValidate: true });
+          setValue("street", data.logouro, { shouldValidate: true });
+          setValue("neighborhood", data.bairro, { shouldValidate: true });
+          setValue("city", data.localidade, { shouldValidate: true });
+          setValue("state", data.uf, { shouldValidate: true });
         } catch (error) {
           showError("Erro ao buscar CEP. Tente novamente.");
         } finally {
@@ -88,7 +92,7 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
       }
     };
     fetchCep();
-  }, [cep, form]);
+  }, [cep, setValue]);
 
   const { mutate, isPending } = useMutation({
     mutationFn: async (values: z.infer<typeof formSchema>) => {
@@ -139,7 +143,7 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
                 render={({ field }) => (
                     <FormItem className="col-span-2">
                     <FormLabel>Rua</FormLabel>
-                    <FormControl><Input {...field} readOnly className="bg-muted/50" /></FormControl>
+                    <FormControl><Input {...field} /></FormControl>
                     <FormMessage />
                     </FormItem>
                 )}
@@ -173,7 +177,7 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
             render={({ field }) => (
                 <FormItem>
                 <FormLabel>Bairro</FormLabel>
-                <FormControl><Input {...field} readOnly className="bg-muted/50" /></FormControl>
+                <FormControl><Input {...field} /></FormControl>
                 <FormMessage />
                 </FormItem>
             )}
@@ -185,7 +189,7 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
                 render={({ field }) => (
                     <FormItem className="col-span-2">
                     <FormLabel>Cidade</FormLabel>
-                    <FormControl><Input {...field} readOnly className="bg-muted/50" /></FormControl>
+                    <FormControl><Input {...field} /></FormControl>
                     <FormMessage />
                     </FormItem>
                 )}
@@ -196,7 +200,7 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
                 render={({ field }) => (
                     <FormItem>
                     <FormLabel>Estado</FormLabel>
-                    <FormControl><Input {...field} readOnly className="bg-muted/50" /></FormControl>
+                    <FormControl><Input {...field} /></FormControl>
                     <FormMessage />
                     </FormItem>
                 )}
