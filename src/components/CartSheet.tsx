@@ -59,20 +59,20 @@ export const CartSheet = ({ open, onOpenChange }: { open: boolean, onOpenChange:
               </div>
             </ScrollArea>
             
-            <SheetFooter className="bg-background p-6 border-t">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="text-center sm:text-left">
-                        <p className="text-sm text-muted-foreground">Subtotal</p>
-                        <p className="text-xl font-bold tracking-tight">{formatCurrency(subtotal)}</p>
-                    </div>
-                    <Button 
-                        size="lg" 
-                        disabled={selectedItems.length === 0} 
-                        className="w-full sm:w-auto"
-                    >
-                        Finalizar Compra
-                    </Button>
+            <SheetFooter className="border-t bg-background p-6">
+              <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="sm:text-left">
+                  <p className="text-sm text-muted-foreground">Subtotal</p>
+                  <p className="text-xl font-bold tracking-tight">{formatCurrency(subtotal)}</p>
                 </div>
+                <Button 
+                  size="lg" 
+                  disabled={selectedItems.length === 0} 
+                  className="w-full sm:w-auto"
+                >
+                  Finalizar Compra
+                </Button>
+              </div>
             </SheetFooter>
           </>
         ) : (
