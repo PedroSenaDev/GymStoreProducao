@@ -18,7 +18,7 @@ export const CartSheet = ({ open, onOpenChange }: { open: boolean, onOpenChange:
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="flex w-full flex-col pr-0 sm:max-w-lg">
+      <SheetContent className="flex w-full flex-col pr-0 sm:max-w-lg h-[75vh] sm:h-full">
         <SheetHeader className="px-6">
           <SheetTitle>Carrinho de Compras</SheetTitle>
         </SheetHeader>
