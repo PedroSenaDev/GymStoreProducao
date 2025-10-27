@@ -134,7 +134,7 @@ export default function AdminSettingsPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="flex-grow">
-                    <CardDescription className="line-clamp-3 break-words">
+                    <CardDescription className="line-clamp-3 break-all">
                       {policy.content}
                     </CardDescription>
                   </CardContent>
