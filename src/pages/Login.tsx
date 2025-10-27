@@ -16,16 +16,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-export default function LoginPage() {
-  const [formType, setFormType] = useState<'signin' | 'signup'>('signin');
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const session = useSessionStore((state) => state.session);
-
-  if (session) {
-    return <Navigate to="/" replace />;
-  }
-
+const SocialLogin = () => {
   async function signInWithGoogle() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -38,14 +39,14 @@ export default function LoginPage() {
     }
   }
 
-  const SocialLoginButton = () => (
+  return (
     <>
       <div className="relative my-4">
         <div className="absolute inset-0 flex items-center">
           <span className="w-full border-t" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background px-2 text-muted-foreground">
+          <span className="bg-card px-2 text-muted-foreground">
             Ou continue com
           </span>
         </div>
@@ -56,74 +57,91 @@ export default function LoginPage() {
       </Button>
     </>
   );
+};
+
+export default function LoginPage() {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const session = useSessionStore((state) => state.session);
+
+  if (session) {
+    return <Navigate to="/" replace />;
+  }
 
   return (
-    <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
-      <div className="flex items-center justify-center py-12">
-        <div className="mx-auto grid w-[380px] gap-6 px-4">
-          <div className="grid gap-2 text-center">
-            <div className="flex justify-center mb-4">
-              <Logo />
-            </div>
-            <h1 className="text-3xl font-bold">
-              {formType === 'signin' ? 'Bem-vindo de volta' : 'Crie sua conta'}
-            </h1>
-            <p className="text-balance text-muted-foreground">
-              {formType === 'signin'
-                ? 'Insira seus dados para acessar'
-                : 'Preencha os campos para começar sua jornada'}
-            </p>
+    <div className="w-full min-h-screen lg:grid lg:grid-cols-2">
+      <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <Tabs defaultValue="signin" className="w-full max-w-md">
+          <div className="flex justify-center mb-8">
+            <Logo />
           </div>
-          
-          <div className="grid gap-4">
-            {formType === 'signin' ? <SignInForm /> : <SignUpForm />}
-          </div>
-          
-          {formType === 'signin' && (
-            <div className="text-center text-sm">
-              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="link" className="p-0 h-auto font-semibold">
-                    Esqueceu sua senha?
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Recuperar Senha</DialogTitle>
-                  </DialogHeader>
-                  <ForgotPasswordForm onFinished={() => setDialogOpen(false)} />
-                </DialogContent>
-              </Dialog>
-            </div>
-          )}
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="signin">Entrar</TabsTrigger>
+            <TabsTrigger value="signup">Registrar</TabsTrigger>
+          </TabsList>
 
-          <SocialLoginButton />
+          <TabsContent value="signin">
+            <Card className="border-0 shadow-none">
+              <CardHeader className="text-center">
+                <CardTitle className="text-2xl">Bem-vindo de volta</CardTitle>
+                <CardDescription>
+                  Insira seus dados para acessar sua conta.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <SignInForm />
+                <div className="text-center text-sm">
+                  <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="link" className="p-0 h-auto font-semibold">
+                        Esqueceu sua senha?
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Recuperar Senha</DialogTitle>
+                      </DialogHeader>
+                      <ForgotPasswordForm onFinished={() => setDialogOpen(false)} />
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </CardContent>
+              <CardFooter className="flex-col">
+                <SocialLogin />
+              </CardFooter>
+            </Card>
+          </TabsContent>
 
-          <div className="mt-4 text-center text-sm">
-            {formType === 'signin' ? (
-              <>
-                Não tem uma conta?{" "}
-                <button onClick={() => setFormType('signup')} className="underline font-semibold">
-                  Registrar
-                </button>
-              </>
-            ) : (
-              <>
-                Já tem uma conta?{" "}
-                <button onClick={() => setFormType('signin')} className="underline font-semibold">
-                  Entrar
-                </button>
-              </>
-            )}
-          </div>
-        </div>
+          <TabsContent value="signup">
+            <Card className="border-0 shadow-none">
+              <CardHeader className="text-center">
+                <CardTitle className="text-2xl">Crie sua conta</CardTitle>
+                <CardDescription>
+                  Preencha os campos para começar sua jornada.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <SignUpForm />
+              </CardContent>
+              <CardFooter className="flex-col">
+                <SocialLogin />
+              </CardFooter>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
-      <div className="hidden bg-muted lg:block">
+
+      <div className="hidden bg-muted lg:relative lg:block">
         <img
-          src="https://images.unsplash.com/photo-1583454110551-21f2fa2a8a14?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG9тby1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+          src="https://images.unsplash.com/photo-1583454110551-21f2fa2a8a14?q=80&w=2070&auto=format&fit=crop&ixlib-rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG9тby1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
           alt="Pessoa se exercitando em uma academia"
           className="h-screen w-full object-cover"
         />
+        <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-end p-12 text-white text-center">
+            <div className="max-w-lg">
+                <h2 className="text-3xl font-bold">"A força não vem da capacidade física. Vem de uma vontade indomável."</h2>
+                <p className="mt-4 text-lg text-zinc-300">- Mahatma Gandhi</p>
+            </div>
+        </div>
       </div>
     </div>
   );
