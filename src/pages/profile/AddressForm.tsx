@@ -56,10 +56,11 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
   });
 
   const cep = form.watch("zip_code");
+  const { setValue } = form;
 
   useEffect(() => {
     const fetchCep = async () => {
-      const cleanedCep = cep?.replace(/\D/g, '');
+      const cleanedCep = cep?.replace(/\D/g, "");
       if (cleanedCep?.length === 8) {
         setIsFetchingCep(true);
         try {
@@ -71,20 +72,20 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
             showError("CEP não encontrado.");
             return;
           }
-          
+
           if (data.localidade !== "Montes Claros" || data.uf !== "MG") {
             showError("Desculpe, no momento só aceitamos endereços de Montes Claros, MG.");
-            form.setValue("street", "", options);
-            form.setValue("neighborhood", "", options);
-            form.setValue("city", "", options);
-            form.setValue("state", "", options);
+            setValue("street", "", options);
+            setValue("neighborhood", "", options);
+            setValue("city", "", options);
+            setValue("state", "", options);
             return;
           }
 
-          form.setValue("street", data.logouro, options);
-          form.setValue("neighborhood", data.bairro, options);
-          form.setValue("city", data.localidade, options);
-          form.setValue("state", data.uf, options);
+          setValue("street", data.logouro, options);
+          setValue("neighborhood", data.bairro, options);
+          setValue("city", data.localidade, options);
+          setValue("state", data.uf, options);
         } catch (error) {
           showError("Erro ao buscar CEP. Tente novamente.");
         } finally {
@@ -93,23 +94,37 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
       }
     };
     fetchCep();
-  }, [cep, form]);
+  }, [cep, setValue]);
 
   const { mutate, isPending } = useMutation({
     mutationFn: async (values: z.infer<typeof formSchema>) => {
       if (!session?.user.id) throw new Error("Usuário não autenticado.");
-      
-      const payload = { ...values, user_id: session.user.id, zip_code: values.zip_code.replace(/\D/g, '') };
 
-      const { data, error } = await (address?.id
+      // If setting this address as default, unset others first
+      if (values.is_default) {
+        const { error: unsetError } = await supabase
+          .from("addresses")
+          .update({ is_default: false })
+          .eq("user_id", session.user.id)
+          .eq("is_default", true);
+        
+        if (unsetError) {
+          throw new Error("Falha ao atualizar o endereço padrão anterior.");
+        }
+      }
+
+      const payload = { ...values, user_id: session.user.id, zip_code: values.zip_code.replace(/\D/g, "") };
+
+      const query = address?.id
         ? supabase.from("addresses").update(payload).eq("id", address.id)
-        : supabase.from("addresses").insert([payload]));
+        : supabase.from("addresses").insert([payload]);
+
+      const { error } = await query.select();
 
       if (error) throw error;
-      return data;
     },
     onSuccess: () => {
-      showSuccess(`Endereço ${address?.id ? 'atualizado' : 'salvo'} com sucesso!`);
+      showSuccess(`Endereço ${address?.id ? "atualizado" : "salvo"} com sucesso!`);
       queryClient.invalidateQueries({ queryKey: ["addresses", session?.user.id] });
       onFinished();
     },
@@ -138,74 +153,74 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
           )}
         />
         <div className="grid grid-cols-3 gap-4">
-            <FormField
-                control={form.control}
-                name="street"
-                render={({ field }) => (
-                    <FormItem className="col-span-2">
-                    <FormLabel>Rua</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-            />
-            <FormField
-                control={form.control}
-                name="number"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Número</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-            />
-        </div>
-        <FormField
+          <FormField
             control={form.control}
-            name="complement"
+            name="street"
             render={({ field }) => (
-                <FormItem>
-                <FormLabel>Complemento</FormLabel>
-                <FormControl><Input placeholder="Apto, Bloco, etc." {...field} /></FormControl>
-                <FormMessage />
-                </FormItem>
-            )}
-        />
-        <FormField
-            control={form.control}
-            name="neighborhood"
-            render={({ field }) => (
-                <FormItem>
-                <FormLabel>Bairro</FormLabel>
+              <FormItem className="col-span-2">
+                <FormLabel>Rua</FormLabel>
                 <FormControl><Input {...field} /></FormControl>
                 <FormMessage />
-                </FormItem>
+              </FormItem>
             )}
+          />
+          <FormField
+            control={form.control}
+            name="number"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Número</FormLabel>
+                <FormControl><Input {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <FormField
+          control={form.control}
+          name="complement"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Complemento</FormLabel>
+              <FormControl><Input placeholder="Apto, Bloco, etc." {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="neighborhood"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Bairro</FormLabel>
+              <FormControl><Input {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
         <div className="grid grid-cols-3 gap-4">
-            <FormField
-                control={form.control}
-                name="city"
-                render={({ field }) => (
-                    <FormItem className="col-span-2">
-                    <FormLabel>Cidade</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-            />
-            <FormField
-                control={form.control}
-                name="state"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Estado</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-            />
+          <FormField
+            control={form.control}
+            name="city"
+            render={({ field }) => (
+              <FormItem className="col-span-2">
+                <FormLabel>Cidade</FormLabel>
+                <FormControl><Input {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="state"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Estado</FormLabel>
+                <FormControl><Input {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
         <FormField
           control={form.control}
