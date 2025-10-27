@@ -41,15 +41,18 @@ export const Header = () => {
 
   return (
     <header className="fixed top-0 z-50 w-full border-b bg-white/60 shadow-sm backdrop-blur-sm">
-      <div className="container flex h-20 md:h-24 items-center justify-between">
-        <div className="flex-shrink-0">
+      <div className="container flex h-20 items-center justify-between md:grid md:h-24 md:grid-cols-3">
+        {/* Left: Logo */}
+        <div className="flex justify-start">
           <Logo />
         </div>
 
-        <nav className="hidden md:flex items-center space-x-10 text-sm font-medium absolute left-1/2 -translate-x-1/2">
+        {/* Center: Desktop Nav */}
+        <nav className="hidden md:flex justify-center items-center space-x-10 text-sm font-medium">
           {navItems.map(item => <NavLink key={item.to} to={item.to}>{item.label}</NavLink>)}
         </nav>
         
+        {/* Right: Icons & Mobile Nav */}
         <div className="flex items-center justify-end space-x-2">
             <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 transition-colors hover:bg-zinc-200">
                 <ShoppingCart className="h-5 w-5 text-zinc-900" />
