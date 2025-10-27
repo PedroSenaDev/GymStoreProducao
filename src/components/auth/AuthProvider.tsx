@@ -2,9 +2,13 @@ import { useEffect } from 'react';
 import { useSessionStore } from '@/store/sessionStore';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
+import { useCartSync } from '@/hooks/useCartSync';
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const { setSession, isLoading } = useSessionStore();
+  
+  // Initialize cart synchronization
+  useCartSync();
 
   useEffect(() => {
     // Garante que a sessão inicial seja carregada antes de qualquer outra coisa.

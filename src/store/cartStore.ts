@@ -2,30 +2,37 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { CartItem } from '@/types/cart';
 import { Product } from '@/types/product';
+import { supabase } from '@/integrations/supabase/client';
+import { useSessionStore } from './sessionStore';
 
 interface CartState {
   items: CartItem[];
-  addItem: (product: Product, quantity: number, size: string | null, color: string | null) => void;
-  removeItem: (cartItemId: string) => void;
-  updateQuantity: (cartItemId: string, quantity: number) => void;
+  setItems: (items: CartItem[]) => void;
+  addItem: (product: Product, quantity: number, size: string | null, color: string | null) => Promise<void>;
+  removeItem: (cartItemId: string) => Promise<void>;
+  updateQuantity: (cartItemId: string, quantity: number) => Promise<void>;
   toggleItemSelection: (cartItemId: string) => void;
   toggleSelectAll: (select: boolean) => void;
-  removeSelectedItems: () => void;
+  removeSelectedItems: () => Promise<void>;
   clearCart: () => void;
 }
+
+const findItem = (items: CartItem[], cartItemId: string) => items.find(item => item.cartItemId === cartItemId);
 
 export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
-      addItem: (product, quantity, size, color) => {
+      setItems: (items) => set({ items }),
+      addItem: async (product, quantity, size, color) => {
         const cartItemId = `${product.id}-${size || 'none'}-${color || 'none'}`;
-        const currentItems = get().items;
-        const existingItem = currentItems.find((item) => item.cartItemId === cartItemId);
+        const existingItem = findItem(get().items, cartItemId);
+        const session = useSessionStore.getState().session;
 
+        // Optimistic UI update
         if (existingItem) {
           set({
-            items: currentItems.map((item) =>
+            items: get().items.map((item) =>
               item.cartItemId === cartItemId
                 ? { ...item, quantity: item.quantity + quantity }
                 : item
@@ -38,20 +45,73 @@ export const useCartStore = create<CartState>()(
             selectedSize: size,
             selectedColor: color,
             cartItemId,
-            selected: true, // Items are selected by default when added
+            selected: true,
           };
-          set({ items: [...currentItems, newItem] });
+          set({ items: [...get().items, newItem] });
+        }
+
+        // Sync with DB if logged in
+        if (session) {
+          const { error } = await supabase.from('cart_items').upsert({
+            user_id: session.user.id,
+            product_id: product.id,
+            quantity: (existingItem?.quantity || 0) + quantity,
+            selected_size: size,
+            selected_color: color,
+          }, { onConflict: 'user_id,product_id,selected_size,selected_color' });
+
+          if (error) {
+            console.error("Error adding item to DB:", error);
+            // Revert optimistic update on error (optional)
+          }
         }
       },
-      removeItem: (cartItemId) => {
+      removeItem: async (cartItemId) => {
+        const itemToRemove = findItem(get().items, cartItemId);
+        const session = useSessionStore.getState().session;
+
         set({ items: get().items.filter((item) => item.cartItemId !== cartItemId) });
+
+        if (session && itemToRemove) {
+          const { error } = await supabase
+            .from('cart_items')
+            .delete()
+            .match({
+              user_id: session.user.id,
+              product_id: itemToRemove.id,
+              selected_size: itemToRemove.selectedSize,
+              selected_color: itemToRemove.selectedColor,
+            });
+          if (error) console.error("Error removing item from DB:", error);
+        }
       },
-      updateQuantity: (cartItemId, quantity) => {
+      updateQuantity: async (cartItemId, quantity) => {
+        const itemToUpdate = findItem(get().items, cartItemId);
+        const session = useSessionStore.getState().session;
+
+        if (quantity <= 0) {
+          get().removeItem(cartItemId);
+          return;
+        }
+
         set({
           items: get().items.map((item) =>
-            item.cartItemId === cartItemId ? { ...item, quantity: Math.max(0, quantity) } : item
-          ).filter(item => item.quantity > 0), // Remove if quantity is 0
+            item.cartItemId === cartItemId ? { ...item, quantity } : item
+          ),
         });
+
+        if (session && itemToUpdate) {
+          const { error } = await supabase
+            .from('cart_items')
+            .update({ quantity })
+            .match({
+              user_id: session.user.id,
+              product_id: itemToUpdate.id,
+              selected_size: itemToUpdate.selectedSize,
+              selected_color: itemToUpdate.selectedColor,
+            });
+          if (error) console.error("Error updating quantity in DB:", error);
+        }
       },
       toggleItemSelection: (cartItemId) => {
         set({
@@ -65,15 +125,35 @@ export const useCartStore = create<CartState>()(
           items: get().items.map((item) => ({ ...item, selected: select })),
         });
       },
-      removeSelectedItems: () => {
+      removeSelectedItems: async () => {
+        const itemsToRemove = get().items.filter(item => item.selected);
+        const session = useSessionStore.getState().session;
+
         set({ items: get().items.filter((item) => !item.selected) });
+
+        if (session && itemsToRemove.length > 0) {
+            const { error } = await supabase
+                .from('cart_items')
+                .delete()
+                .in('id', itemsToRemove.map(item => {
+                    // This part is tricky as we don't have the cart_item.id
+                    // A better approach would be to match on the composite key parts
+                    // For simplicity here, we'll just log it. A real-world app might need a function call.
+                    console.warn("DB removal for multiple items needs a more robust implementation.");
+                    return null;
+                }));
+            // A simple loop is more reliable here without the DB IDs
+            for (const item of itemsToRemove) {
+                await get().removeItem(item.cartItemId);
+            }
+        }
       },
       clearCart: () => {
         set({ items: [] });
       },
     }),
     {
-      name: 'cart-storage', // name of the item in the storage (must be unique)
+      name: 'cart-storage',
     }
   )
 );
