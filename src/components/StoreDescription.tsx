@@ -55,7 +55,7 @@ export const StoreDescription = () => {
         </div>
         <div className="md:col-span-2 text-center md:text-left">
           <h2 className="text-3xl font-bold tracking-tight">{policy.title}</h2>
-          <p className="mt-4 text-lg text-muted-foreground">
+          <p className="mt-4 text-lg text-muted-foreground break-words">
             {policy.content}
           </p>
         </div>
