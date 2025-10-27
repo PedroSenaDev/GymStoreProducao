@@ -72,7 +72,7 @@ export default function ProfileDetailsForm({ profile, onFinished }: ProfileDetai
                 <CardTitle>Editar Informações</CardTitle>
                 <CardDescription>Faça as alterações no seu perfil aqui. Clique em salvar quando terminar.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 p-4 sm:p-6">
                 <FormField
                     control={form.control}
                     name="full_name"

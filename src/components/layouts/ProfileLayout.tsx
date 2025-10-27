@@ -20,14 +20,14 @@ export const ProfileLayout = () => {
     <div className="container py-8 md:py-12">
       <div className="flex flex-col gap-8 md:flex-row md:gap-12">
         <aside className="md:w-1/4 lg:w-1/5">
-          <nav className="flex space-x-2 overflow-x-auto pb-2 md:flex-col md:space-x-0 md:space-y-1 md:overflow-x-visible">
+          <nav className="flex flex-wrap gap-2 md:flex-col md:space-y-1 md:gap-0">
             {navLinks.map(({ to, label, icon: Icon }) => (
               <NavLink
                 key={to}
                 to={to}
                 className={({ isActive }) =>
                   cn(
-                    'inline-flex items-center whitespace-nownowrap rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-muted hover:text-primary flex-shrink-0',
+                    'inline-flex items-center whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-muted hover:text-primary flex-shrink-0',
                     isActive ? 'bg-muted font-semibold text-primary' : 'text-muted-foreground'
                   )
                 }

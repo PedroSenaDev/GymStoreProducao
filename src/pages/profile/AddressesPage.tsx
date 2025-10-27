@@ -110,7 +110,7 @@ export default function AddressesPage() {
                         Adicionar Novo
                     </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[480px]">
+                <DialogContent className="w-[90vw] rounded-md sm:max-w-[480px] max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                     <DialogTitle>{selectedAddress ? "Editar" : "Adicionar"} Endereço</DialogTitle>
                     </DialogHeader>
