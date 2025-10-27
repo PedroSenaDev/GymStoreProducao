@@ -98,11 +98,11 @@ export default function AdminSettingsPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                Políticas do Site
+              <CardTitle className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <span>Políticas do Site</span>
                 <Dialog open={isPolicyDialogOpen} onOpenChange={setIsPolicyDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button onClick={handleAddNewPolicy} size="sm">
+                    <Button onClick={handleAddNewPolicy} size="sm" className="w-full sm:w-auto">
                       <PlusCircle className="mr-2 h-4 w-4" />
                       Adicionar Política
                     </Button>
