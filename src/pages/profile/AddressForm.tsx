@@ -56,7 +56,6 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
   });
 
   const cep = form.watch("zip_code");
-  const { setValue } = form;
 
   useEffect(() => {
     const fetchCep = async () => {
@@ -66,6 +65,8 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
         try {
           const response = await fetch(`https://viacep.com.br/ws/${cleanedCep}/json/`);
           const data = await response.json();
+          const options = { shouldValidate: true, shouldDirty: true, shouldTouch: true };
+
           if (data.erro) {
             showError("CEP não encontrado.");
             return;
@@ -73,17 +74,17 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
           
           if (data.localidade !== "Montes Claros" || data.uf !== "MG") {
             showError("Desculpe, no momento só aceitamos endereços de Montes Claros, MG.");
-            setValue("street", "", { shouldValidate: true });
-            setValue("neighborhood", "", { shouldValidate: true });
-            setValue("city", "", { shouldValidate: true });
-            setValue("state", "", { shouldValidate: true });
+            form.setValue("street", "", options);
+            form.setValue("neighborhood", "", options);
+            form.setValue("city", "", options);
+            form.setValue("state", "", options);
             return;
           }
 
-          setValue("street", data.logouro, { shouldValidate: true });
-          setValue("neighborhood", data.bairro, { shouldValidate: true });
-          setValue("city", data.localidade, { shouldValidate: true });
-          setValue("state", data.uf, { shouldValidate: true });
+          form.setValue("street", data.logouro, options);
+          form.setValue("neighborhood", data.bairro, options);
+          form.setValue("city", data.localidade, options);
+          form.setValue("state", data.uf, options);
         } catch (error) {
           showError("Erro ao buscar CEP. Tente novamente.");
         } finally {
@@ -92,7 +93,7 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
       }
     };
     fetchCep();
-  }, [cep, setValue]);
+  }, [cep, form]);
 
   const { mutate, isPending } = useMutation({
     mutationFn: async (values: z.infer<typeof formSchema>) => {
@@ -119,7 +120,7 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit((v) => mutate(v))} className="space-y-6 pt-4">
+      <form onSubmit={form.handleSubmit((v) => mutate(v))} className="space-y-4">
         <FormField
           control={form.control}
           name="zip_code"
@@ -136,12 +137,12 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
             </FormItem>
           )}
         />
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-4">
             <FormField
                 control={form.control}
                 name="street"
                 render={({ field }) => (
-                    <FormItem className="sm:col-span-2">
+                    <FormItem className="col-span-2">
                     <FormLabel>Rua</FormLabel>
                     <FormControl><Input {...field} /></FormControl>
                     <FormMessage />
@@ -182,12 +183,12 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
                 </FormItem>
             )}
         />
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-4">
             <FormField
                 control={form.control}
                 name="city"
                 render={({ field }) => (
-                    <FormItem className="sm:col-span-2">
+                    <FormItem className="col-span-2">
                     <FormLabel>Cidade</FormLabel>
                     <FormControl><Input {...field} /></FormControl>
                     <FormMessage />
@@ -220,13 +221,10 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
             </FormItem>
           )}
         />
-        <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="ghost" onClick={onFinished}>Cancelar</Button>
-            <Button type="submit" disabled={isPending}>
-                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Salvar Endereço
-            </Button>
-        </div>
+        <Button type="submit" disabled={isPending} className="w-full">
+          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Salvar Endereço
+        </Button>
       </form>
     </Form>
   );
