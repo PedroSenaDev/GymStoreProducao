@@ -1,5 +1,5 @@
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform-resolvers/zod";
+import { zodResolver } from "@/lib/resolvers";
 import * as z from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -75,7 +75,7 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
             return;
           }
 
-          form.setValue("street", data.logradouro);
+          form.setValue("street", data.logouro);
           form.setValue("neighborhood", data.bairro);
           form.setValue("city", data.localidade);
           form.setValue("state", data.uf);
