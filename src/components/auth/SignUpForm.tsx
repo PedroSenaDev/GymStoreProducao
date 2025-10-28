@@ -41,7 +41,7 @@ export function SignUpForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: values.email,
       password: values.password,
       options: {
@@ -51,9 +51,19 @@ export function SignUpForm() {
 
     if (error) {
       showError(error.message);
-    } else {
-      setIsSubmitted(true);
+      setIsLoading(false);
+      return;
     }
+
+    // **THE CRITICAL FIX IS HERE**
+    // If sign-up is successful and creates a session for an unconfirmed user,
+    // we immediately sign them out.
+    if (data.session && data.user && !data.user.email_confirmed_at) {
+      await supabase.auth.signOut();
+    }
+    
+    // Now we can safely show the confirmation message.
+    setIsSubmitted(true);
     setIsLoading(false);
   }
 
