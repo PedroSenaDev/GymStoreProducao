@@ -26,13 +26,15 @@
     }
     .header h1 {
       font-size: 24px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
       color: #111;
       margin: 0;
     }
     .button {
       display: inline-block;
       background-color: #111;
-      color: #ffffff;
+      color: #ffffff !important;
       padding: 12px 24px;
       text-align: center;
       text-decoration: none;
@@ -60,7 +62,7 @@
     <p>Se você não se cadastrou em nosso site, por favor, ignore este e-mail.</p>
     <p>Atenciosamente,<br>Equipe GYMSTORE</p>
     <div class="footer">
-      <p>&copy; 2024 GYMSTORE. Todos os direitos reservados.</p>
+      <p>&copy; {{ .Year }} GYMSTORE. Todos os direitos reservados.</p>
     </div>
   </div>
 </body>
