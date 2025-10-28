@@ -15,10 +15,10 @@
 <body>
   <div class="container">
     <div class="header"><h1>GYMSTORE</h1></div>
-    <h2>Bem-vindo! Confirme seu e-mail.</h2>
-    <p>Obrigado por se cadastrar. Por favor, clique no botão abaixo para confirmar seu endereço de e-mail e ativar sua conta:</p>
-    <a href="{{ .ConfirmationURL }}" class="button">Confirmar E-mail</a>
-    <p>Se você não se cadastrou, por favor, ignore este e-mail.</p>
+    <h2>Confirme a Mudança de E-mail</h2>
+    <p>Para confirmar a alteração do seu e-mail para <strong>{{ .NewEmail }}</strong>, por favor, clique no botão abaixo:</p>
+    <a href="{{ .ConfirmationURL }}" class="button">Confirmar Novo E-mail</a>
+    <p>Se você não solicitou esta alteração, entre em contato conosco imediatamente.</p>
     <p>Atenciosamente,<br>Equipe GYMSTORE</p>
     <div class="footer"><p>&copy; {{ .SiteURL }}</p></div>
   </div>
