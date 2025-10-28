@@ -38,12 +38,16 @@ export function SignUpForm() {
     const { error } = await supabase.auth.signUp({
       email: values.email,
       password: values.password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/login?confirmed=true`,
+      },
     });
 
     if (error) {
       showError(error.message);
     } else {
-      showSuccess("Registro realizado! Verifique seu e-mail para confirmação.");
+      showSuccess("Registro realizado! Verifique seu e-mail para confirmar sua conta.");
+      form.reset();
     }
     setIsLoading(false);
   }

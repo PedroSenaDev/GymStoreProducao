@@ -1,13 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSessionStore } from "@/store/sessionStore";
-import { Navigate } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { SignInForm } from "@/components/auth/SignInForm";
 import { SignUpForm } from "@/components/auth/SignUpForm";
 import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 import { GoogleIcon } from "@/components/icons/GoogleIcon";
 import { supabase } from "@/integrations/supabase/client";
-import { showError } from "@/utils/toast";
+import { showError, showSuccess } from "@/utils/toast";
 import { Logo } from "@/components/Logo";
 import {
   Dialog,
@@ -62,6 +62,13 @@ const SocialLogin = () => {
 export default function LoginPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const session = useSessionStore((state) => state.session);
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get('confirmed') === 'true') {
+      showSuccess("E-mail confirmado com sucesso! Você já pode fazer o login.");
+    }
+  }, [searchParams]);
 
   if (session) {
     return <Navigate to="/" replace />;
