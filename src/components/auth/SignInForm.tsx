@@ -42,10 +42,8 @@ export function SignInForm() {
     });
 
     if (error) {
-      // Supabase returns a specific error for unconfirmed emails, but it's often generic.
-      // A more reliable way is to check the user object.
       if (error.message.includes("Email not confirmed")) {
-         showError("Sua conta existe, mas precisa ser confirmada. Verifique seu e-mail.");
+         showError("Sua conta precisa ser confirmada. Verifique seu e-mail.");
       } else {
          showError("Email ou senha inválidos. Por favor, tente novamente.");
       }
@@ -53,10 +51,10 @@ export function SignInForm() {
       return;
     }
 
-    // This check is our critical second layer of defense.
+    // Final check to ensure user object confirms the email status
     if (data.user && !data.user.email_confirmed_at) {
-      await supabase.auth.signOut();
-      showError("Sua conta existe, mas precisa ser confirmada. Verifique seu e-mail.");
+      await supabase.auth.signOut(); // Ensure no session persists
+      showError("Sua conta precisa ser confirmada. Verifique seu e-mail.");
       setIsLoading(false);
       return;
     }

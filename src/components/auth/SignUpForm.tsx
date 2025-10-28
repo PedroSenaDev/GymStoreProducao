@@ -55,14 +55,13 @@ export function SignUpForm() {
       return;
     }
 
-    // **THE CRITICAL FIX IS HERE**
-    // If sign-up is successful and creates a session for an unconfirmed user,
-    // we immediately sign them out.
-    if (data.session && data.user && !data.user.email_confirmed_at) {
+    // **CRITICAL SECURITY STEP**
+    // If Supabase returns a session for the unconfirmed user, destroy it immediately.
+    if (data.session) {
       await supabase.auth.signOut();
     }
     
-    // Now we can safely show the confirmation message.
+    // Now, safely show the confirmation message.
     setIsSubmitted(true);
     setIsLoading(false);
   }
