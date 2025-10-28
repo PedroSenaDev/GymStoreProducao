@@ -18,6 +18,7 @@ import ProductsPage from "./pages/Products";
 import ProductDetailPage from "./pages/ProductDetailPage";
 import ContactPage from "./pages/Contact";
 import PolicyPage from "./pages/PolicyPage";
+import UpdatePasswordPage from "./pages/UpdatePassword";
 import NotFound from "./pages/NotFound";
 
 // Profile Pages
@@ -61,6 +62,7 @@ const App = () => (
 
             {/* Auth Routes (no layout) */}
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/update-password" element={<UpdatePasswordPage />} />
 
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminDashboardLayout />}>

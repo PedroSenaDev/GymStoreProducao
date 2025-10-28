@@ -3,27 +3,26 @@ import { useSessionStore } from '@/store/sessionStore';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 import { useCartSync } from '@/hooks/useCartSync';
+import { useNavigate } from 'react-router-dom';
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const { setSession, isLoading } = useSessionStore();
-  
-  // Initialize cart synchronization
-  useCartSync();
+const AuthHandler = () => {
+  const navigate = useNavigate();
+  const setSession = useSessionStore((state) => state.setSession);
 
   useEffect(() => {
-    // Garante que a sessão inicial seja carregada antes de qualquer outra coisa.
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
-
-    // Escuta por mudanças de autenticação (login, logout, etc.)
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
         setSession(session);
+        if (event === 'PASSWORD_RECOVERY') {
+          navigate('/update-password');
+        } else if (event === 'SIGNED_IN') {
+          navigate('/');
+        } else if (event === 'SIGNED_OUT') {
+          navigate('/login');
+        }
       }
     );
 
-    // Sincroniza o logout entre abas
     const channel = new BroadcastChannel('auth-logout');
     channel.onmessage = () => {
       supabase.auth.signOut();
@@ -33,9 +32,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       authListener.subscription.unsubscribe();
       channel.close();
     };
+  }, [setSession, navigate]);
+
+  return null;
+};
+
+
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const { setSession, isLoading } = useSessionStore();
+  
+  useCartSync();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
   }, [setSession]);
 
-  // Exibe uma tela de carregamento enquanto a sessão inicial é verificada.
   if (isLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -44,5 +57,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      <AuthHandler />
+      {children}
+    </>
+  );
 };
