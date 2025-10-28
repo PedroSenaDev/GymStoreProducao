@@ -2,21 +2,17 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { FeaturedProducts } from "@/components/FeaturedProducts";
 import { StoreDescription } from "@/components/StoreDescription";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 const HeroSection = () => {
-  const isMobile = useIsMobile();
-
-  const desktopImage = "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
-  const mobileImage = "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?q=80&w=1287&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
+  const heroImage = "/hero-background.jpg";
 
   return (
     <section className="relative min-h-screen w-full flex items-center justify-center text-center text-white overflow-hidden">
       {/* Background Image */}
       <div className="absolute top-0 left-0 w-full h-full z-0">
         <img
-          src={isMobile ? mobileImage : desktopImage}
-          alt="Pessoa se exercitando na academia"
+          src={heroImage}
+          alt="Mulher com roupa de academia bebendo água em um parque"
           className="w-full h-full object-cover"
         />
         {/* Gradient Overlay */}
