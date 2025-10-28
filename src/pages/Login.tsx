@@ -139,7 +139,7 @@ export default function LoginPage() {
 
       <div className="hidden bg-muted lg:relative lg:block">
         <img
-          src="https://images.unsplash.com/photo-1583454110551-21f2fa2a8a14?q=80&w=2070&auto=format&fit=crop&ixlib-rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG9тby1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+          src="https://images.unsplash.com/photo-1583454110551-21f2fa2a8a14?q=80&w=2070&auto=format&fit=crop&ixlib-rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
           alt="Pessoa se exercitando em uma academia"
           className="h-screen w-full object-cover"
         />
