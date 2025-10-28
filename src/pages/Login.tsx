@@ -137,12 +137,10 @@ export default function LoginPage() {
         </Tabs>
       </div>
 
-      <div className="hidden bg-muted lg:relative lg:block">
-        <img
-          src="https://images.unsplash.com/photo-1583454110551-21f2fa2a8a14?q=80&w=2070&auto=format&fit=crop&ixlib-rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-          alt="Pessoa se exercitando em uma academia"
-          className="h-screen w-full object-cover"
-        />
+      <div
+        className="hidden bg-cover bg-center lg:relative lg:block"
+        style={{ backgroundImage: "url('https://images.unsplash.com/photo-1583454110551-21f2fa2a8a14?q=80&w=2070&auto=format&fit=crop&ixlib-rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')" }}
+      >
         <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-end p-12 text-white text-center">
             <div className="max-w-lg">
                 <h2 className="text-3xl font-bold">"A força não vem da capacidade física. Vem de uma vontade indomável."</h2>
