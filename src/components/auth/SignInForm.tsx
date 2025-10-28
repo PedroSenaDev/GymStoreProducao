@@ -41,16 +41,16 @@ export function SignInForm() {
       password: values.password,
     });
 
-    // 1. Handle credential errors first.
+    // 1. Handle credential errors first. This stops invalid passwords.
     if (error) {
       showError("Email ou senha inválidos. Por favor, tente novamente.");
       setIsLoading(false);
       return;
     }
 
-    // 2. Check for email confirmation. This is critical.
+    // 2. Check for email confirmation. This is a redundant check, but provides faster UI feedback.
+    // The main security check is now in AuthProvider.
     if (data.user && !data.user.email_confirmed_at) {
-      // Immediately sign out the user to prevent access with an unconfirmed session.
       await supabase.auth.signOut();
       showError("Por favor, confirme seu e-mail antes de fazer login. Verifique sua caixa de entrada.");
       setIsLoading(false);

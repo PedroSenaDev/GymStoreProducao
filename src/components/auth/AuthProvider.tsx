@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 import { useCartSync } from '@/hooks/useCartSync';
 import { useNavigate } from 'react-router-dom';
+import { showError } from '@/utils/toast';
 
 const AuthHandler = () => {
   const navigate = useNavigate();
@@ -11,12 +12,18 @@ const AuthHandler = () => {
 
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
+        // This is the new, stricter security check
+        if (event === 'SIGNED_IN' && session?.user && !session.user.email_confirmed_at) {
+          showError("Por favor, confirme seu e-mail antes de fazer login. Verifique sua caixa de entrada.");
+          await supabase.auth.signOut(); // Immediately invalidate the unverified session
+          setSession(null); // Ensure app state is cleared
+          return;
+        }
+
         setSession(session);
-        // A lógica de PASSWORD_RECOVERY foi removida daqui, pois o redirecionamento agora é direto.
-        if (event === 'SIGNED_IN') {
-          navigate('/');
-        } else if (event === 'SIGNED_OUT') {
+        
+        if (event === 'SIGNED_OUT') {
           navigate('/login');
         }
       }
