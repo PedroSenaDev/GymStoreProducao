@@ -56,7 +56,7 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
   });
 
   const cep = form.watch("zip_code");
-  const { setValue } = form;
+  const { setValue, setFocus } = form;
 
   useEffect(() => {
     const fetchCep = async () => {
@@ -70,6 +70,10 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
 
           if (data.erro) {
             showError("CEP não encontrado.");
+            setValue("street", "", options);
+            setValue("neighborhood", "", options);
+            setValue("city", "", options);
+            setValue("state", "", options);
             return;
           }
 
@@ -82,10 +86,16 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
             return;
           }
 
-          setValue("street", data.logouro, options);
+          setValue("street", data.logradouro, options);
           setValue("neighborhood", data.bairro, options);
           setValue("city", data.localidade, options);
           setValue("state", data.uf, options);
+
+          if (data.logradouro) {
+            setFocus("number");
+          } else {
+            setFocus("street");
+          }
         } catch (error) {
           showError("Erro ao buscar CEP. Tente novamente.");
         } finally {
@@ -94,7 +104,7 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
       }
     };
     fetchCep();
-  }, [cep, setValue]);
+  }, [cep, setValue, setFocus]);
 
   const { mutate, isPending } = useMutation({
     mutationFn: async (values: z.infer<typeof formSchema>) => {
@@ -159,7 +169,7 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
             render={({ field }) => (
               <FormItem className="sm:col-span-2">
                 <FormLabel>Rua</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
+                <FormControl><Input {...field} disabled={isFetchingCep} /></FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -193,7 +203,7 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Bairro</FormLabel>
-              <FormControl><Input {...field} /></FormControl>
+              <FormControl><Input {...field} disabled={isFetchingCep} /></FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -205,7 +215,7 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
             render={({ field }) => (
               <FormItem className="sm:col-span-2">
                 <FormLabel>Cidade</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
+                <FormControl><Input {...field} disabled={isFetchingCep} /></FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -216,7 +226,7 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Estado</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
+                <FormControl><Input {...field} disabled={isFetchingCep} /></FormControl>
                 <FormMessage />
               </FormItem>
             )}
