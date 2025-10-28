@@ -8,7 +8,7 @@ const HeroSection = () => {
   const isMobile = useIsMobile();
 
   const desktopImage = "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
-  const mobileImage = "https://images.unsplash.com/photo-1599058917212-d750089bc07e?q=80&w=1287&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
+  const mobileImage = "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?q=80&w=1287&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
 
   return (
     <section className="relative min-h-screen w-full flex items-center justify-center text-center text-white overflow-hidden">
