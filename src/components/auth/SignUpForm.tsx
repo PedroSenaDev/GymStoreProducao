@@ -14,9 +14,9 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { showError, showSuccess } from "@/utils/toast";
+import { showError } from "@/utils/toast";
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, MailCheck } from "lucide-react";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Por favor, insira um e-mail válido." }),
@@ -29,6 +29,7 @@ const formSchema = z.object({
 
 export function SignUpForm() {
   const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -51,10 +52,21 @@ export function SignUpForm() {
     if (error) {
       showError(error.message);
     } else {
-      showSuccess("Registro realizado! Verifique seu e-mail para confirmar sua conta.");
-      form.reset();
+      setIsSubmitted(true);
     }
     setIsLoading(false);
+  }
+
+  if (isSubmitted) {
+    return (
+      <div className="text-center space-y-4 py-8">
+        <MailCheck className="mx-auto h-12 w-12 text-green-500" />
+        <h3 className="text-xl font-semibold">Confirme seu E-mail</h3>
+        <p className="text-muted-foreground">
+          Enviamos um link de confirmação para o seu e-mail. Por favor, verifique sua caixa de entrada (e spam) para ativar sua conta.
+        </p>
+      </div>
+    );
   }
 
   return (
