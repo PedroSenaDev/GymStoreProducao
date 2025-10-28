@@ -35,16 +35,22 @@ export function SignInForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: values.email,
       password: values.password,
     });
 
     if (error) {
       showError(error.message);
-    } else {
-      showSuccess("Login realizado com sucesso!");
-      // The onAuthStateChange listener will handle the redirect
+    } else if (data.session) {
+      if (!data.session.user.email_confirmed_at) {
+        showError("Por favor, confirme seu e-mail antes de fazer login. Verifique sua caixa de entrada.");
+        // Sign out the user to prevent access with an unconfirmed session
+        await supabase.auth.signOut();
+      } else {
+        showSuccess("Login realizado com sucesso!");
+        // The onAuthStateChange listener will handle the redirect
+      }
     }
     setIsLoading(false);
   }
