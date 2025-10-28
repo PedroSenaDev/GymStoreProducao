@@ -1,6 +1,6 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { z } from "@/lib/zod-pt";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -19,8 +19,8 @@ import { Policy } from "@/types/policy";
 import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
-  title: z.string().min(3, { message: "O título deve ter pelo menos 3 caracteres." }),
-  content: z.string().min(10, { message: "O conteúdo deve ter pelo menos 10 caracteres." }),
+  title: z.string().min(3),
+  content: z.string().min(10),
 });
 
 interface AboutUsFormProps {

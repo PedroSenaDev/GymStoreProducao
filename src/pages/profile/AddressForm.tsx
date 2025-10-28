@@ -1,6 +1,6 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@/lib/resolvers";
-import * as z from "zod";
+import { z } from "@/lib/zod-pt";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -21,13 +21,13 @@ import { useSessionStore } from "@/store/sessionStore";
 import { useEffect, useState } from "react";
 
 const formSchema = z.object({
-  zip_code: z.string().length(8, "CEP deve ter 8 dígitos, apenas números."),
-  street: z.string().min(1, "Rua é obrigatória."),
+  zip_code: z.string().length(8, { message: "CEP deve ter 8 dígitos, apenas números." }),
+  street: z.string().min(1),
   number: z.string().optional(),
   complement: z.string().optional(),
-  neighborhood: z.string().min(1, "Bairro é obrigatório."),
-  city: z.string().min(1, "Cidade é obrigatória."),
-  state: z.string().min(1, "Estado é obrigatório."),
+  neighborhood: z.string().min(1),
+  city: z.string().min(1),
+  state: z.string().min(1),
   is_default: z.boolean().default(false),
 });
 

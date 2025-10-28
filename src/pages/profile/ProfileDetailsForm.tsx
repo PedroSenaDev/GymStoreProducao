@@ -1,6 +1,6 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { z } from "@/lib/zod-pt";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ import { Loader2 } from "lucide-react";
 import { isValidCPF, isValidPhone } from "@/lib/validators";
 
 const formSchema = z.object({
-  full_name: z.string().min(3, { message: "O nome completo deve ter pelo menos 3 caracteres." }),
+  full_name: z.string().min(3),
   cpf: z.string().refine(isValidCPF, { message: "CPF inválido." }),
   phone: z.string().refine(isValidPhone, { message: "Telefone inválido. Use (XX) XXXXX-XXXX." }),
 });

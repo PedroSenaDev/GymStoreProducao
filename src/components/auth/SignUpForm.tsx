@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import * as z from "zod";
+import { z } from "@/lib/zod-pt";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -19,8 +19,8 @@ import { useState } from "react";
 import { Loader2, MailCheck } from "lucide-react";
 
 const formSchema = z.object({
-  email: z.string().email({ message: "Por favor, insira um e-mail válido." }),
-  password: z.string().min(6, { message: "A senha deve ter pelo menos 6 caracteres." }),
+  email: z.string().email(),
+  password: z.string().min(6),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "As senhas não coincidem.",

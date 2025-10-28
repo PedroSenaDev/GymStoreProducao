@@ -1,6 +1,6 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { z } from "@/lib/zod-pt";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -29,13 +29,13 @@ import ImageUpload from "@/components/admin/ImageUpload";
 import ColorPickerInput from "@/components/admin/ColorPickerInput";
 
 const formSchema = z.object({
-  name: z.string().min(2, { message: "O nome deve ter pelo menos 2 caracteres." }),
+  name: z.string().min(2),
   description: z.string().optional(),
-  price: z.coerce.number().min(0, { message: "O preço deve ser positivo." }),
-  stock: z.coerce.number().int().min(0, { message: "O estoque deve ser um número inteiro positivo." }),
-  category_id: z.string().uuid({ message: "Selecione uma categoria válida." }),
-  image_urls: z.array(z.string().url()).optional().default([]),
-  sizes: z.string().optional(), // Comma-separated
+  price: z.coerce.number({ invalid_type_error: "O preço deve ser um número." }).min(0, { message: "O preço não pode ser negativo." }),
+  stock: z.coerce.number({ invalid_type_error: "O estoque deve ser um número." }).int({ message: "O estoque deve ser um número inteiro." }).min(0, { message: "O estoque não pode ser negativo." }),
+  category_id: z.string().min(1, { message: "Por favor, selecione uma categoria." }).uuid({ message: "Categoria inválida." }),
+  image_urls: z.array(z.string().url({ message: "URL da imagem inválida." })).optional().default([]),
+  sizes: z.string().optional(),
   colors: z.array(z.string()).optional().default([]),
 });
 
