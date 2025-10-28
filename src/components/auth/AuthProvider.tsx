@@ -13,9 +13,8 @@ const AuthHandler = () => {
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
-        if (event === 'PASSWORD_RECOVERY') {
-          navigate('/update-password');
-        } else if (event === 'SIGNED_IN') {
+        // A lógica de PASSWORD_RECOVERY foi removida daqui, pois o redirecionamento agora é direto.
+        if (event === 'SIGNED_IN') {
           navigate('/');
         } else if (event === 'SIGNED_OUT') {
           navigate('/login');

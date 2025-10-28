@@ -33,8 +33,9 @@ export function ForgotPasswordForm({ onFinished }: { onFinished: () => void }) {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-    // Removido o 'redirectTo' para usar a configuração padrão do Supabase
-    const { error } = await supabase.auth.resetPasswordForEmail(values.email);
+    const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
+      redirectTo: `${window.location.origin}/update-password`,
+    });
 
     if (error) {
       showError(error.message);
