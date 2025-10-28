@@ -20,7 +20,7 @@ import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Por favor, insira um e-mail válido." }),
-  password: z.string().min(6, { message: "A senha deve ter pelo menos 6 caracteres." }),
+  password: z.string().min(1, { message: "A senha é obrigatória." }),
 });
 
 export function SignInForm() {
@@ -35,23 +35,31 @@ export function SignInForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email: values.email,
       password: values.password,
     });
 
+    // 1. Handle credential errors first.
     if (error) {
-      showError(error.message);
-    } else if (data.session) {
-      if (!data.session.user.email_confirmed_at) {
-        showError("Por favor, confirme seu e-mail antes de fazer login. Verifique sua caixa de entrada.");
-        // Sign out the user to prevent access with an unconfirmed session
-        await supabase.auth.signOut();
-      } else {
-        showSuccess("Login realizado com sucesso!");
-        // The onAuthStateChange listener will handle the redirect
-      }
+      showError("Email ou senha inválidos. Por favor, tente novamente.");
+      setIsLoading(false);
+      return;
     }
+
+    // 2. Check for email confirmation. This is critical.
+    if (data.user && !data.user.email_confirmed_at) {
+      // Immediately sign out the user to prevent access with an unconfirmed session.
+      await supabase.auth.signOut();
+      showError("Por favor, confirme seu e-mail antes de fazer login. Verifique sua caixa de entrada.");
+      setIsLoading(false);
+      return;
+    }
+
+    // 3. If we reach here, login is successful and verified.
+    showSuccess("Login realizado com sucesso!");
+    // The onAuthStateChange listener in AuthProvider will handle the redirect.
     setIsLoading(false);
   }
 
