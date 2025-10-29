@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/accordion";
 import { useCartStore } from '@/store/cartStore';
 import { showError, showSuccess } from '@/utils/toast';
+import { RelatedProducts } from '@/components/RelatedProducts';
 
 async function fetchProductById(id: string): Promise<Product & { categories?: { name: string } }> {
   const { data, error } = await supabase
@@ -193,6 +194,12 @@ export default function ProductDetailPage() {
           )}
         </div>
       </div>
+      {product && (
+        <RelatedProducts
+          categoryId={product.category_id}
+          currentProductId={product.id}
+        />
+      )}
     </div>
   );
 }
