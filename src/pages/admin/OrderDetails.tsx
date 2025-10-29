@@ -1,15 +1,22 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, User, MapPin, Package } from "lucide-react";
+import { Loader2, User, MapPin, Package, CreditCard, Truck, Edit } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import UpdateOrderForm from "./UpdateOrderForm";
+import { Order } from "@/types/order";
 
-interface OrderDetailsData {
-  id: string;
-  total_amount: number;
-  status: string;
-  created_at: string;
+interface OrderDetailsData extends Order {
   profiles: { full_name: string; email: string; phone: string; } | null;
   addresses: {
     street: string;
@@ -51,6 +58,7 @@ async function fetchOrderDetails(orderId: string) {
 const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
 export default function OrderDetails({ orderId }: { orderId: string }) {
+  const [isUpdateDialogOpen, setUpdateDialogOpen] = useState(false);
   const { data, isLoading, isError } = useQuery({
     queryKey: ["orderDetails", orderId],
     queryFn: () => fetchOrderDetails(orderId),
@@ -77,7 +85,20 @@ export default function OrderDetails({ orderId }: { orderId: string }) {
               Realizado em {new Date(order.created_at).toLocaleDateString('pt-BR')}
             </p>
           </div>
-          <Badge>{order.status}</Badge>
+          <Dialog open={isUpdateDialogOpen} onOpenChange={setUpdateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Edit className="mr-2 h-4 w-4" />
+                Atualizar Pedido
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Atualizar Pedido</DialogTitle>
+              </DialogHeader>
+              <UpdateOrderForm order={order} onFinished={() => setUpdateDialogOpen(false)} />
+            </DialogContent>
+          </Dialog>
         </div>
         <Separator />
 
@@ -106,11 +127,11 @@ export default function OrderDetails({ orderId }: { orderId: string }) {
           <div className="w-full max-w-xs space-y-2">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Subtotal</span>
-              <span>{formatCurrency(order.total_amount)}</span>
+              <span>{formatCurrency(order.total_amount - (order.shipping_cost || 0))}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Frete</span>
-              <span>Grátis</span>
+              <span>{formatCurrency(order.shipping_cost || 0)}</span>
             </div>
             <Separator />
             <div className="flex justify-between font-bold text-lg">
@@ -122,6 +143,24 @@ export default function OrderDetails({ orderId }: { orderId: string }) {
         <Separator />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <h4 className="font-semibold flex items-center"><CreditCard className="mr-2 h-4 w-4" /> Detalhes do Pagamento</h4>
+            <div className="text-sm">
+              <span className="text-muted-foreground">Método: </span>
+              <span>{order.payment_method || 'Não informado'}</span>
+            </div>
+            <div className="text-sm">
+              <span className="text-muted-foreground">Status: </span>
+              <Badge>{order.status}</Badge>
+            </div>
+          </div>
+          <div className="space-y-4">
+            <h4 className="font-semibold flex items-center"><Truck className="mr-2 h-4 w-4" /> Informações de Envio</h4>
+            <div className="text-sm">
+              <span className="text-muted-foreground">Cód. Rastreio: </span>
+              <span>{order.tracking_code || 'Não disponível'}</span>
+            </div>
+          </div>
           <div className="space-y-2">
             <h4 className="font-semibold flex items-center"><User className="mr-2 h-4 w-4" /> Cliente</h4>
             <p className="text-sm">{order.profiles?.full_name}</p>

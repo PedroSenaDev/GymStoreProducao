@@ -7,6 +7,7 @@ export interface OrderItem {
   product: Product;
   quantity: number;
   price: number;
+  products?: Product; // From Supabase join
 }
 
 export interface Order {
@@ -17,4 +18,8 @@ export interface Order {
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
   shipping_address: Address;
   created_at: string;
+  payment_method?: string;
+  shipping_cost?: number;
+  tracking_code?: string;
+  order_items?: OrderItem[]; // From Supabase join
 }
