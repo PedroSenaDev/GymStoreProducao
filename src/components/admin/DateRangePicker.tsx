@@ -33,7 +33,7 @@ export function DateRangePicker({
             id="date"
             variant={"outline"}
             className={cn(
-              "w-[300px] justify-start text-left font-normal",
+              "w-full sm:w-[260px] justify-start text-left font-normal",
               !date && "text-muted-foreground"
             )}
           >
@@ -41,11 +41,11 @@ export function DateRangePicker({
             {date?.from ? (
               date.to ? (
                 <>
-                  {format(date.from, "LLL dd, y", { locale: ptBR })} -{" "}
-                  {format(date.to, "LLL dd, y", { locale: ptBR })}
+                  {format(date.from, "P", { locale: ptBR })} -{" "}
+                  {format(date.to, "P", { locale: ptBR })}
                 </>
               ) : (
-                format(date.from, "LLL dd, y", { locale: ptBR })
+                format(date.from, "P", { locale: ptBR })
               )
             ) : (
               <span>Selecione um período</span>
@@ -59,7 +59,7 @@ export function DateRangePicker({
             defaultMonth={date?.from}
             selected={date}
             onSelect={onDateChange}
-            numberOfMonths={2}
+            numberOfMonths={1}
             locale={ptBR}
           />
         </PopoverContent>
