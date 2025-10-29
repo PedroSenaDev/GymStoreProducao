@@ -34,7 +34,7 @@ export const RelatedProducts = ({ categoryId, currentProductId }: RelatedProduct
   if (isLoading) {
     return (
       <div className="mt-16">
-        <h2 className="text-2xl font-bold tracking-tight mb-8">Produtos Relacionados</h2>
+        <h2 className="text-3xl font-bold tracking-tight mb-8">Produtos Relacionados</h2>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-8">
           {Array.from({ length: 4 }).map((_, index) => (
             <div key={index} className="space-y-4">
@@ -56,7 +56,7 @@ export const RelatedProducts = ({ categoryId, currentProductId }: RelatedProduct
     <div className="mt-16 md:mt-24">
         <Separator />
         <div className="py-12">
-            <h2 className="text-2xl font-bold tracking-tight mb-8 text-center">Produtos Relacionados</h2>
+            <h2 className="text-3xl font-bold tracking-tight mb-8 text-center">Produtos Relacionados</h2>
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-8">
                 {products.map((product) => (
                     <ProductCard key={product.id} product={product} />
