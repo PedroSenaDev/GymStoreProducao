@@ -12,12 +12,14 @@ async function fetchDashboardData() {
 
   // Fetch all data concurrently for better performance
   const [
-    totalsResponse,
     ordersResponse,
+    productsResponse,
+    customersResponse,
     recentOrdersResponse
   ] = await Promise.all([
-    supabase.rpc('get_dashboard_totals'),
     supabase.from('orders').select('id, total_amount'),
+    supabase.from('products').select('id', { count: 'exact' }),
+    supabase.from('profiles').select('id', { count: 'exact' }),
     supabase
       .from('orders')
       .select('id, total_amount, created_at, profiles(full_name, email)')
@@ -27,14 +29,16 @@ async function fetchDashboardData() {
   ]);
 
   // Handle potential errors
-  if (totalsResponse.error) throw totalsResponse.error;
   if (ordersResponse.error) throw ordersResponse.error;
+  if (productsResponse.error) throw productsResponse.error;
+  if (customersResponse.error) throw customersResponse.error;
   if (recentOrdersResponse.error) throw recentOrdersResponse.error;
 
   // Process total metrics
   const totalRevenue = ordersResponse.data.reduce((acc, order) => acc + order.total_amount, 0);
   const totalSales = ordersResponse.data.length;
-  const { totalProducts, totalCustomers } = totalsResponse.data;
+  const totalProducts = productsResponse.count ?? 0;
+  const totalCustomers = customersResponse.count ?? 0;
 
   // Process chart data for the last 7 days
   const recentOrdersData = recentOrdersResponse.data;
