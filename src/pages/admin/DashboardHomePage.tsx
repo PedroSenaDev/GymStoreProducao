@@ -1,66 +1,83 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Loader2, DollarSign, ShoppingCart, Package, Users } from 'lucide-react';
 import { SalesChart } from '@/components/admin/SalesChart';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { DateRangePicker } from '@/components/admin/DateRangePicker';
+import { DateRange } from 'react-day-picker';
+import { subDays, format, eachDayOfInterval, startOfDay } from 'date-fns';
 
-async function fetchDashboardData() {
-  // Fetch all data in parallel
-  const [
-    totalRevenueData,
-    salesCountData,
-    productsCountData,
-    customersCountData,
-    recentOrdersData,
-    sevenDaysOrdersData
-  ] = await Promise.all([
-    supabase.from('orders').select('total_amount'),
-    supabase.from('orders').select('id', { count: 'exact', head: true }),
+async function fetchDashboardData(dateRange?: DateRange) {
+  const fromDate = dateRange?.from ? startOfDay(dateRange.from) : subDays(new Date(), 7);
+  const toDate = dateRange?.to ? startOfDay(dateRange.to) : new Date();
+
+  let query = supabase.from('orders').select('total_amount, created_at, profiles(full_name, email)');
+  
+  if (fromDate) {
+    query = query.gte('created_at', fromDate.toISOString());
+  }
+  if (toDate) {
+    query = query.lte('created_at', toDate.toISOString());
+  }
+
+  const { data: ordersData, error: ordersError } = await query;
+  if (ordersError) throw ordersError;
+
+  // Fetch counts in parallel for the same date range
+  const [productsCountData, customersCountData] = await Promise.all([
     supabase.from('products').select('id', { count: 'exact', head: true }),
-    supabase.from('profiles').select('id', { count: 'exact', head: true }),
-    supabase.from('orders').select('id, total_amount, profiles(full_name, email)').order('created_at', { ascending: false }).limit(5),
-    supabase.from('orders').select('total_amount, created_at').gte('created_at', new Date(new Date().setDate(new Date().getDate() - 7)).toISOString())
+    supabase.from('profiles').select('id', { count: 'exact', head: true })
   ]);
 
-  // Process total revenue
-  const totalRevenue = totalRevenueData.data?.reduce((acc, order) => acc + order.total_amount, 0) ?? 0;
+  // Process total revenue and sales count from the filtered orders
+  const totalRevenue = ordersData.reduce((acc, order) => acc + order.total_amount, 0);
+  const salesCount = ordersData.length;
 
-  // Process chart data
-  const salesByDay = Array.from({ length: 7 }).map((_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    return {
-      name: d.toLocaleDateString('pt-BR', { weekday: 'short' }).slice(0, 3),
-      date: d.toISOString().split('T')[0],
-      total: 0,
-    };
-  }).reverse();
-
-  sevenDaysOrdersData.data?.forEach(order => {
-    const orderDate = new Date(order.created_at).toISOString().split('T')[0];
-    const dayData = salesByDay.find(d => d.date === orderDate);
-    if (dayData) {
-      dayData.total += order.total_amount;
-    }
+  // Process chart data based on the selected range
+  const salesByDayMap = new Map<string, number>();
+  ordersData.forEach(order => {
+    const orderDate = format(new Date(order.created_at), 'yyyy-MM-dd');
+    const currentTotal = salesByDayMap.get(orderDate) || 0;
+    salesByDayMap.set(orderDate, currentTotal + order.total_amount);
   });
+
+  const intervalDays = eachDayOfInterval({ start: fromDate, end: toDate });
+  const chartData = intervalDays.map(day => {
+    const dateKey = format(day, 'yyyy-MM-dd');
+    return {
+      name: format(day, 'dd/MM'),
+      total: salesByDayMap.get(dateKey) || 0,
+    };
+  });
+
+  // Get recent orders from the filtered data
+  const recentOrders = ordersData
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 5);
 
   return {
     totalRevenue,
-    salesCount: salesCountData.count ?? 0,
+    salesCount,
     productsCount: productsCountData.count ?? 0,
     customersCount: customersCountData.count ?? 0,
-    recentOrders: recentOrdersData.data,
-    chartData: salesByDay,
+    recentOrders,
+    chartData,
   };
 }
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
 export default function DashboardHomePage() {
+  const [date, setDate] = useState<DateRange | undefined>({
+    from: subDays(new Date(), 7),
+    to: new Date(),
+  });
+
   const { data, isLoading } = useQuery({
-    queryKey: ['dashboardData'],
-    queryFn: fetchDashboardData,
+    queryKey: ['dashboardData', date],
+    queryFn: () => fetchDashboardData(date),
   });
 
   if (isLoading) {
@@ -73,7 +90,10 @@ export default function DashboardHomePage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-3xl font-bold">Dashboard</h1>
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <DateRangePicker date={date} onDateChange={setDate} />
+      </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
