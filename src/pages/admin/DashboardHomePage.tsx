@@ -7,28 +7,35 @@ import { SalesChart } from '@/components/admin/SalesChart';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DateRangePicker } from '@/components/admin/DateRangePicker';
 import { DateRange } from 'react-day-picker';
-import { subDays, format, eachDayOfInterval, startOfDay } from 'date-fns';
+import { subDays, format, eachDayOfInterval, startOfDay, endOfDay } from 'date-fns';
 
 async function fetchDashboardData(dateRange?: DateRange) {
   const fromDate = dateRange?.from ? startOfDay(dateRange.from) : subDays(new Date(), 7);
-  const toDate = dateRange?.to ? startOfDay(dateRange.to) : new Date();
+  const toDate = dateRange?.to ? endOfDay(dateRange.to) : new Date();
 
-  let query = supabase.from('orders').select('total_amount, created_at, profiles(full_name, email)');
-  
-  if (fromDate) {
-    query = query.gte('created_at', fromDate.toISOString());
-  }
-  if (toDate) {
-    query = query.lte('created_at', toDate.toISOString());
-  }
+  const fromISO = fromDate.toISOString();
+  const toISO = toDate.toISOString();
 
-  const { data: ordersData, error: ordersError } = await query;
+  // Fetch orders within the date range
+  const { data: ordersData, error: ordersError } = await supabase
+    .from('orders')
+    .select('total_amount, created_at, profiles(full_name, email)')
+    .gte('created_at', fromISO)
+    .lte('created_at', toISO);
   if (ordersError) throw ordersError;
 
-  // Fetch counts in parallel for the same date range
+  // Fetch counts for new products and customers within the date range
   const [productsCountData, customersCountData] = await Promise.all([
-    supabase.from('products').select('id', { count: 'exact', head: true }),
-    supabase.from('profiles').select('id', { count: 'exact', head: true })
+    supabase
+      .from('products')
+      .select('id', { count: 'exact', head: true })
+      .gte('created_at', fromISO)
+      .lte('created_at', toISO),
+    supabase
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .gte('created_at', fromISO)
+      .lte('created_at', toISO)
   ]);
 
   // Process total revenue and sales count from the filtered orders
@@ -102,6 +109,7 @@ export default function DashboardHomePage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(data?.totalRevenue ?? 0)}</div>
+            <p className="text-xs text-muted-foreground">no período selecionado</p>
           </CardContent>
         </Card>
         <Card>
@@ -111,24 +119,27 @@ export default function DashboardHomePage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">+{data?.salesCount}</div>
+            <p className="text-xs text-muted-foreground">no período selecionado</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Produtos</CardTitle>
+            <CardTitle className="text-sm font-medium">Novos Produtos</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data?.productsCount}</div>
+            <div className="text-2xl font-bold">+{data?.productsCount}</div>
+            <p className="text-xs text-muted-foreground">cadastrados no período</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Clientes</CardTitle>
+            <CardTitle className="text-sm font-medium">Novos Clientes</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">+{data?.customersCount}</div>
+            <p className="text-xs text-muted-foreground">cadastrados no período</p>
           </CardContent>
         </Card>
       </div>
