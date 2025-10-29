@@ -21,7 +21,7 @@ async function fetchDashboardStats() {
 
   const { data: orders, error: ordersError } = await supabase
     .from('orders')
-    .select('total_amount, created_at, status, profiles(full_name, id)');
+    .select('id, total_amount, created_at, status, profiles(full_name, id)');
   
   if (ordersError) throw new Error(ordersError.message);
 
@@ -135,7 +135,7 @@ export default function DashboardHomePage() {
               {data?.recentOrders.map((order: any) => (
                 <TableRow key={order.id}>
                   <TableCell>
-                    <div className="font-medium">{order.profiles.full_name || 'Cliente'}</div>
+                    <div className="font-medium">{order.profiles?.full_name || 'Cliente'}</div>
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">{order.status}</Badge>
