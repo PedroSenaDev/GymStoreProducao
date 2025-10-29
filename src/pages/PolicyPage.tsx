@@ -87,7 +87,7 @@ export default function PolicyPage() {
             </CardHeader>
             <CardContent className="pt-6 flex-grow overflow-y-auto">
               <div className="prose prose-lg max-w-none text-foreground dark:prose-invert">
-                <p style={{ whiteSpace: 'pre-line' }}>{policy.content}</p>
+                <p style={{ whiteSpace: 'pre-line', overflowWrap: 'break-word' }}>{policy.content}</p>
               </div>
             </CardContent>
           </Card>
