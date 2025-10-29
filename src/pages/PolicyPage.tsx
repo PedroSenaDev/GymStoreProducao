@@ -69,23 +69,23 @@ export default function PolicyPage() {
   }
 
   return (
-    <div className="bg-muted/40">
-      <div className="container py-12 md:py-20">
-        <div className="max-w-3xl mx-auto">
-          <Button asChild variant="ghost" className="mb-6 -ml-4">
+    <div className="bg-muted/40 flex flex-col flex-grow">
+      <div className="container py-8 md:py-12 flex-grow flex flex-col">
+        <div className="max-w-3xl mx-auto w-full flex flex-col flex-grow">
+          <Button asChild variant="ghost" className="mb-4 -ml-4 self-start">
             <Link to="/">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Voltar para o Início
             </Link>
           </Button>
-          <Card className="overflow-hidden">
+          <Card className="flex-grow flex flex-col overflow-hidden">
             <CardHeader>
               <CardTitle className="text-3xl md:text-4xl">{policy.title}</CardTitle>
               <CardDescription>
                 Última atualização em {format(new Date(policy.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
               </CardDescription>
             </CardHeader>
-            <CardContent className="pt-6 max-h-[60vh] overflow-y-auto">
+            <CardContent className="pt-6 flex-grow overflow-y-auto">
               <div className="prose prose-lg max-w-none text-foreground dark:prose-invert">
                 <p style={{ whiteSpace: 'pre-line' }}>{policy.content}</p>
               </div>
