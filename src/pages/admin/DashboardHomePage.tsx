@@ -25,6 +25,21 @@ async function fetchDashboardStats() {
   
   if (ordersError) throw new Error(ordersError.message);
 
+  // If there are no orders, return mock data for demonstration
+  if (orders.length === 0) {
+    return {
+      totalRevenue: 784.50,
+      salesCount: 5,
+      newCustomersCount: 2,
+      recentOrders: [
+        { id: 'mock1', profiles: { full_name: 'Ana Silva' }, status: 'pending', created_at: new Date().toISOString(), total_amount: 159.90 },
+        { id: 'mock2', profiles: { full_name: 'Carlos Souza' }, status: 'processing', created_at: new Date(Date.now() - 86400000).toISOString(), total_amount: 89.70 },
+        { id: 'mock3', profiles: { full_name: 'Juliana Pereira' }, status: 'shipped', created_at: new Date(Date.now() - 172800000).toISOString(), total_amount: 249.90 },
+      ],
+      isMockData: true,
+    };
+  }
+
   const { count: newCustomersCount, error: customersError } = await supabase
     .from('profiles')
     .select('*', { count: 'exact', head: true })
@@ -38,7 +53,7 @@ async function fetchDashboardStats() {
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 5);
 
-  return { totalRevenue, salesCount, newCustomersCount, recentOrders };
+  return { totalRevenue, salesCount, newCustomersCount, recentOrders, isMockData: false };
 }
 
 const StatCard = ({ title, value, icon, description }: { title: string, value: string, icon: React.ReactNode, description?: string }) => (
@@ -78,9 +93,14 @@ export default function DashboardHomePage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">Uma visão geral da sua loja.</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground">Uma visão geral da sua loja.</p>
+        </div>
+        {data?.isMockData && (
+          <Badge variant="destructive">Modo de Demonstração</Badge>
+        )}
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard title="Receita Total" value={formatCurrency(data?.totalRevenue ?? 0)} icon={<DollarSign className="h-4 w-4 text-muted-foreground" />} />
