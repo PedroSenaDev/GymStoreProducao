@@ -85,7 +85,7 @@ export default function PolicyPage() {
                 Última atualização em {format(new Date(policy.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
               </CardDescription>
             </CardHeader>
-            <CardContent className="pt-6">
+            <CardContent className="pt-6 max-h-[60vh] overflow-y-auto">
               <div className="prose prose-lg max-w-none text-foreground dark:prose-invert">
                 <p style={{ whiteSpace: 'pre-line' }}>{policy.content}</p>
               </div>
