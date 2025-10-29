@@ -16,7 +16,7 @@ async function fetchDashboardData(dateRange?: DateRange) {
   const fromISO = fromDate.toISOString();
   const toISO = toDate.toISOString();
 
-  // Fetch orders within the date range for revenue and sales metrics
+  // Fetch orders within the date range
   const { data: ordersData, error: ordersError } = await supabase
     .from('orders')
     .select('id, total_amount, created_at, profiles(full_name, email)')
@@ -24,21 +24,25 @@ async function fetchDashboardData(dateRange?: DateRange) {
     .lte('created_at', toISO);
   if (ordersError) throw ordersError;
 
-  // Fetch total counts for products and customers, independent of the date range
-  const [totalProductsData, totalCustomersData] = await Promise.all([
+  // Fetch counts for new products and customers within the date range
+  const [productsCountData, customersCountData] = await Promise.all([
     supabase
       .from('products')
-      .select('id', { count: 'exact', head: true }),
+      .select('id', { count: 'exact', head: true })
+      .gte('created_at', fromISO)
+      .lte('created_at', toISO),
     supabase
       .from('profiles')
       .select('id', { count: 'exact', head: true })
+      .gte('created_at', fromISO)
+      .lte('created_at', toISO)
   ]);
 
-  // Process metrics based on the filtered orders
+  // Process total revenue and sales count from the filtered orders
   const totalRevenue = ordersData.reduce((acc, order) => acc + order.total_amount, 0);
   const salesCount = ordersData.length;
 
-  // Process chart data
+  // Process chart data based on the selected range
   const salesByDayMap = new Map<string, number>();
   ordersData.forEach(order => {
     const orderDate = format(new Date(order.created_at), 'yyyy-MM-dd');
@@ -55,7 +59,7 @@ async function fetchDashboardData(dateRange?: DateRange) {
     };
   });
 
-  // Get recent orders
+  // Get recent orders from the filtered data
   const recentOrders = ordersData
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 5);
@@ -63,8 +67,8 @@ async function fetchDashboardData(dateRange?: DateRange) {
   return {
     totalRevenue,
     salesCount,
-    totalProducts: totalProductsData.count ?? 0,
-    totalCustomers: totalCustomersData.count ?? 0,
+    productsCount: productsCountData.count ?? 0,
+    customersCount: customersCountData.count ?? 0,
     recentOrders,
     chartData,
   };
@@ -120,22 +124,22 @@ export default function DashboardHomePage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Produtos</CardTitle>
+            <CardTitle className="text-sm font-medium">Novos Produtos (Período)</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data?.totalProducts}</div>
-            <p className="text-xs text-muted-foreground">Total de produtos cadastrados</p>
+            <div className="text-2xl font-bold">+{data?.productsCount}</div>
+            <p className="text-xs text-muted-foreground">cadastrados no período</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Clientes</CardTitle>
+            <CardTitle className="text-sm font-medium">Novos Clientes (Período)</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data?.totalCustomers}</div>
-            <p className="text-xs text-muted-foreground">Total de clientes registrados</p>
+            <div className="text-2xl font-bold">+{data?.customersCount}</div>
+            <p className="text-xs text-muted-foreground">cadastrados no período</p>
           </CardContent>
         </Card>
       </div>
