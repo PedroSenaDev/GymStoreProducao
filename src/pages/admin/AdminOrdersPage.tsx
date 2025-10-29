@@ -19,7 +19,7 @@ const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style
 async function fetchAdminOrders() {
   const { data, error } = await supabase
     .from('orders')
-    .select('id, created_at, status, total_amount, profiles(full_name, id)')
+    .select('id, created_at, status, total_amount, profiles(full_name)')
     .order('created_at', { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -44,17 +44,21 @@ const LoadingSkeleton = () => (
 );
 
 export default function AdminOrdersPage() {
-  const { data: orders, isLoading } = useQuery({
+  const { data: orders, isLoading, isError } = useQuery({
     queryKey: ['adminOrders'],
     queryFn: fetchAdminOrders,
   });
 
   if (isLoading) return <LoadingSkeleton />;
 
+  if (isError) {
+    return <div className="text-red-500">Erro ao carregar os pedidos.</div>;
+  }
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Pedidos</CardTitle>
+        <CardTitle>Todos os Pedidos</CardTitle>
         <CardDescription>Gerencie os pedidos da sua loja.</CardDescription>
       </CardHeader>
       <CardContent>
@@ -68,20 +72,28 @@ export default function AdminOrdersPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {orders?.map((order: any) => (
-              <TableRow key={order.id}>
-                <TableCell>
-                  <div className="font-medium">{order.profiles?.full_name || 'Cliente'}</div>
+            {orders && orders.length > 0 ? (
+              orders.map((order: any) => (
+                <TableRow key={order.id}>
+                  <TableCell>
+                    <div className="font-medium">{order.profiles?.full_name || 'Cliente'}</div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{order.status}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    {format(new Date(order.created_at), "dd 'de' MMMM, yyyy", { locale: ptBR })}
+                  </TableCell>
+                  <TableCell className="text-right">{formatCurrency(order.total_amount)}</TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={4} className="h-24 text-center">
+                  Nenhum pedido encontrado.
                 </TableCell>
-                <TableCell>
-                  <Badge variant="outline">{order.status}</Badge>
-                </TableCell>
-                <TableCell>
-                  {format(new Date(order.created_at), "dd 'de' MMMM, yyyy", { locale: ptBR })}
-                </TableCell>
-                <TableCell className="text-right">{formatCurrency(order.total_amount)}</TableCell>
               </TableRow>
-            ))}
+            )}
           </TableBody>
         </Table>
       </CardContent>

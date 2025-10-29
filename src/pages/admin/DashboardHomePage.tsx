@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 const formatCurrency = (value: number | null) => {
-  if (value === null) return 'R$ 0,00';
+  if (value === null || value === undefined) return 'R$ 0,00';
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 };
 
@@ -21,12 +21,12 @@ async function fetchDashboardStats() {
 
   const { data: orders, error: ordersError } = await supabase
     .from('orders')
-    .select('id, total_amount, created_at, status, profiles(full_name, id)');
+    .select('id, total_amount, created_at, status, profiles(full_name)');
   
   if (ordersError) throw new Error(ordersError.message);
 
   // If there are no orders, return mock data for demonstration
-  if (orders.length === 0) {
+  if (!orders || orders.length === 0) {
     return {
       totalRevenue: 784.50,
       salesCount: 5,
@@ -43,11 +43,11 @@ async function fetchDashboardStats() {
   const { count: newCustomersCount, error: customersError } = await supabase
     .from('profiles')
     .select('*', { count: 'exact', head: true })
-    .gte('updated_at', thirtyDaysAgo.toISOString());
+    .gte('created_at', thirtyDaysAgo.toISOString());
 
   if (customersError) throw new Error(customersError.message);
 
-  const totalRevenue = orders.reduce((sum, order) => sum + order.total_amount, 0);
+  const totalRevenue = orders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
   const salesCount = orders.length;
   const recentOrders = orders
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -70,26 +70,37 @@ const StatCard = ({ title, value, icon, description }: { title: string, value: s
 );
 
 const LoadingSkeleton = () => (
-  <div>
+  <div className="space-y-8">
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <Skeleton className="h-28" />
       <Skeleton className="h-28" />
       <Skeleton className="h-28" />
       <Skeleton className="h-28" />
     </div>
-    <div className="mt-8">
-      <Skeleton className="h-96" />
-    </div>
+    <Card>
+      <CardHeader>
+        <Skeleton className="h-8 w-48" />
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+      </CardContent>
+    </Card>
   </div>
 );
 
 export default function DashboardHomePage() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['dashboardStats'],
     queryFn: fetchDashboardStats,
   });
 
   if (isLoading) return <LoadingSkeleton />;
+
+  if (isError) {
+    return <div className="text-red-500">Erro ao carregar os dados do dashboard.</div>;
+  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -103,7 +114,7 @@ export default function DashboardHomePage() {
         )}
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Receita Total" value={formatCurrency(data?.totalRevenue ?? 0)} icon={<DollarSign className="h-4 w-4 text-muted-foreground" />} />
+        <StatCard title="Receita Total" value={formatCurrency(data?.totalRevenue)} icon={<DollarSign className="h-4 w-4 text-muted-foreground" />} />
         <StatCard title="Vendas" value={`+${data?.salesCount ?? 0}`} icon={<CreditCard className="h-4 w-4 text-muted-foreground" />} />
         <StatCard title="Novos Clientes" value={`+${data?.newCustomersCount ?? 0}`} icon={<Users className="h-4 w-4 text-muted-foreground" />} description="Últimos 30 dias" />
         <StatCard title="Status" value="Ativo" icon={<Activity className="h-4 w-4 text-muted-foreground" />} />
@@ -132,20 +143,28 @@ export default function DashboardHomePage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data?.recentOrders.map((order: any) => (
-                <TableRow key={order.id}>
-                  <TableCell>
-                    <div className="font-medium">{order.profiles?.full_name || 'Cliente'}</div>
+              {data?.recentOrders && data.recentOrders.length > 0 ? (
+                data.recentOrders.map((order: any) => (
+                  <TableRow key={order.id}>
+                    <TableCell>
+                      <div className="font-medium">{order.profiles?.full_name || 'Cliente'}</div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{order.status}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {format(new Date(order.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    </TableCell>
+                    <TableCell className="text-right">{formatCurrency(order.total_amount)}</TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} className="h-24 text-center">
+                    Nenhum pedido recente encontrado.
                   </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{order.status}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    {format(new Date(order.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                  </TableCell>
-                  <TableCell className="text-right">{formatCurrency(order.total_amount)}</TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </CardContent>
