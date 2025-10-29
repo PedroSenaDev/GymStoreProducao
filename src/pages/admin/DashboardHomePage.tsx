@@ -1,50 +1,48 @@
-import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Loader2, DollarSign, ShoppingCart, Package, Users } from 'lucide-react';
 import { SalesChart } from '@/components/admin/SalesChart';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { DateRangePicker } from '@/components/admin/DateRangePicker';
-import { DateRange } from 'react-day-picker';
 import { subDays, format, eachDayOfInterval, startOfDay, endOfDay } from 'date-fns';
 
-async function fetchDashboardData(dateRange?: DateRange) {
-  const fromDate = dateRange?.from ? startOfDay(dateRange.from) : subDays(new Date(), 7);
-  const toDate = dateRange?.to ? endOfDay(dateRange.to) : new Date();
-
-  const fromISO = fromDate.toISOString();
-  const toISO = toDate.toISOString();
-
-  // Fetch orders within the date range
-  const { data: ordersData, error: ordersError } = await supabase
+async function fetchDashboardData() {
+  // Fetch ALL orders for total revenue and sales
+  const { data: allOrdersData, error: allOrdersError } = await supabase
     .from('orders')
-    .select('id, total_amount, created_at, profiles(full_name, email)')
-    .gte('created_at', fromISO)
-    .lte('created_at', toISO);
-  if (ordersError) throw ordersError;
+    .select('id, total_amount');
+  if (allOrdersError) throw allOrdersError;
 
-  // Fetch counts for new products and customers within the date range
-  const [productsCountData, customersCountData] = await Promise.all([
+  // Fetch total counts for products and customers
+  const [totalProductsData, totalCustomersData] = await Promise.all([
     supabase
       .from('products')
-      .select('id', { count: 'exact', head: true })
-      .gte('created_at', fromISO)
-      .lte('created_at', toISO),
+      .select('id', { count: 'exact', head: true }),
     supabase
       .from('profiles')
       .select('id', { count: 'exact', head: true })
-      .gte('created_at', fromISO)
-      .lte('created_at', toISO)
   ]);
 
-  // Process total revenue and sales count from the filtered orders
-  const totalRevenue = ordersData.reduce((acc, order) => acc + order.total_amount, 0);
-  const salesCount = ordersData.length;
+  const totalRevenue = allOrdersData.reduce((acc, order) => acc + order.total_amount, 0);
+  const totalSales = allOrdersData.length;
 
-  // Process chart data based on the selected range
+  // For the chart and recent orders, use the last 7 days
+  const fromDate = startOfDay(subDays(new Date(), 7));
+  const toDate = endOfDay(new Date());
+  const fromISO = fromDate.toISOString();
+  const toISO = toDate.toISOString();
+
+  const { data: recentOrdersData, error: recentOrdersError } = await supabase
+    .from('orders')
+    .select('id, total_amount, created_at, profiles(full_name, email)')
+    .gte('created_at', fromISO)
+    .lte('created_at', toISO)
+    .order('created_at', { ascending: false });
+  if (recentOrdersError) throw recentOrdersError;
+
+  // Process chart data for the last 7 days
   const salesByDayMap = new Map<string, number>();
-  ordersData.forEach(order => {
+  recentOrdersData.forEach(order => {
     const orderDate = format(new Date(order.created_at), 'yyyy-MM-dd');
     const currentTotal = salesByDayMap.get(orderDate) || 0;
     salesByDayMap.set(orderDate, currentTotal + order.total_amount);
@@ -59,16 +57,13 @@ async function fetchDashboardData(dateRange?: DateRange) {
     };
   });
 
-  // Get recent orders from the filtered data
-  const recentOrders = ordersData
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    .slice(0, 5);
+  const recentOrders = recentOrdersData.slice(0, 5);
 
   return {
     totalRevenue,
-    salesCount,
-    productsCount: productsCountData.count ?? 0,
-    customersCount: customersCountData.count ?? 0,
+    totalSales,
+    totalProducts: totalProductsData.count ?? 0,
+    totalCustomers: totalCustomersData.count ?? 0,
     recentOrders,
     chartData,
   };
@@ -77,14 +72,9 @@ async function fetchDashboardData(dateRange?: DateRange) {
 const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
 export default function DashboardHomePage() {
-  const [date, setDate] = useState<DateRange | undefined>({
-    from: subDays(new Date(), 7),
-    to: new Date(),
-  });
-
   const { data, isLoading } = useQuery({
-    queryKey: ['dashboardData', date],
-    queryFn: () => fetchDashboardData(date),
+    queryKey: ['dashboardData'],
+    queryFn: fetchDashboardData,
   });
 
   if (isLoading) {
@@ -97,49 +87,48 @@ export default function DashboardHomePage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Dashboard</h1>
-        <DateRangePicker date={date} onDateChange={setDate} />
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Receita (Período)</CardTitle>
+            <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(data?.totalRevenue ?? 0)}</div>
-            <p className="text-xs text-muted-foreground">no período selecionado</p>
+            <p className="text-xs text-muted-foreground">Desde o início</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Vendas (Período)</CardTitle>
+            <CardTitle className="text-sm font-medium">Vendas Totais</CardTitle>
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+{data?.salesCount}</div>
-            <p className="text-xs text-muted-foreground">no período selecionado</p>
+            <div className="text-2xl font-bold">+{data?.totalSales}</div>
+            <p className="text-xs text-muted-foreground">Desde o início</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Novos Produtos (Período)</CardTitle>
+            <CardTitle className="text-sm font-medium">Total de Produtos</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+{data?.productsCount}</div>
-            <p className="text-xs text-muted-foreground">cadastrados no período</p>
+            <div className="text-2xl font-bold">{data?.totalProducts}</div>
+            <p className="text-xs text-muted-foreground">Total de produtos cadastrados</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Novos Clientes (Período)</CardTitle>
+            <CardTitle className="text-sm font-medium">Total de Clientes</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+{data?.customersCount}</div>
-            <p className="text-xs text-muted-foreground">cadastrados no período</p>
+            <div className="text-2xl font-bold">{data?.totalCustomers}</div>
+            <p className="text-xs text-muted-foreground">Total de clientes registrados</p>
           </CardContent>
         </Card>
       </div>
@@ -150,7 +139,7 @@ export default function DashboardHomePage() {
         <div className="lg:col-span-3">
           <Card>
             <CardHeader>
-              <CardTitle>Pedidos Recentes (Período)</CardTitle>
+              <CardTitle>Pedidos Recentes (Últimos 7 dias)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               {data?.recentOrders?.map(order => (
