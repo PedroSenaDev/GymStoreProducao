@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, DollarSign, Users, CreditCard, Activity } from 'lucide-react';
+import { ArrowUpRight, DollarSign, CreditCard, Activity } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -15,22 +15,23 @@ const formatCurrency = (value: number | null) => {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 };
 
+// Simplified and robust data fetching function
 async function fetchDashboardStats() {
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
   const { data: orders, error: ordersError } = await supabase
     .from('orders')
-    .select('id, total_amount, created_at, status, profiles(full_name)');
+    .select('id, total_amount, created_at, status, profiles(full_name)')
+    .order('created_at', { ascending: false });
   
-  if (ordersError) throw new Error(ordersError.message);
+  if (ordersError) {
+    console.error("Error fetching orders for dashboard:", ordersError);
+    throw new Error(ordersError.message);
+  }
 
   // If there are no orders, return mock data for demonstration
   if (!orders || orders.length === 0) {
     return {
       totalRevenue: 784.50,
       salesCount: 5,
-      newCustomersCount: 2,
       recentOrders: [
         { id: 'mock1', profiles: { full_name: 'Ana Silva' }, status: 'pending', created_at: new Date().toISOString(), total_amount: 159.90 },
         { id: 'mock2', profiles: { full_name: 'Carlos Souza' }, status: 'processing', created_at: new Date(Date.now() - 86400000).toISOString(), total_amount: 89.70 },
@@ -40,23 +41,14 @@ async function fetchDashboardStats() {
     };
   }
 
-  const { count: newCustomersCount, error: customersError } = await supabase
-    .from('profiles')
-    .select('*', { count: 'exact', head: true })
-    .gte('created_at', thirtyDaysAgo.toISOString());
-
-  if (customersError) throw new Error(customersError.message);
-
   const totalRevenue = orders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
   const salesCount = orders.length;
-  const recentOrders = orders
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    .slice(0, 5);
+  const recentOrders = orders.slice(0, 5);
 
-  return { totalRevenue, salesCount, newCustomersCount, recentOrders, isMockData: false };
+  return { totalRevenue, salesCount, recentOrders, isMockData: false };
 }
 
-const StatCard = ({ title, value, icon, description }: { title: string, value: string, icon: React.ReactNode, description?: string }) => (
+const StatCard = ({ title, value, icon }: { title: string, value: string, icon: React.ReactNode }) => (
   <Card>
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
       <CardTitle className="text-sm font-medium">{title}</CardTitle>
@@ -64,15 +56,13 @@ const StatCard = ({ title, value, icon, description }: { title: string, value: s
     </CardHeader>
     <CardContent>
       <div className="text-2xl font-bold">{value}</div>
-      {description && <p className="text-xs text-muted-foreground">{description}</p>}
     </CardContent>
   </Card>
 );
 
 const LoadingSkeleton = () => (
   <div className="space-y-8">
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      <Skeleton className="h-28" />
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       <Skeleton className="h-28" />
       <Skeleton className="h-28" />
       <Skeleton className="h-28" />
@@ -99,7 +89,12 @@ export default function DashboardHomePage() {
   if (isLoading) return <LoadingSkeleton />;
 
   if (isError) {
-    return <div className="text-red-500">Erro ao carregar os dados do dashboard.</div>;
+    return (
+        <div className="text-center py-10">
+            <h2 className="text-xl font-semibold text-destructive">Erro ao carregar os dados do dashboard.</h2>
+            <p className="text-muted-foreground mt-2">Houve um problema ao buscar as informações. Por favor, tente recarregar a página.</p>
+        </div>
+    );
   }
 
   return (
@@ -113,10 +108,9 @@ export default function DashboardHomePage() {
           <Badge variant="destructive">Modo de Demonstração</Badge>
         )}
       </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <StatCard title="Receita Total" value={formatCurrency(data?.totalRevenue)} icon={<DollarSign className="h-4 w-4 text-muted-foreground" />} />
         <StatCard title="Vendas" value={`+${data?.salesCount ?? 0}`} icon={<CreditCard className="h-4 w-4 text-muted-foreground" />} />
-        <StatCard title="Novos Clientes" value={`+${data?.newCustomersCount ?? 0}`} icon={<Users className="h-4 w-4 text-muted-foreground" />} description="Últimos 30 dias" />
         <StatCard title="Status" value="Ativo" icon={<Activity className="h-4 w-4 text-muted-foreground" />} />
       </div>
       
