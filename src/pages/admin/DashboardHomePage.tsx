@@ -7,40 +7,41 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { subDays, format, eachDayOfInterval, startOfDay, endOfDay } from 'date-fns';
 
 async function fetchDashboardData() {
-  // Fetch ALL orders for total revenue and sales
-  const { data: allOrdersData, error: allOrdersError } = await supabase
-    .from('orders')
-    .select('id, total_amount');
-  if (allOrdersError) throw allOrdersError;
-
-  // Fetch total counts for products and customers
-  const [totalProductsData, totalCustomersData] = await Promise.all([
-    supabase
-      .from('products')
-      .select('id', { count: 'exact', head: true }),
-    supabase
-      .from('profiles')
-      .select('id', { count: 'exact', head: true })
-  ]);
-
-  const totalRevenue = allOrdersData.reduce((acc, order) => acc + order.total_amount, 0);
-  const totalSales = allOrdersData.length;
-
-  // For the chart and recent orders, use the last 7 days
   const fromDate = startOfDay(subDays(new Date(), 7));
   const toDate = endOfDay(new Date());
-  const fromISO = fromDate.toISOString();
-  const toISO = toDate.toISOString();
 
-  const { data: recentOrdersData, error: recentOrdersError } = await supabase
-    .from('orders')
-    .select('id, total_amount, created_at, profiles(full_name, email)')
-    .gte('created_at', fromISO)
-    .lte('created_at', toISO)
-    .order('created_at', { ascending: false });
-  if (recentOrdersError) throw recentOrdersError;
+  // Fetch all data concurrently for better performance
+  const [
+    ordersResponse,
+    productsResponse,
+    customersResponse,
+    recentOrdersResponse
+  ] = await Promise.all([
+    supabase.from('orders').select('id, total_amount'),
+    supabase.from('products').select('id', { count: 'exact' }),
+    supabase.from('profiles').select('id', { count: 'exact' }),
+    supabase
+      .from('orders')
+      .select('id, total_amount, created_at, profiles(full_name, email)')
+      .gte('created_at', fromDate.toISOString())
+      .lte('created_at', toDate.toISOString())
+      .order('created_at', { ascending: false })
+  ]);
+
+  // Handle potential errors
+  if (ordersResponse.error) throw ordersResponse.error;
+  if (productsResponse.error) throw productsResponse.error;
+  if (customersResponse.error) throw customersResponse.error;
+  if (recentOrdersResponse.error) throw recentOrdersResponse.error;
+
+  // Process total metrics
+  const totalRevenue = ordersResponse.data.reduce((acc, order) => acc + order.total_amount, 0);
+  const totalSales = ordersResponse.data.length;
+  const totalProducts = productsResponse.count ?? 0;
+  const totalCustomers = customersResponse.count ?? 0;
 
   // Process chart data for the last 7 days
+  const recentOrdersData = recentOrdersResponse.data;
   const salesByDayMap = new Map<string, number>();
   recentOrdersData.forEach(order => {
     const orderDate = format(new Date(order.created_at), 'yyyy-MM-dd');
@@ -62,8 +63,8 @@ async function fetchDashboardData() {
   return {
     totalRevenue,
     totalSales,
-    totalProducts: totalProductsData.count ?? 0,
-    totalCustomers: totalCustomersData.count ?? 0,
+    totalProducts,
+    totalCustomers,
     recentOrders,
     chartData,
   };
