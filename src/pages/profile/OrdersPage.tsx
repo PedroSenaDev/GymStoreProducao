@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 async function fetchUserOrders(userId: string): Promise<Order[]> {
   const { data, error } = await supabase
@@ -25,6 +26,30 @@ async function fetchUserOrders(userId: string): Promise<Order[]> {
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 const formatDate = (date: string) => new Date(date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+
+// Função para traduzir o status
+const translateStatus = (status: string): string => {
+    switch (status) {
+      case 'pending': return 'Pendente';
+      case 'processing': return 'Em Processamento';
+      case 'shipped': return 'Enviado';
+      case 'delivered': return 'Entregue';
+      case 'cancelled': return 'Cancelado';
+      default: return status;
+    }
+};
+
+// Função para definir a cor do badge com base no status
+const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
+    switch (status) {
+      case 'pending': return 'secondary';
+      case 'processing': return 'default';
+      case 'shipped': return 'outline';
+      case 'delivered': return 'default'; // Usaremos 'default' (preto) para entregue, mas podemos adicionar uma classe de cor se necessário
+      case 'cancelled': return 'destructive';
+      default: return 'secondary';
+    }
+};
 
 export default function OrdersPage() {
   const session = useSessionStore((state) => state.session);
@@ -74,7 +99,12 @@ export default function OrdersPage() {
                 </div>
                 <div className="flex items-center gap-4 mt-2 sm:mt-0">
                   <span className="font-bold text-base">{formatCurrency(order.total_amount)}</span>
-                  <Badge>{order.status}</Badge>
+                  <Badge 
+                    variant={getStatusVariant(order.status)}
+                    className={cn(order.status === 'delivered' && 'bg-green-600 text-white')}
+                  >
+                    {translateStatus(order.status)}
+                  </Badge>
                 </div>
               </div>
             </AccordionTrigger>
