@@ -30,6 +30,7 @@ import { Loader2, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import OrderDetails from "./OrderDetails";
+import { cn } from "@/lib/utils";
 
 type OrderWithProfile = Order & {
   profiles: Pick<Profile, 'full_name'> | null;
@@ -45,10 +46,21 @@ async function fetchOrders(): Promise<OrderWithProfile[]> {
   return data as OrderWithProfile[];
 }
 
+const translateStatus = (status: string): string => {
+    switch (status) {
+      case 'pending': return 'Pendente';
+      case 'processing': return 'Processando';
+      case 'shipped': return 'Enviado';
+      case 'delivered': return 'Entregue';
+      case 'cancelled': return 'Cancelado';
+      default: return status;
+    }
+};
+
 const getStatusVariant = (status: string) => {
   switch (status) {
-    case 'pending': return 'default';
-    case 'processing': return 'secondary';
+    case 'pending': return 'secondary';
+    case 'processing': return 'default';
     case 'shipped': return 'outline';
     case 'delivered': return 'default';
     case 'cancelled': return 'destructive';
@@ -102,7 +114,12 @@ export default function AdminOrdersPage() {
                       <TableCell className="font-medium">{order.profiles?.full_name || 'Cliente não encontrado'}</TableCell>
                       <TableCell>{formatDate(order.created_at)}</TableCell>
                       <TableCell>
-                        <Badge variant={getStatusVariant(order.status)}>{order.status}</Badge>
+                        <Badge 
+                          variant={getStatusVariant(order.status)}
+                          className={cn(order.status === 'delivered' && 'bg-green-600 text-white')}
+                        >
+                          {translateStatus(order.status)}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-right">{formatCurrency(order.total_amount)}</TableCell>
                       <TableCell>
