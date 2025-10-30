@@ -17,7 +17,7 @@ import UpdateOrderForm from "./UpdateOrderForm";
 import { Order } from "@/types/order";
 
 interface OrderDetailsData extends Order {
-  profiles: { full_name: string; email: string; phone: string; } | null;
+  profiles: { full_name: string; phone: string; } | null;
   addresses: {
     street: string;
     number: string;
@@ -41,7 +41,7 @@ interface OrderItemData {
 async function fetchOrderDetails(orderId: string) {
   const { data: orderData, error: orderError } = await supabase
     .from("orders")
-    .select("*, profiles(full_name, email, phone), addresses(*)")
+    .select("*, profiles(full_name, phone), addresses(*)")
     .eq("id", orderId)
     .single();
   if (orderError) throw new Error(orderError.message);
@@ -164,7 +164,6 @@ export default function OrderDetails({ orderId }: { orderId: string }) {
           <div className="space-y-2">
             <h4 className="font-semibold flex items-center"><User className="mr-2 h-4 w-4" /> Cliente</h4>
             <p className="text-sm">{order.profiles?.full_name}</p>
-            <p className="text-sm text-muted-foreground">{order.profiles?.email}</p>
             <p className="text-sm text-muted-foreground">{order.profiles?.phone}</p>
           </div>
           <div className="space-y-2">
