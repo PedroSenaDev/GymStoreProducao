@@ -40,16 +40,22 @@ serve(async (req) => {
     const response = await fetch(apiUrl, apiOptions);
     const responseData = await response.json();
 
-    if (!response.ok || responseData.error) {
+    // Improved Error Handling: Check the response status and forward it
+    if (!response.ok) {
       console.error("Abacate Pay API Check Error:", responseData);
-      throw new Error(responseData.error?.message || "Failed to check Pix status.");
+      return new Response(JSON.stringify({ error: responseData.error?.message || "Failed to check Pix status." }), {
+        status: response.status, // Forward the original status code (e.g., 401, 404)
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
+    // Return the successful data payload
     return new Response(JSON.stringify(responseData.data), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
   } catch (error) {
+    // This will catch network errors or issues with req.json()
     console.error("Error in Edge Function:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
