@@ -110,6 +110,7 @@ const styles = StyleSheet.create({
 });
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+const formatDateTime = (date: string) => new Date(date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 
 export const OrderInvoice = ({ order, items }: { order: any, items: any[] }) => (
   <Document>
@@ -128,6 +129,7 @@ export const OrderInvoice = ({ order, items }: { order: any, items: any[] }) => 
         <Text style={styles.text}>CPF: {order.profiles?.cpf}</Text>
         <Text style={styles.text}>Telefone: {order.profiles?.phone}</Text>
         <Text style={styles.text}>Pedido Nº: {order.id.substring(0, 8)}</Text>
+        <Text style={styles.text}>Data do Pedido: {formatDateTime(order.created_at)}</Text>
       </View>
 
       {/* Endereço de Entrega */}
