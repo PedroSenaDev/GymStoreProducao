@@ -2,7 +2,6 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
 
 // NOTE: The ABACATE_API_KEY secret must be set in your Supabase project settings.
 const ABACATE_API_KEY = Deno.env.get("ABACATE_API_KEY")
-const ENCODED_KEY = btoa(`${ABACATE_API_KEY}:`)
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,10 +9,12 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight request
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
+  // Check for API key
   if (!ABACATE_API_KEY) {
     return new Response(JSON.stringify({ error: "Abacate Pay API key not configured." }), {
       status: 500,
@@ -22,55 +23,65 @@ serve(async (req) => {
   }
 
   try {
+    // Get data from client
     const { amount, customerName, customerEmail, customerMobile, customerDocument } = await req.json()
 
+    // Validate required fields
     if (!amount || !customerName || !customerEmail || !customerMobile || !customerDocument) {
-      return new Response(JSON.stringify({ error: "Missing required fields." }), {
+      return new Response(JSON.stringify({ error: "Missing required customer fields." }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const response = await fetch("https://api.abacate.com/v1/charges", {
-      method: "POST",
+    // Prepare the request for the correct Abacate Pay API endpoint
+    const apiUrl = 'https://api.abacatepay.com/v1/pixQrCode/create';
+    const apiOptions = {
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Basic ${ENCODED_KEY}`,
+        'Authorization': `Bearer ${ABACATE_API_KEY}`,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         amount: Math.round(amount * 100), // Amount in cents
-        "payment_methods": ["pix"],
-        "customer": {
-          "name": customerName,
-          "email": customerEmail,
-          "mobile": customerMobile.replace(/\D/g, ''), // Remove non-digits
-          "document": customerDocument.replace(/\D/g, ''), // Remove non-digits
-        }
-      }),
-    });
+        expiresIn: 3600, // 1 hour expiration
+        description: "Pagamento do pedido - GYMSTORE",
+        customer: {
+          name: customerName,
+          cellphone: customerMobile,
+          email: customerEmail,
+          taxId: customerDocument.replace(/\D/g, ''), // Remove non-digits
+        },
+      })
+    };
 
-    const data = await response.json();
+    // Call the Abacate Pay API
+    const response = await fetch(apiUrl, apiOptions);
+    const responseData = await response.json();
 
-    if (!response.ok) {
-      console.error("Abacate Pay API Error:", data);
-      throw new Error(data.message || "Failed to generate Pix charge.");
+    // Handle API errors
+    if (!response.ok || responseData.error) {
+      console.error("Abacate Pay API Error:", responseData);
+      throw new Error(responseData.error?.message || "Failed to generate Pix charge.");
     }
 
-    const pixPayment = data.payments.find((p: any) => p.method === 'pix');
+    // Extract the necessary data from the successful response
+    const { brCode, brCodeBase64 } = responseData.data;
 
-    if (!pixPayment) {
-        throw new Error("Pix payment details not found in Abacate Pay response.");
+    if (!brCode || !brCodeBase64) {
+        throw new Error("Pix details not found in Abacate Pay response.");
     }
 
+    // Send the data back to the client in the expected format
     return new Response(JSON.stringify({ 
-        br_code: pixPayment.pix.br_code,
-        qr_code_url: pixPayment.pix.qr_code_url,
+        br_code: brCode,
+        qr_code_url: brCodeBase64, // The base64 string is a data URI for the image
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("Error in Edge Function:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
