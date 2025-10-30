@@ -52,7 +52,7 @@ async function fetchOrderDetails(orderId: string) {
 
   const { data: itemsData, error: itemsError } = await supabase
     .from("order_items")
-    .select("quantity, price, selected_size, selected_color, products(name, image_urls)")
+    .select("*, products(*)")
     .eq("order_id", orderId);
   if (itemsError) throw new Error(itemsError.message);
 
