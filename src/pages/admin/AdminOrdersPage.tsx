@@ -97,45 +97,83 @@ export default function AdminOrdersPage() {
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
           ) : (
-            <div className="border rounded-lg">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="w-[100px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {orders?.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell className="font-medium">{order.profiles?.full_name || 'Cliente não encontrado'}</TableCell>
-                      <TableCell>{formatDate(order.created_at)}</TableCell>
-                      <TableCell>
+            <>
+              {/* Layout de Tabela para Telas Maiores */}
+              <div className="hidden md:block border rounded-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                      <TableHead className="w-[100px]"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {orders?.map((order) => (
+                      <TableRow key={order.id}>
+                        <TableCell className="font-medium">{order.profiles?.full_name || 'Cliente não encontrado'}</TableCell>
+                        <TableCell>{formatDate(order.created_at)}</TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant={getStatusVariant(order.status)}
+                            className={cn(
+                              order.status === 'delivered' && 'bg-green-600 text-white',
+                              order.status === 'shipped' && 'bg-yellow-400 text-black hover:bg-yellow-400/80'
+                            )}
+                          >
+                            {translateStatus(order.status)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">{formatCurrency(order.total_amount)}</TableCell>
+                        <TableCell>
+                          <Button variant="outline" size="sm" onClick={() => setSelectedOrder(order)}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            Ver
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Layout de Cartões para Telas Pequenas */}
+              <div className="md:hidden space-y-4">
+                {orders?.map((order) => (
+                  <Card key={order.id}>
+                    <CardHeader>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle className="text-base">{order.profiles?.full_name || 'Cliente não encontrado'}</CardTitle>
+                          <CardDescription>{formatDate(order.created_at)}</CardDescription>
+                        </div>
                         <Badge 
                           variant={getStatusVariant(order.status)}
                           className={cn(
+                            'text-xs',
                             order.status === 'delivered' && 'bg-green-600 text-white',
                             order.status === 'shipped' && 'bg-yellow-400 text-black hover:bg-yellow-400/80'
                           )}
                         >
                           {translateStatus(order.status)}
                         </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">{formatCurrency(order.total_amount)}</TableCell>
-                      <TableCell>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex justify-between items-center">
+                        <div className="text-lg font-bold">{formatCurrency(order.total_amount)}</div>
                         <Button variant="outline" size="sm" onClick={() => setSelectedOrder(order)}>
                           <Eye className="mr-2 h-4 w-4" />
                           Ver
                         </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
