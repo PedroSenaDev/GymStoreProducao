@@ -28,7 +28,9 @@ import { useSessionStore } from "@/store/sessionStore";
 import { useProfile } from "@/hooks/useProfile";
 import { Label } from "../ui/label";
 import { useNavigate } from "react-router-dom";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
+import { CartItem } from "@/types/cart";
+import { useCartStore } from "@/store/cartStore";
 
 const formSchema = z.object({
   name: z.string().min(3, "Nome completo é obrigatório."),
@@ -47,11 +49,12 @@ interface PixInformationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   totalAmount: number;
-  onOrderPlaced: (pixChargeId: string) => void;
-  orderId: string | null;
+  items: CartItem[];
+  selectedAddressId: string | null;
+  paymentMethod: string | null;
 }
 
-export function PixInformationDialog({ open, onOpenChange, totalAmount, onOrderPlaced, orderId }: PixInformationDialogProps) {
+export function PixInformationDialog({ open, onOpenChange, totalAmount, items, selectedAddressId, paymentMethod }: PixInformationDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingPayment, setIsCheckingPayment] = useState(false);
   const [isPaymentConfirmed, setIsPaymentConfirmed] = useState(false);
@@ -59,7 +62,7 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, onOrderP
   const session = useSessionStore((state) => state.session);
   const { data: profile } = useProfile();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  const { removeSelectedItems } = useCartStore();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -71,18 +74,52 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, onOrderP
     },
   });
 
-  const { mutate: updateOrderStatus } = useMutation({
-    mutationFn: async (newStatus: 'processing' | 'paid') => {
-      if (!orderId) throw new Error("ID do pedido não encontrado.");
-      const { error } = await supabase
+  const { mutate: createOrder, isPending: isCreatingOrder } = useMutation({
+    mutationFn: async ({ pixChargeId }: { pixChargeId: string }) => {
+      if (!session?.user.id) throw new Error("Usuário não autenticado.");
+      if (!selectedAddressId) throw new Error("Endereço de entrega não selecionado.");
+      if (!paymentMethod) throw new Error("Método de pagamento não selecionado.");
+      if (items.length === 0) throw new Error("Carrinho vazio.");
+
+      const { data: orderData, error: orderError } = await supabase
         .from('orders')
-        .update({ status: newStatus })
-        .eq('id', orderId);
-      if (error) throw error;
+        .insert({
+          user_id: session.user.id,
+          total_amount: totalAmount,
+          status: 'processing', // O pedido já nasce como 'processando'
+          shipping_address_id: selectedAddressId,
+          payment_method: paymentMethod,
+          shipping_cost: 0, // Placeholder
+          pix_charge_id: pixChargeId,
+        })
+        .select('id')
+        .single();
+
+      if (orderError) throw orderError;
+      const orderId = orderData.id;
+
+      const orderItems = items.map(item => ({
+        order_id: orderId,
+        product_id: item.id,
+        quantity: item.quantity,
+        price: item.price,
+      }));
+      const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
+
+      if (itemsError) {
+        await supabase.from('orders').delete().eq('id', orderId);
+        throw itemsError;
+      }
+
+      await removeSelectedItems();
+      return orderData;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['userOrders', session?.user.id] });
-      queryClient.invalidateQueries({ queryKey: ['adminOrders'] });
+      setIsPaymentConfirmed(true);
+      showSuccess("Pagamento confirmado e pedido criado!");
+    },
+    onError: (error: Error) => {
+      showError(`Erro ao criar pedido: ${error.message}`);
     },
   });
 
@@ -111,9 +148,8 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, onOrderP
       if (error || data.error) throw new Error(error?.message || data.error);
 
       if (data.status === 'PAID' || data.status === 'CONFIRMED') {
-        setIsPaymentConfirmed(true);
-        updateOrderStatus('processing');
-        showSuccess("Pagamento confirmado!");
+        // Pagamento confirmado, AGORA sim criamos o pedido
+        createOrder({ pixChargeId: pixData.pix_charge_id });
       } else {
         showError("Pagamento ainda não foi confirmado. Tente novamente em alguns instantes.");
       }
@@ -138,9 +174,7 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, onOrderP
       });
 
       if (error || data.error) throw new Error(error?.message || data.error);
-
       setPixData(data);
-      onOrderPlaced(data.pix_charge_id);
     } catch (err: any) {
       showError(err.message || "Erro ao gerar QR Code.");
     } finally {
@@ -178,11 +212,11 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, onOrderP
             </div>
           </div>
           <DialogFooter className="w-full flex-col sm:flex-col sm:space-x-0 gap-2">
-            <Button onClick={handleCheckPayment} disabled={isCheckingPayment} className="w-full">
-              {isCheckingPayment && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button onClick={handleCheckPayment} disabled={isCheckingPayment || isCreatingOrder} className="w-full">
+              {(isCheckingPayment || isCreatingOrder) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Já efetuei o pagamento
             </Button>
-            <Button onClick={() => handleCloseAndNavigate(false)} variant="outline" className="w-full">
+            <Button onClick={() => onOpenChange(false)} variant="outline" className="w-full">
               Pagar depois
             </Button>
           </DialogFooter>

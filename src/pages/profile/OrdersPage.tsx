@@ -126,7 +126,10 @@ export default function OrdersPage() {
                   <span className="font-bold text-base">{formatCurrency(order.total_amount)}</span>
                   <Badge 
                     variant={getStatusVariant(order.status)}
-                    className={cn(order.status === 'delivered' && 'bg-green-600 text-white')}
+                    className={cn(
+                        order.status === 'delivered' && 'bg-green-600 text-white',
+                        order.status === 'shipped' && 'bg-yellow-400 text-black hover:bg-yellow-400/80'
+                    )}
                   >
                     {translateStatus(order.status)}
                   </Badge>

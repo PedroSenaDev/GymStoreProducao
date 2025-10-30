@@ -120,7 +120,7 @@ export const OrderInvoice = ({ order, items }: { order: any, items: any[] }) => 
       {/* Cabeçalho */}
       <View style={styles.header}>
         <Text style={styles.headerText}>GYMSTORE</Text>
-        <Text style={{ fontSize: 12 }}>Nota de Entrega</Text>
+        <Text style={{ fontSize: 12 }}>Nota Fiscal</Text>
       </View>
 
       {/* Dados do Cliente */}
