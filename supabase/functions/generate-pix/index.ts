@@ -66,14 +66,15 @@ serve(async (req) => {
     }
 
     // Extract the necessary data from the successful response
-    const { brCode, brCodeBase64 } = responseData.data;
+    const { id: pixChargeId, brCode, brCodeBase64 } = responseData.data;
 
-    if (!brCode || !brCodeBase64) {
+    if (!pixChargeId || !brCode || !brCodeBase64) {
         throw new Error("Pix details not found in Abacate Pay response.");
     }
 
     // Send the data back to the client in the expected format
     return new Response(JSON.stringify({ 
+        pix_charge_id: pixChargeId,
         br_code: brCode,
         qr_code_url: brCodeBase64, // The base64 string is a data URI for the image
     }), {

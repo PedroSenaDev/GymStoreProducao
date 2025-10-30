@@ -29,7 +29,7 @@ export default function CheckoutPage() {
   const total = subtotal + shippingCost;
 
   const { mutate: placeOrder, isPending } = useMutation({
-    mutationFn: async () => {
+    mutationFn: async ({ pixChargeId }: { pixChargeId: string | null }) => {
       if (!session?.user.id) throw new Error("Usuário não autenticado.");
       if (!selectedAddressId) throw new Error("Por favor, selecione um endereço de entrega.");
       if (!paymentMethod) throw new Error("Por favor, selecione um método de pagamento.");
@@ -45,6 +45,7 @@ export default function CheckoutPage() {
           shipping_address_id: selectedAddressId,
           payment_method: paymentMethod,
           shipping_cost: shippingCost,
+          pix_charge_id: pixChargeId,
         })
         .select('id')
         .single();
@@ -71,8 +72,8 @@ export default function CheckoutPage() {
       await removeSelectedItems();
     },
     onSuccess: () => {
-      showSuccess("Pedido realizado com sucesso!");
-      navigate('/profile/orders');
+      showSuccess("Pedido recebido! Aguardando pagamento.");
+      // Navigation is now handled by the Pix dialog
     },
     onError: (error: Error) => {
       showError(error.message);
@@ -84,7 +85,7 @@ export default function CheckoutPage() {
       setIsPixDialogOpen(true);
     } else {
       // Handle other payment methods if they existed
-      placeOrder();
+      placeOrder({ pixChargeId: null });
     }
   };
 
@@ -136,7 +137,7 @@ export default function CheckoutPage() {
         open={isPixDialogOpen}
         onOpenChange={setIsPixDialogOpen}
         totalAmount={total}
-        onOrderPlaced={() => placeOrder()}
+        onOrderPlaced={(pixChargeId) => placeOrder({ pixChargeId })}
       />
     </div>
   );

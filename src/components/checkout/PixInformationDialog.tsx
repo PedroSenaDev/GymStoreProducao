@@ -27,6 +27,7 @@ import { isValidCPF, isValidPhone } from "@/lib/validators";
 import { useSessionStore } from "@/store/sessionStore";
 import { useProfile } from "@/hooks/useProfile";
 import { Label } from "../ui/label";
+import { useNavigate } from "react-router-dom";
 
 const formSchema = z.object({
   name: z.string().min(3, "Nome completo é obrigatório."),
@@ -35,16 +36,17 @@ const formSchema = z.object({
   phone: z.string().refine(isValidPhone, "Telefone inválido."),
 });
 
+interface PixData {
+  qr_code_url: string;
+  br_code: string;
+  pix_charge_id: string;
+}
+
 interface PixInformationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   totalAmount: number;
-  onOrderPlaced: () => void; // This will be the placeOrder mutation
-}
-
-interface PixData {
-  qr_code_url: string;
-  br_code: string;
+  onOrderPlaced: (pixChargeId: string) => void;
 }
 
 export function PixInformationDialog({ open, onOpenChange, totalAmount, onOrderPlaced }: PixInformationDialogProps) {
@@ -52,6 +54,7 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, onOrderP
   const [pixData, setPixData] = useState<PixData | null>(null);
   const session = useSessionStore((state) => state.session);
   const { data: profile } = useProfile();
+  const navigate = useNavigate();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -67,6 +70,13 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, onOrderP
     if (pixData?.br_code) {
       navigator.clipboard.writeText(pixData.br_code);
       showSuccess("Código Pix copiado para a área de transferência!");
+    }
+  };
+
+  const handleCloseAndNavigate = (isOpen: boolean) => {
+    onOpenChange(isOpen);
+    if (!isOpen && pixData) {
+      navigate('/profile/orders');
     }
   };
 
@@ -93,7 +103,7 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, onOrderP
 
       setPixData(data);
       // Place the order in our DB *after* successfully generating the Pix charge
-      onOrderPlaced();
+      onOrderPlaced(data.pix_charge_id);
 
     } catch (err: any) {
       showError(err.message || "Ocorreu um erro ao gerar o QR Code. Tente novamente.");
@@ -103,7 +113,7 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, onOrderP
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleCloseAndNavigate}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Pagamento com Pix</DialogTitle>
@@ -126,6 +136,14 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, onOrderP
                     </Button>
                 </div>
             </div>
+            <p className="text-sm text-center text-muted-foreground mt-2">
+                Seu pedido foi registrado. Após o pagamento, o status será atualizado automaticamente.
+            </p>
+            <DialogFooter className="w-full">
+                <Button onClick={() => handleCloseAndNavigate(false)} className="w-full">
+                    Ver Meus Pedidos
+                </Button>
+            </DialogFooter>
           </div>
         ) : (
           <Form {...form}>
