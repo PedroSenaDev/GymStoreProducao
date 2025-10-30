@@ -68,8 +68,11 @@ export default function UpdateOrderForm({ order, onFinished }: UpdateOrderFormPr
     },
     onSuccess: () => {
       showSuccess("Pedido atualizado com sucesso!");
+      // Invalida os dados do admin
       queryClient.invalidateQueries({ queryKey: ["orderDetails", order.id] });
       queryClient.invalidateQueries({ queryKey: ["adminOrders"] });
+      // Invalida os dados do cliente específico
+      queryClient.invalidateQueries({ queryKey: ["userOrders", order.user_id] });
       onFinished();
     },
     onError: (error) => {
