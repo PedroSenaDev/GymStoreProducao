@@ -57,6 +57,17 @@ async function fetchOrderDetails(orderId: string) {
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
+const translateStatus = (status: string): string => {
+    switch (status) {
+      case 'pending': return 'Pendente';
+      case 'processing': return 'Processando';
+      case 'shipped': return 'Enviado';
+      case 'delivered': return 'Entregue';
+      case 'cancelled': return 'Cancelado';
+      default: return status;
+    }
+};
+
 export default function OrderDetails({ orderId }: { orderId: string }) {
   const [isUpdateDialogOpen, setUpdateDialogOpen] = useState(false);
   const { data, isLoading, isError } = useQuery({
@@ -151,7 +162,7 @@ export default function OrderDetails({ orderId }: { orderId: string }) {
             </div>
             <div className="text-sm">
               <span className="text-muted-foreground">Status: </span>
-              <Badge>{order.status}</Badge>
+              <Badge>{translateStatus(order.status)}</Badge>
             </div>
           </div>
           <div className="space-y-4">

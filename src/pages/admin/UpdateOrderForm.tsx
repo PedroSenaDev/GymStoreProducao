@@ -26,6 +26,14 @@ import { Order } from "@/types/order";
 
 const orderStatus = ["pending", "processing", "shipped", "delivered", "cancelled"] as const;
 
+const statusTranslations: Record<typeof orderStatus[number], string> = {
+  pending: "Pendente",
+  processing: "Processando",
+  shipped: "Enviado",
+  delivered: "Entregue",
+  cancelled: "Cancelado",
+};
+
 const formSchema = z.object({
   status: z.enum(orderStatus),
   tracking_code: z.string().optional(),
@@ -87,7 +95,7 @@ export default function UpdateOrderForm({ order, onFinished }: UpdateOrderFormPr
                 <SelectContent>
                   {orderStatus.map((status) => (
                     <SelectItem key={status} value={status}>
-                      {status.charAt(0).toUpperCase() + status.slice(1)}
+                      {statusTranslations[status]}
                     </SelectItem>
                   ))}
                 </SelectContent>
