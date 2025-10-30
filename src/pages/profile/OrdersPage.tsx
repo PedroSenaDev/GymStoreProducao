@@ -17,6 +17,7 @@ async function fetchUserOrders(userId: string): Promise<Order[]> {
     .from("orders")
     .select("*, order_items(*, products(*))")
     .eq("user_id", userId)
+    .not("status", "eq", "pending") // <-- AQUI: Não busca pedidos com status 'pending'
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);
