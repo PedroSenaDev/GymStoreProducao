@@ -19,6 +19,7 @@ import ProductDetailPage from "./pages/ProductDetailPage";
 import ContactPage from "./pages/Contact";
 import PolicyPage from "./pages/PolicyPage";
 import UpdatePasswordPage from "./pages/UpdatePassword";
+import CheckoutPage from "./pages/CheckoutPage";
 import NotFound from "./pages/NotFound";
 
 // Profile Pages
@@ -51,6 +52,7 @@ const App = () => (
               <Route path="/product/:id" element={<ProductDetailPage />} />
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/policy/:id" element={<PolicyPage />} />
+              <Route path="/checkout" element={<CheckoutPage />} />
 
               {/* Profile Routes */}
               <Route path="/profile" element={<ProfileLayout />}>

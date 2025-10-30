@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetDescription } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetDescription, SheetClose } from "@/components/ui/sheet";
 import { Button } from "./ui/button";
 import { Checkbox } from "./ui/checkbox";
 import { ScrollArea } from "./ui/scroll-area";
 import { useCartStore } from "@/store/cartStore";
 import { CartItemCard } from "./CartItemCard";
 import { ShoppingBag } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
@@ -65,13 +66,16 @@ export const CartSheet = ({ open, onOpenChange }: { open: boolean, onOpenChange:
                   <p className="text-sm text-muted-foreground">Subtotal</p>
                   <p className="text-xl font-bold tracking-tight">{formatCurrency(subtotal)}</p>
                 </div>
-                <Button 
-                  size="lg" 
-                  disabled={selectedItems.length === 0} 
-                  className="w-full sm:w-auto"
-                >
-                  Finalizar Compra
-                </Button>
+                <SheetClose asChild>
+                  <Button 
+                    asChild
+                    size="lg" 
+                    disabled={selectedItems.length === 0} 
+                    className="w-full sm:w-auto"
+                  >
+                    <Link to="/checkout">Ir para pagamento</Link>
+                  </Button>
+                </SheetClose>
               </div>
             </SheetFooter>
           </>
