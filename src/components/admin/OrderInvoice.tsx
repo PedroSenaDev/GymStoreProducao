@@ -1,4 +1,6 @@
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 // Define os estilos para o documento PDF, similar a CSS
 const styles = StyleSheet.create({
@@ -110,7 +112,7 @@ const styles = StyleSheet.create({
 });
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-const formatDateTime = (date: string) => new Date(date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+const formatDateTime = (date: string) => format(new Date(date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
 
 export const OrderInvoice = ({ order, items }: { order: any, items: any[] }) => (
   <Document>
