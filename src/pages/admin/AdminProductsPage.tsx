@@ -40,6 +40,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { showError, showSuccess } from "@/utils/toast";
 import ProductForm from "./ProductForm";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 
 async function fetchProducts(): Promise<Product[]> {
   const { data, error } = await supabase.from("products").select("*, categories(name)").order('created_at', { ascending: false });
@@ -82,7 +83,6 @@ export default function AdminProductsPage() {
     mutationFn: async (product: Product) => {
       const featuredCount = products?.filter(p => p.is_featured).length ?? 0;
 
-      // Block featuring a new product if the limit is reached
       if (!product.is_featured && featuredCount >= 3) {
         throw new Error("Você só pode ter 3 produtos em destaque. Desmarque um para adicionar um novo.");
       }
@@ -109,6 +109,8 @@ export default function AdminProductsPage() {
     setSelectedProduct(undefined);
     setIsDialogOpen(true);
   };
+
+  const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
   return (
     <div>
@@ -147,62 +149,119 @@ export default function AdminProductsPage() {
       {isLoading ? (
         <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>
       ) : (
-        <div className="border rounded-lg">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[80px]">Imagem</TableHead>
-                <TableHead>Nome</TableHead>
-                <TableHead>Categoria</TableHead>
-                <TableHead>Preço</TableHead>
-                <TableHead>Estoque</TableHead>
-                <TableHead>Destaque</TableHead>
-                <TableHead className="w-[80px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredProducts?.map((product) => (
-                <TableRow key={product.id}>
-                  <TableCell>
-                    <img src={product.image_urls?.[0] || '/placeholder.svg'} alt={product.name} className="h-12 w-12 object-cover rounded-md" />
-                  </TableCell>
-                  <TableCell className="font-medium">{product.name}</TableCell>
-                  {/* @ts-ignore */}
-                  <TableCell><Badge variant="outline">{product.categories?.name || 'N/A'}</Badge></TableCell>
-                  <TableCell>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price)}</TableCell>
-                  <TableCell>{product.stock}</TableCell>
-                  <TableCell>
-                    <Switch
-                      checked={product.is_featured}
-                      onCheckedChange={() => toggleFeatured(product)}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEdit(product)}>Editar</DropdownMenuItem>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild><DropdownMenuItem onSelect={(e) => e.preventDefault()}>Excluir</DropdownMenuItem></AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
-                              <AlertDialogDescription>Esta ação não pode ser desfeita. Isso excluirá permanentemente o produto.</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => deleteProduct(product.id)}>Excluir</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+        <>
+          {/* Tabela para Desktop */}
+          <div className="hidden md:block border rounded-lg">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[80px]">Imagem</TableHead>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Categoria</TableHead>
+                  <TableHead>Preço</TableHead>
+                  <TableHead>Estoque</TableHead>
+                  <TableHead>Destaque</TableHead>
+                  <TableHead className="w-[80px]"></TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {filteredProducts?.map((product) => (
+                  <TableRow key={product.id}>
+                    <TableCell>
+                      <img src={product.image_urls?.[0] || '/placeholder.svg'} alt={product.name} className="h-12 w-12 object-cover rounded-md" />
+                    </TableCell>
+                    <TableCell className="font-medium">{product.name}</TableCell>
+                    {/* @ts-ignore */}
+                    <TableCell><Badge variant="outline">{product.categories?.name || 'N/A'}</Badge></TableCell>
+                    <TableCell>{formatCurrency(product.price)}</TableCell>
+                    <TableCell>{product.stock}</TableCell>
+                    <TableCell>
+                      <Switch
+                        checked={product.is_featured}
+                        onCheckedChange={() => toggleFeatured(product)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleEdit(product)}>Editar</DropdownMenuItem>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild><DropdownMenuItem onSelect={(e) => e.preventDefault()}>Excluir</DropdownMenuItem></AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+                                <AlertDialogDescription>Esta ação não pode ser desfeita. Isso excluirá permanentemente o produto.</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteProduct(product.id)}>Excluir</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Cards para Mobile */}
+          <div className="md:hidden space-y-4">
+            {filteredProducts?.map((product) => (
+              <Card key={product.id}>
+                <CardHeader className="flex flex-row items-start justify-between gap-4 pb-2">
+                  <div className="flex items-start gap-4">
+                    <img src={product.image_urls?.[0] || '/placeholder.svg'} alt={product.name} className="h-16 w-16 object-cover rounded-md" />
+                    <div>
+                      <h3 className="font-semibold">{product.name}</h3>
+                      {/* @ts-ignore */}
+                      <Badge variant="outline" className="text-xs mt-1">{product.categories?.name || 'N/A'}</Badge>
+                    </div>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleEdit(product)}>Editar</DropdownMenuItem>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild><DropdownMenuItem onSelect={(e) => e.preventDefault()}>Excluir</DropdownMenuItem></AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+                            <AlertDialogDescription>Esta ação não pode ser desfeita. Isso excluirá permanentemente o produto.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => deleteProduct(product.id)}>Excluir</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </CardHeader>
+                <CardContent className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Preço</p>
+                    <p className="font-medium">{formatCurrency(product.price)}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Estoque</p>
+                    <p className="font-medium">{product.stock}</p>
+                  </div>
+                </CardContent>
+                <CardFooter className="flex items-center justify-between pt-4">
+                  <span className="text-sm text-muted-foreground">Destaque</span>
+                  <Switch
+                    checked={product.is_featured}
+                    onCheckedChange={() => toggleFeatured(product)}
+                  />
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
