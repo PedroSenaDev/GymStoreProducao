@@ -8,7 +8,7 @@ export interface Product {
   category_id: string;
   image_urls: string[];
   sizes: string[];
-  colors: string[];
+  colors: { code: string; name: string }[];
   is_featured: boolean;
   created_at: string;
 }

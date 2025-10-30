@@ -42,6 +42,11 @@ const styles = StyleSheet.create({
     fontSize: 10,
     marginBottom: 3,
   },
+  itemDetails: {
+    fontSize: 8,
+    color: '#555',
+    marginTop: 2,
+  },
   table: {
     width: '100%',
   },
@@ -156,7 +161,16 @@ export const OrderInvoice = ({ order, items }: { order: any, items: any[] }) => 
           </View>
           {items.map((item, index) => (
             <View key={index} style={styles.tableRow}>
-              <Text style={[styles.col, styles.colProduct]}>{item.products?.name || 'Produto desconhecido'}</Text>
+              <View style={[styles.col, styles.colProduct]}>
+                <Text>{item.products?.name || 'Produto desconhecido'}</Text>
+                {(item.selected_size || item.selected_color) && (
+                  <Text style={styles.itemDetails}>
+                    {item.selected_size ? `Tamanho: ${item.selected_size}` : ''}
+                    {item.selected_size && item.selected_color ? ', ' : ''}
+                    {item.selected_color ? `Cor: ${item.selected_color.name}` : ''}
+                  </Text>
+                )}
+              </View>
               <Text style={[styles.col, styles.colQty]}>{item.quantity || 0}</Text>
               <Text style={[styles.col, styles.colPrice]}>{formatCurrency(item.price || 0)}</Text>
               <Text style={[styles.col, styles.colTotal]}>{formatCurrency((item.price || 0) * (item.quantity || 0))}</Text>

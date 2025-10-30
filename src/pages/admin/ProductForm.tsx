@@ -26,7 +26,7 @@ import { Product } from "@/types/product";
 import { Category } from "@/types/category";
 import { Loader2 } from "lucide-react";
 import ImageUpload from "@/components/admin/ImageUpload";
-import ColorPickerInput from "@/components/admin/ColorPickerInput";
+import ColorNamePickerInput from "@/components/admin/ColorNamePickerInput";
 
 const formSchema = z.object({
   name: z.string().min(2),
@@ -36,7 +36,10 @@ const formSchema = z.object({
   category_id: z.string().min(1, { message: "Por favor, selecione uma categoria." }).uuid({ message: "Categoria inválida." }),
   image_urls: z.array(z.string().url({ message: "URL da imagem inválida." })).optional().default([]),
   sizes: z.string().optional(),
-  colors: z.array(z.string()).optional().default([]),
+  colors: z.array(z.object({
+    code: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Código de cor inválido."),
+    name: z.string().min(1, "O nome da cor é obrigatório."),
+  })).optional().default([]),
 });
 
 interface ProductFormProps {
@@ -184,7 +187,7 @@ export default function ProductForm({ product, onFinished }: ProductFormProps) {
                 <FormItem>
                 <FormLabel>Cores</FormLabel>
                 <FormControl>
-                    <ColorPickerInput value={field.value} onChange={field.onChange} />
+                    <ColorNamePickerInput value={field.value} onChange={field.onChange} />
                 </FormControl>
                 <FormMessage />
                 </FormItem>

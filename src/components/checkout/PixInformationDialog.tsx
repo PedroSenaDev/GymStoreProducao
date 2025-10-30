@@ -103,6 +103,8 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
         product_id: item.id,
         quantity: item.quantity,
         price: item.price,
+        selected_size: item.selectedSize,
+        selected_color: item.selectedColor,
       }));
       const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
 

@@ -35,7 +35,8 @@ export const CartItemCard = ({ item }: CartItemCardProps) => {
           {item.selectedSize && <span>Tamanho: {item.selectedSize.toUpperCase()}</span>}
           {item.selectedColor && (
             <span className="inline-flex items-center gap-1">
-              Cor: <div className="h-3 w-3 rounded-full border" style={{ backgroundColor: item.selectedColor }} />
+              Cor: <div className="h-3 w-3 rounded-full border" style={{ backgroundColor: item.selectedColor.code }} />
+              {item.selectedColor.name}
             </span>
           )}
         </div>

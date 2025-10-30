@@ -47,7 +47,7 @@ export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
-  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [selectedColor, setSelectedColor] = useState<{ code: string; name: string } | null>(null);
   const addItemToCart = useCartStore(state => state.addItem);
 
   const { data: product, isLoading, isError } = useQuery({
@@ -145,14 +145,15 @@ export default function ProductDetailPage() {
           {product.colors && product.colors.length > 0 && (
             <div className="space-y-3">
               <Label className="font-semibold">Cor</Label>
-              <RadioGroup value={selectedColor || ''} onValueChange={setSelectedColor} className="flex flex-wrap gap-2">
+              <RadioGroup value={selectedColor?.code || ''} onValueChange={(code) => setSelectedColor(product.colors.find(c => c.code === code) || null)} className="flex flex-wrap gap-2">
                 {product.colors.map(color => (
-                  <Label key={color} htmlFor={`color-${color}`} className={`flex cursor-pointer items-center justify-center rounded-md border-2 p-1 transition-colors hover:bg-accent [&:has([data-state=checked])]:border-primary`}>
-                    <RadioGroupItem value={color} id={`color-${color}`} className="sr-only" />
-                    <span className="h-8 w-8 rounded-full border" style={{ backgroundColor: color.toLowerCase() }} />
+                  <Label key={color.code} htmlFor={`color-${color.code}`} className={`flex cursor-pointer items-center justify-center rounded-md border-2 p-1 transition-colors hover:bg-accent [&:has([data-state=checked])]:border-primary`}>
+                    <RadioGroupItem value={color.code} id={`color-${color.code}`} className="sr-only" />
+                    <span className="h-8 w-8 rounded-full border" style={{ backgroundColor: color.code.toLowerCase() }} />
                   </Label>
                 ))}
               </RadioGroup>
+              {selectedColor && <p className="text-sm text-muted-foreground">Cor selecionada: {selectedColor.name}</p>}
             </div>
           )}
 

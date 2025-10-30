@@ -8,6 +8,8 @@ export interface OrderItem {
   quantity: number;
   price: number;
   products?: Product; // From Supabase join
+  selected_size?: string;
+  selected_color?: { code: string; name: string };
 }
 
 export interface Order {

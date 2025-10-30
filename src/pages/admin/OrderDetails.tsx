@@ -34,6 +34,8 @@ interface OrderDetailsData extends Order {
 interface OrderItemData {
   quantity: number;
   price: number;
+  selected_size?: string;
+  selected_color?: { code: string; name: string };
   products: {
     name: string;
     image_urls: string[];
@@ -50,7 +52,7 @@ async function fetchOrderDetails(orderId: string) {
 
   const { data: itemsData, error: itemsError } = await supabase
     .from("order_items")
-    .select("quantity, price, products(name, image_urls)")
+    .select("quantity, price, selected_size, selected_color, products(name, image_urls)")
     .eq("order_id", orderId);
   if (itemsError) throw new Error(itemsError.message);
 
@@ -106,7 +108,7 @@ export default function OrderDetails({ orderId }: { orderId: string }) {
               {({ loading }) => (
                 <Button variant="outline" size="sm" disabled={loading}>
                   <FileDown className="mr-2 h-4 w-4" />
-                  {loading ? 'Gerando...' : 'Gerar PDF da Nota'}
+                  {loading ? 'Gerando...' : 'Gerar PDF'}
                 </Button>
               )}
             </PDFDownloadLink>
@@ -139,9 +141,11 @@ export default function OrderDetails({ orderId }: { orderId: string }) {
               />
               <div className="flex-1">
                 <p className="font-medium">{item.products?.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {item.quantity} x {formatCurrency(item.price)}
-                </p>
+                <div className="text-sm text-muted-foreground">
+                  <p>{item.quantity} x {formatCurrency(item.price)}</p>
+                  {item.selected_size && <p>Tamanho: {item.selected_size}</p>}
+                  {item.selected_color && <p>Cor: {item.selected_color.name}</p>}
+                </div>
               </div>
               <p className="font-semibold">{formatCurrency(item.quantity * item.price)}</p>
             </div>

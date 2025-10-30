@@ -9,7 +9,7 @@ import { showError } from '@/utils/toast';
 interface CartState {
   items: CartItem[];
   setItems: (items: CartItem[]) => void;
-  addItem: (product: Product, quantity: number, size: string | null, color: string | null) => Promise<void>;
+  addItem: (product: Product, quantity: number, size: string | null, color: { code: string; name: string } | null) => Promise<void>;
   removeItem: (cartItemId: string) => Promise<void>;
   updateQuantity: (cartItemId: string, quantity: number) => Promise<void>;
   toggleItemSelection: (cartItemId: string) => void;
@@ -26,7 +26,7 @@ export const useCartStore = create<CartState>()(
       items: [],
       setItems: (items) => set({ items }),
       addItem: async (product, quantity, size, color) => {
-        const cartItemId = `${product.id}-${size || 'none'}-${color || 'none'}`;
+        const cartItemId = `${product.id}-${size || 'none'}-${color?.code || 'none'}`;
         const existingItem = findItem(get().items, cartItemId);
         const session = useSessionStore.getState().session;
 
@@ -58,7 +58,7 @@ export const useCartStore = create<CartState>()(
             product_id: product.id,
             quantity: (existingItem?.quantity || 0) + quantity,
             selected_size: size,
-            selected_color: color,
+            selected_color: color?.code, // Store only the code in DB
           }, { onConflict: 'user_id,product_id,selected_size,selected_color' });
 
           if (error) {
@@ -81,7 +81,7 @@ export const useCartStore = create<CartState>()(
               user_id: session.user.id,
               product_id: itemToRemove.id,
               selected_size: itemToRemove.selectedSize,
-              selected_color: itemToRemove.selectedColor,
+              selected_color: itemToRemove.selectedColor?.code,
             });
           if (error) console.error("Error removing item from DB:", error);
         }
@@ -109,7 +109,7 @@ export const useCartStore = create<CartState>()(
               user_id: session.user.id,
               product_id: itemToUpdate.id,
               selected_size: itemToUpdate.selectedSize,
-              selected_color: itemToUpdate.selectedColor,
+              selected_color: itemToUpdate.selectedColor?.code,
             });
           if (error) console.error("Error updating quantity in DB:", error);
         }
@@ -147,7 +147,7 @@ export const useCartStore = create<CartState>()(
                 user_id: session.user.id,
                 product_id: item.id,
                 selected_size: item.selectedSize,
-                selected_color: item.selectedColor,
+                selected_color: item.selectedColor?.code,
               })
           );
       
