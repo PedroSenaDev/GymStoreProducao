@@ -18,8 +18,8 @@ async function fetchDashboardData() {
     recentOrdersResponse
   ] = await Promise.all([
     supabase.from('orders').select('id, total_amount'),
-    supabase.from('products').select('id', { count: 'exact' }),
-    supabase.from('profiles').select('id', { count: 'exact' }),
+    supabase.from('products').select('id', { count: 'exact', head: true }),
+    supabase.from('profiles').select('id', { count: 'exact', head: true }),
     supabase
       .from('orders')
       .select('id, total_amount, created_at, profiles(full_name, email)')
@@ -114,7 +114,7 @@ export default function DashboardHomePage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Produtos</CardTitle>
+            <CardTitle className="text-sm font-medium">Produtos no Site</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -124,12 +124,12 @@ export default function DashboardHomePage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Clientes</CardTitle>
+            <CardTitle className="text-sm font-medium">Total de Usuários</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{data?.totalCustomers}</div>
-            <p className="text-xs text-muted-foreground">Total de clientes registrados</p>
+            <p className="text-xs text-muted-foreground">Total de usuários registrados</p>
           </CardContent>
         </Card>
       </div>
