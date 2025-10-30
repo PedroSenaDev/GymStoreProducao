@@ -26,10 +26,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Eye } from "lucide-react";
+import { Loader2, Eye, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import OrderDetails from "./OrderDetails";
+import { showError, showSuccess } from "@/utils/toast";
 
 type OrderWithProfile = Order & {
   profiles: Pick<Profile, 'full_name'> | null;
@@ -58,11 +59,26 @@ const getStatusVariant = (status: string) => {
 
 export default function AdminOrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<OrderWithProfile | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
-  const { data: orders, isLoading } = useQuery({
+  const { data: orders, isLoading, refetch } = useQuery({
     queryKey: ["adminOrders"],
     queryFn: fetchOrders,
   });
+
+  const handleSync = async () => {
+    setIsSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-pending-orders');
+      if (error) throw error;
+      showSuccess(data.message || "Sincronização concluída!");
+      refetch(); // Re-fetch orders to show updated statuses
+    } catch (error: any) {
+      showError(error.message || "Falha na sincronização.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   const formatDate = (date: string) => format(new Date(date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
@@ -72,8 +88,20 @@ export default function AdminOrdersPage() {
       <h1 className="text-3xl font-bold mb-6">Pedidos</h1>
       <Card>
         <CardHeader>
-          <CardTitle>Histórico de Pedidos</CardTitle>
-          <CardDescription>Visualize e gerencie todos os pedidos recebidos.</CardDescription>
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div>
+              <CardTitle>Histórico de Pedidos</CardTitle>
+              <CardDescription>Visualize e gerencie todos os pedidos recebidos.</CardDescription>
+            </div>
+            <Button onClick={handleSync} disabled={isSyncing}>
+              {isSyncing ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-2 h-4 w-4" />
+              )}
+              Sincronizar Pedidos Pendentes
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
