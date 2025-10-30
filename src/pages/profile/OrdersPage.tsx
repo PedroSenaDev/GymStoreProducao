@@ -31,7 +31,7 @@ const formatDate = (date: string) => new Date(date).toLocaleDateString('pt-BR', 
 const translateStatus = (status: string): string => {
     switch (status) {
       case 'pending': return 'Pendente';
-      case 'processing': return 'Em Processamento';
+      case 'processing': return 'Pagamento Aprovado';
       case 'shipped': return 'Enviado';
       case 'delivered': return 'Entregue';
       case 'cancelled': return 'Cancelado';
