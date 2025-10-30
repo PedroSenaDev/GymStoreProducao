@@ -21,7 +21,7 @@ async function fetchDashboardStats() {
     supabase.from('profiles').select('id', { count: 'exact' }),
     supabase
       .from('orders')
-      .select('id, total_amount, created_at, profiles(full_name, email)')
+      .select('id, total_amount, created_at, profiles(full_name)')
       .gte('created_at', sevenDaysAgo.toISOString())
       .order('created_at', { ascending: false })
   ]);
@@ -153,7 +153,6 @@ export default function DashboardHomePage() {
                   </Avatar>
                   <div className="ml-4 space-y-1">
                     <p className="text-sm font-medium leading-none">{order.profiles?.full_name}</p>
-                    <p className="text-sm text-muted-foreground">{order.profiles?.email}</p>
                   </div>
                   <div className="ml-auto font-medium">{formatCurrency(order.total_amount)}</div>
                 </div>
