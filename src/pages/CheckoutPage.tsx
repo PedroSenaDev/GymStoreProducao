@@ -20,6 +20,7 @@ export default function CheckoutPage() {
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
   const [isPixDialogOpen, setIsPixDialogOpen] = useState(false);
+  const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
   
   // Placeholder for shipping cost logic
   const shippingCost = 0;
@@ -63,17 +64,16 @@ export default function CheckoutPage() {
       const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
 
       if (itemsError) {
-        // Attempt to delete the created order if items fail to be inserted
         await supabase.from('orders').delete().eq('id', orderId);
         throw itemsError;
       }
 
-      // 3. Clear the cart
       await removeSelectedItems();
+      return orderData;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       showSuccess("Pedido recebido! Aguardando pagamento.");
-      // Navigation is now handled by the Pix dialog
+      setCreatedOrderId(data.id);
     },
     onError: (error: Error) => {
       showError(error.message);
@@ -84,7 +84,6 @@ export default function CheckoutPage() {
     if (paymentMethod === 'pix') {
       setIsPixDialogOpen(true);
     } else {
-      // Handle other payment methods if they existed
       placeOrder({ pixChargeId: null });
     }
   };
@@ -93,7 +92,7 @@ export default function CheckoutPage() {
     return <Navigate to="/login" replace />;
   }
 
-  if (selectedItems.length === 0) {
+  if (selectedItems.length === 0 && !isPixDialogOpen) {
     return <Navigate to="/products" replace />;
   }
 
@@ -138,6 +137,7 @@ export default function CheckoutPage() {
         onOpenChange={setIsPixDialogOpen}
         totalAmount={total}
         onOrderPlaced={(pixChargeId) => placeOrder({ pixChargeId })}
+        orderId={createdOrderId}
       />
     </div>
   );
