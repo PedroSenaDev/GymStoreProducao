@@ -46,15 +46,13 @@ const AdminLayoutContent = () => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    // This subscription listens for any changes in the database
-    // and automatically refetches the data for the dashboard.
     const channel = supabase
       .channel('admin-dashboard-realtime')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'orders' },
         () => {
-          queryClient.invalidateQueries({ queryKey: ['dashboardData'] });
+          queryClient.invalidateQueries({ queryKey: ['adminDashboardStats'] });
           queryClient.invalidateQueries({ queryKey: ['adminOrders'] });
         }
       )
@@ -62,7 +60,7 @@ const AdminLayoutContent = () => {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'products' },
         () => {
-          queryClient.invalidateQueries({ queryKey: ['dashboardData'] });
+          queryClient.invalidateQueries({ queryKey: ['adminDashboardStats'] });
           queryClient.invalidateQueries({ queryKey: ['products'] });
         }
       )
@@ -70,12 +68,11 @@ const AdminLayoutContent = () => {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'profiles' },
         () => {
-          queryClient.invalidateQueries({ queryKey: ['dashboardData'] });
+          queryClient.invalidateQueries({ queryKey: ['adminDashboardStats'] });
         }
       )
       .subscribe();
 
-    // Cleanup subscription on component unmount
     return () => {
       supabase.removeChannel(channel);
     };
