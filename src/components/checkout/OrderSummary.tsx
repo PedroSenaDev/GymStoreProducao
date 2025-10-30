@@ -1,5 +1,5 @@
 import { CartItem } from "@/types/cart";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -15,10 +15,7 @@ export function OrderSummary({ items, shippingCost }: OrderSummaryProps) {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Resumo do Pedido</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="pt-6 space-y-6">
         <div className="space-y-4">
           {items.map(item => (
             <div key={item.cartItemId} className="flex items-start justify-between gap-4">

@@ -104,7 +104,10 @@ export default function CheckoutPage() {
 
           <div className="lg:col-span-1">
             <div className="sticky top-28 space-y-6">
-              <OrderSummary items={selectedItems} shippingCost={shippingCost} />
+              <div className="space-y-4">
+                <h2 className="text-xl font-semibold">Resumo do Pedido</h2>
+                <OrderSummary items={selectedItems} shippingCost={shippingCost} />
+              </div>
               <Button
                 size="lg"
                 className="w-full"
