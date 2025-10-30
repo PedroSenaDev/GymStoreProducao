@@ -10,6 +10,7 @@ import { Loader2 } from 'lucide-react';
 import { AddressStep } from '@/components/checkout/AddressStep';
 import { PaymentStep } from '@/components/checkout/PaymentStep';
 import { OrderSummary } from '@/components/checkout/OrderSummary';
+import { PixInformationDialog } from '@/components/checkout/PixInformationDialog';
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ export default function CheckoutPage() {
   
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
+  const [isPixDialogOpen, setIsPixDialogOpen] = useState(false);
   
   // Placeholder for shipping cost logic
   const shippingCost = 0;
@@ -77,6 +79,15 @@ export default function CheckoutPage() {
     },
   });
 
+  const handleFinalizeOrder = () => {
+    if (paymentMethod === 'pix') {
+      setIsPixDialogOpen(true);
+    } else {
+      // Handle other payment methods if they existed
+      placeOrder();
+    }
+  };
+
   if (!session) {
     return <Navigate to="/login" replace />;
   }
@@ -111,7 +122,7 @@ export default function CheckoutPage() {
               <Button
                 size="lg"
                 className="w-full"
-                onClick={() => placeOrder()}
+                onClick={handleFinalizeOrder}
                 disabled={!selectedAddressId || !paymentMethod || isPending}
               >
                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -121,6 +132,12 @@ export default function CheckoutPage() {
           </div>
         </div>
       </div>
+      <PixInformationDialog
+        open={isPixDialogOpen}
+        onOpenChange={setIsPixDialogOpen}
+        totalAmount={total}
+        onOrderPlaced={() => placeOrder()}
+      />
     </div>
   );
 }
