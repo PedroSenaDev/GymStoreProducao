@@ -3,7 +3,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { useProfile } from "@/hooks/useProfile";
 import { useSessionStore } from "@/store/sessionStore";
-import { LogOut, Edit, Loader2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { LogOut, LayoutDashboard, Edit, Loader2 } from "lucide-react";
 import ProfileDetailsForm from "./ProfileDetailsForm";
 import { Separator } from "@/components/ui/separator";
 
@@ -56,7 +57,17 @@ export default function ProfileDetailsPage() {
                     <ProfileInfo label="CPF" value={profile?.cpf} />
                     <ProfileInfo label="Telefone" value={profile?.phone} />
                 </CardContent>
-                <CardFooter className="flex flex-col-reverse sm:flex-row items-center justify-end gap-4 pt-6">
+                <CardFooter className="flex flex-col-reverse sm:flex-row items-center gap-4 pt-6">
+                    <div className="flex-1 w-full sm:w-auto">
+                        {profile?.isAdmin && (
+                        <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
+                            <Link to="/admin">
+                            <LayoutDashboard className="mr-2 h-4 w-4" />
+                            Painel Admin
+                            </Link>
+                        </Button>
+                        )}
+                    </div>
                     <Button variant="destructive" onClick={logout} size="sm" className="w-full sm:w-auto">
                         <LogOut className="mr-2 h-4 w-4" />
                         Sair

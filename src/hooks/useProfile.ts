@@ -12,12 +12,28 @@ const fetchProfile = async (userId: string): Promise<Profile | null> => {
 
   if (profileError) {
     console.error('Error fetching profile:', profileError.message);
-    return null;
+    // We don't throw here because a profile might not exist yet, but we still need to check admin status.
   }
 
+  const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin', {
+    p_user_id: userId,
+  });
+
+  if (adminError) {
+    console.error('Error checking admin status:', adminError.message);
+    // Return a minimal profile object even if admin check fails
+    return {
+      id: userId,
+      ...(profileData || {}),
+      isAdmin: false,
+    } as Profile;
+  }
+
+  // Construct the full profile object, ensuring the ID is always present.
   return {
     id: userId,
-    ...profileData,
+    ...(profileData || {}),
+    isAdmin: !!isAdmin,
   } as Profile;
 };
 
