@@ -19,7 +19,7 @@ import { PDFDownloadLink } from "@react-pdf/renderer";
 import { OrderInvoice } from "@/components/admin/OrderInvoice";
 
 interface OrderDetailsData extends Order {
-  profiles: { full_name: string; phone: string; } | null;
+  profiles: { full_name: string; phone: string; cpf: string; email: string; } | null;
   addresses: {
     street: string;
     number: string;
@@ -43,7 +43,7 @@ interface OrderItemData {
 async function fetchOrderDetails(orderId: string) {
   const { data: orderData, error: orderError } = await supabase
     .from("orders")
-    .select("*, profiles(full_name, phone), addresses(*)")
+    .select("*, profiles(full_name, phone, cpf, email), addresses(*)")
     .eq("id", orderId)
     .single();
   if (orderError) throw new Error(orderError.message);

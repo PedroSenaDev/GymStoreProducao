@@ -54,6 +54,7 @@ const AdminLayoutContent = () => {
         () => {
           queryClient.invalidateQueries({ queryKey: ['adminDashboardStats'] });
           queryClient.invalidateQueries({ queryKey: ['adminOrders'] });
+          queryClient.invalidateQueries({ queryKey: ['orderDetails'] });
         }
       )
       .on(

@@ -12,6 +12,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 async function fetchUserOrders(userId: string): Promise<Order[]> {
   const { data, error } = await supabase
@@ -27,7 +29,6 @@ async function fetchUserOrders(userId: string): Promise<Order[]> {
 const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 const formatDate = (date: string) => new Date(date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
 
-// Função para traduzir o status
 const translateStatus = (status: string): string => {
     switch (status) {
       case 'pending': return 'Pendente';
@@ -39,13 +40,12 @@ const translateStatus = (status: string): string => {
     }
 };
 
-// Função para definir a cor do badge com base no status
 const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
       case 'pending': return 'secondary';
       case 'processing': return 'default';
       case 'shipped': return 'outline';
-      case 'delivered': return 'default'; // Usaremos 'default' (preto) para entregue, mas podemos adicionar uma classe de cor se necessário
+      case 'delivered': return 'default';
       case 'cancelled': return 'destructive';
       default: return 'secondary';
     }
@@ -54,12 +54,37 @@ const getStatusVariant = (status: string): "default" | "secondary" | "destructiv
 export default function OrdersPage() {
   const session = useSessionStore((state) => state.session);
   const userId = session?.user.id;
+  const queryClient = useQueryClient();
 
   const { data: orders, isLoading } = useQuery({
     queryKey: ["userOrders", userId],
     queryFn: () => fetchUserOrders(userId!),
     enabled: !!userId,
   });
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const channel = supabase
+      .channel(`user-orders-${userId}`)
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'orders', 
+          filter: `user_id=eq.${userId}` 
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["userOrders", userId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, queryClient]);
 
   if (isLoading) {
     return (

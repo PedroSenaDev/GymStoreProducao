@@ -124,6 +124,8 @@ export const OrderInvoice = ({ order, items }: { order: any, items: any[] }) => 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Dados do Cliente</Text>
         <Text style={styles.text}>Nome: {order.profiles?.full_name}</Text>
+        <Text style={styles.text}>Email: {order.profiles?.email}</Text>
+        <Text style={styles.text}>CPF: {order.profiles?.cpf}</Text>
         <Text style={styles.text}>Telefone: {order.profiles?.phone}</Text>
         <Text style={styles.text}>Pedido Nº: {order.id.substring(0, 8)}</Text>
       </View>
