@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, User, MapPin, Package, CreditCard, Truck, Edit } from "lucide-react";
+import { Loader2, User, MapPin, Package, CreditCard, Truck, Edit, FileDown } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/dialog";
 import UpdateOrderForm from "./UpdateOrderForm";
 import { Order } from "@/types/order";
+import { PDFDownloadLink } from "@react-pdf/renderer";
+import { OrderInvoice } from "@/components/admin/OrderInvoice";
 
 interface OrderDetailsData extends Order {
   profiles: { full_name: string; phone: string; } | null;
@@ -89,27 +91,40 @@ export default function OrderDetails({ orderId }: { orderId: string }) {
   return (
     <ScrollArea className="flex-grow pr-6 -mr-6">
       <div className="space-y-6">
-        <div className="flex justify-between items-start">
+        <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-start">
           <div>
             <h3 className="font-semibold">Pedido #{order.id.substring(0, 8)}</h3>
             <p className="text-sm text-muted-foreground">
               Realizado em {new Date(order.created_at).toLocaleDateString('pt-BR')}
             </p>
           </div>
-          <Dialog open={isUpdateDialogOpen} onOpenChange={setUpdateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Edit className="mr-2 h-4 w-4" />
-                Atualizar Pedido
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Atualizar Pedido</DialogTitle>
-              </DialogHeader>
-              <UpdateOrderForm order={order} onFinished={() => setUpdateDialogOpen(false)} />
-            </DialogContent>
-          </Dialog>
+          <div className="flex gap-2 self-start sm:self-auto">
+            <PDFDownloadLink
+              document={<OrderInvoice order={order} items={items} />}
+              fileName={`pedido_${order.id.substring(0, 8)}.pdf`}
+            >
+              {({ loading }) => (
+                <Button variant="outline" size="sm" disabled={loading}>
+                  <FileDown className="mr-2 h-4 w-4" />
+                  {loading ? 'Gerando...' : 'Gerar PDF da Nota'}
+                </Button>
+              )}
+            </PDFDownloadLink>
+            <Dialog open={isUpdateDialogOpen} onOpenChange={setUpdateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Edit className="mr-2 h-4 w-4" />
+                  Atualizar
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Atualizar Pedido</DialogTitle>
+                </DialogHeader>
+                <UpdateOrderForm order={order} onFinished={() => setUpdateDialogOpen(false)} />
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
         <Separator />
 
