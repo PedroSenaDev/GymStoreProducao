@@ -4,5 +4,4 @@ export interface Profile {
   cpf?: string;
   phone?: string;
   updated_at: string;
-  isAdmin: boolean;
 }
