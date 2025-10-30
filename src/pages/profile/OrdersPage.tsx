@@ -1,24 +1,20 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSessionStore } from "@/store/sessionStore";
 import { Order } from "@/types/order";
-import { Loader2, Package, ShoppingBag } from "lucide-react";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { Loader2, ShoppingBag } from "lucide-react";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useEffect } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import OrderDetailsDialog from "@/components/profile/OrderDetailsDialog";
 
 async function fetchUserOrders(userId: string): Promise<Order[]> {
   const { data, error } = await supabase
     .from("orders")
-    .select("*, order_items(*, products(*))")
+    .select("*, order_items(*, products(*)), shipping_address:shipping_address_id(*)")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
@@ -52,6 +48,7 @@ const getStatusVariant = (status: string): "default" | "secondary" | "destructiv
 };
 
 export default function OrdersPage() {
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const session = useSessionStore((state) => state.session);
   const userId = session?.user.id;
   const queryClient = useQueryClient();
@@ -113,59 +110,63 @@ export default function OrdersPage() {
         </p>
       </div>
       <Separator />
-      <Accordion type="single" collapsible className="w-full space-y-4">
+      <div className="space-y-4">
         {orders.map((order) => (
-          <AccordionItem value={order.id} key={order.id} className="border rounded-lg bg-card">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full text-left">
-                <div className="flex-1">
-                  <p className="font-semibold">Pedido #{order.id.substring(0, 8)}</p>
-                  <p className="text-sm text-muted-foreground">Realizado em {formatDate(order.created_at)}</p>
+          <Card key={order.id}>
+            <CardHeader>
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                <div>
+                  <CardTitle className="text-base">Pedido #{order.id.substring(0, 8)}</CardTitle>
+                  <CardDescription>Realizado em {formatDate(order.created_at)}</CardDescription>
                 </div>
-                <div className="flex items-center gap-4 mt-2 sm:mt-0">
-                  <span className="font-bold text-base">{formatCurrency(order.total_amount)}</span>
-                  <Badge 
-                    variant={getStatusVariant(order.status)}
-                    className={cn(
-                        order.status === 'delivered' && 'bg-green-600 text-white',
-                        order.status === 'shipped' && 'bg-yellow-400 text-black hover:bg-yellow-400/80'
-                    )}
-                  >
-                    {translateStatus(order.status)}
-                  </Badge>
-                </div>
+                <Badge 
+                  variant={getStatusVariant(order.status)}
+                  className={cn(
+                      'w-fit',
+                      order.status === 'delivered' && 'bg-green-600 text-white',
+                      order.status === 'shipped' && 'bg-yellow-400 text-black hover:bg-yellow-400/80'
+                  )}
+                >
+                  {translateStatus(order.status)}
+                </Badge>
               </div>
-            </AccordionTrigger>
-            <AccordionContent className="p-6 border-t">
-              <div className="space-y-4">
-                <h4 className="font-semibold flex items-center"><Package className="mr-2 h-4 w-4" /> Itens do Pedido</h4>
-                {order.order_items?.map((item) => (
-                  <div key={item.id} className="flex items-center gap-4">
-                    <img
-                      src={item.products?.image_urls?.[0] || '/placeholder.svg'}
-                      alt={item.products?.name}
-                      className="h-16 w-16 rounded-md object-cover"
-                    />
-                    <div className="flex-1">
-                      <p className="font-medium">{item.products?.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {item.quantity} x {formatCurrency(item.price)}
-                      </p>
-                    </div>
-                    <p className="font-semibold">{formatCurrency(item.quantity * item.price)}</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {order.order_items?.map(item => (
+                <div key={item.id} className="flex items-center gap-4 text-sm">
+                  <img 
+                    src={item.products?.image_urls?.[0] || '/placeholder.svg'} 
+                    alt={item.products?.name}
+                    className="h-12 w-12 rounded-md object-cover"
+                  />
+                  <div className="flex-1">
+                    <p className="font-medium">{item.products?.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {item.selected_size && `Tamanho: ${item.selected_size}`}
+                      {item.selected_size && item.selected_color && ' / '}
+                      {item.selected_color && `Cor: ${item.selected_color.name}`}
+                    </p>
                   </div>
-                ))}
-                 {order.tracking_code && (
-                    <div className="pt-4">
-                        <h4 className="font-semibold">Rastreio</h4>
-                        <p className="text-sm text-muted-foreground">Código: {order.tracking_code}</p>
-                    </div>
-                 )}
-              </div>
-            </AccordionContent>
-          </AccordionItem>
+                  <div className="text-right">
+                    <p>{item.quantity}x {formatCurrency(item.price)}</p>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+            <CardFooter className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-muted/50 px-6 py-3">
+              <p className="font-semibold text-sm">Total: {formatCurrency(order.total_amount)}</p>
+              <Button variant="outline" size="sm" onClick={() => setSelectedOrder(order)} className="mt-2 sm:mt-0 w-full sm:w-auto">
+                Ver Detalhes
+              </Button>
+            </CardFooter>
+          </Card>
         ))}
-      </Accordion>
+      </div>
+      <OrderDetailsDialog 
+        order={selectedOrder}
+        open={!!selectedOrder}
+        onOpenChange={() => setSelectedOrder(null)}
+      />
     </div>
   );
 }
