@@ -102,17 +102,19 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          <div className="space-y-6">
-            <OrderSummary items={selectedItems} shippingCost={shippingCost} />
-            <Button
-              size="lg"
-              className="w-full"
-              onClick={() => placeOrder()}
-              disabled={!selectedAddressId || !paymentMethod || isPending}
-            >
-              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Finalizar Pedido
-            </Button>
+          <div className="lg:col-span-1">
+            <div className="sticky top-28 space-y-6">
+              <OrderSummary items={selectedItems} shippingCost={shippingCost} />
+              <Button
+                size="lg"
+                className="w-full"
+                onClick={() => placeOrder()}
+                disabled={!selectedAddressId || !paymentMethod || isPending}
+              >
+                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Finalizar Pedido
+              </Button>
+            </div>
           </div>
         </div>
       </div>

@@ -14,7 +14,7 @@ export function OrderSummary({ items, shippingCost }: OrderSummaryProps) {
   const total = subtotal + shippingCost;
 
   return (
-    <Card className="sticky top-28">
+    <Card>
       <CardHeader>
         <CardTitle>Resumo do Pedido</CardTitle>
       </CardHeader>
