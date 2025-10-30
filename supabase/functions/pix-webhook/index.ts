@@ -1,31 +1,43 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 
-// CORS headers para permitir a comunicação
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Crie um cliente Supabase com a chave de serviço para poder modificar o banco de dados
 const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 )
 
+// Pega a chave secreta das variáveis de ambiente do Supabase
+const WEBHOOK_SECRET = Deno.env.get("ABACATE_WEBHOOK_SECRET")
+
 serve(async (req) => {
-  // Lida com a requisição de pre-flight do CORS
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    // 1. Extrai os dados enviados pelo Abacate Pay
+    // 1. Verificação de Segurança
+    const url = new URL(req.url);
+    const receivedSecret = url.searchParams.get('secret');
+
+    if (!WEBHOOK_SECRET) {
+      console.error("ABACATE_WEBHOOK_SECRET não está configurado nas variáveis de ambiente.");
+      return new Response("Configuração interna do webhook incompleta.", { status: 500 });
+    }
+
+    if (receivedSecret !== WEBHOOK_SECRET) {
+      console.warn("Tentativa de acesso ao webhook com chave inválida.");
+      return new Response("Acesso não autorizado.", { status: 401 });
+    }
+
+    // 2. Processamento do Payload (como antes)
     const payload = await req.json()
     console.log("Webhook payload received:", payload);
 
-    // O payload do Abacate Pay para um PIX pago tem um formato específico.
-    // Vamos assumir que ele envia um objeto 'data' com o 'id' da cobrança e o 'status'.
     const pixChargeId = payload?.data?.id;
     const paymentStatus = payload?.data?.status;
 
@@ -33,9 +45,7 @@ serve(async (req) => {
       throw new Error("Payload inválido do webhook: 'id' ou 'status' não encontrados.");
     }
 
-    // 2. Verifica se o pagamento foi confirmado
     if (paymentStatus === 'PAID' || paymentStatus === 'CONFIRMED') {
-      // 3. Encontra o pedido no banco de dados usando o ID da cobrança PIX
       const { data: order, error: findError } = await supabaseAdmin
         .from('orders')
         .select('id, status')
@@ -43,15 +53,12 @@ serve(async (req) => {
         .single();
 
       if (findError) {
-        // Se o pedido não for encontrado, pode não ser um erro crítico (talvez um teste),
-        // mas é bom registrar.
         console.warn(`Pedido com pix_charge_id ${pixChargeId} não encontrado.`);
         return new Response(JSON.stringify({ message: "Pedido não encontrado." }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      // 4. Atualiza o status do pedido para 'processing' se ele ainda estiver 'pending'
       if (order.status === 'pending') {
         const { error: updateError } = await supabaseAdmin
           .from('orders')
@@ -61,12 +68,10 @@ serve(async (req) => {
         if (updateError) {
           throw new Error(`Erro ao atualizar o pedido ${order.id}: ${updateError.message}`);
         }
-
         console.log(`Pedido ${order.id} atualizado para 'processing'.`);
       }
     }
 
-    // 5. Retorna uma resposta de sucesso para o Abacate Pay
     return new Response(JSON.stringify({ received: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
