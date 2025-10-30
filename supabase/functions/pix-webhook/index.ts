@@ -11,10 +11,11 @@ const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 )
 
-// Pega a chave secreta das variáveis de ambiente do Supabase
 const WEBHOOK_SECRET = Deno.env.get("ABACATE_WEBHOOK_SECRET")
 
 serve(async (req) => {
+  console.log("Webhook request received at:", new Date().toISOString());
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
@@ -34,9 +35,9 @@ serve(async (req) => {
       return new Response("Acesso não autorizado.", { status: 401 });
     }
 
-    // 2. Processamento do Payload (como antes)
+    // 2. Processamento do Payload
     const payload = await req.json()
-    console.log("Webhook payload received:", payload);
+    console.log("Webhook payload received:", JSON.stringify(payload, null, 2));
 
     const pixChargeId = payload?.data?.id;
     const paymentStatus = payload?.data?.status;
