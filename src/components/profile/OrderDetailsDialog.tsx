@@ -63,11 +63,11 @@ export default function OrderDetailsDialog({ order, open, onOpenChange }: OrderD
                 <div key={item.id} className="flex items-center gap-4">
                   <img
                     src={item.products?.image_urls?.[0] || '/placeholder.svg'}
-                    alt={item.products?.name}
+                    alt={item.products?.name || 'Produto'}
                     className="h-16 w-16 rounded-md object-cover"
                   />
                   <div className="flex-1">
-                    <p className="font-medium text-sm">{item.products?.name}</p>
+                    <p className="font-medium text-sm">{item.products?.name || 'Produto não encontrado'}</p>
                     <div className="text-xs text-muted-foreground">
                       <p>{item.quantity} x {formatCurrency(item.price)}</p>
                       {item.selected_size && <p>Tamanho: {item.selected_size}</p>}

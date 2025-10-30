@@ -7,27 +7,32 @@ import { AddressStep } from '@/components/checkout/AddressStep';
 import { PaymentStep } from '@/components/checkout/PaymentStep';
 import { OrderSummary } from '@/components/checkout/OrderSummary';
 import { PixInformationDialog } from '@/components/checkout/PixInformationDialog';
+import { useProfile } from '@/hooks/useProfile';
+import { AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function CheckoutPage() {
   const session = useSessionStore((state) => state.session);
   const { items } = useCartStore();
+  const { data: profile, isLoading: isLoadingProfile } = useProfile();
   
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
   const [isPixDialogOpen, setIsPixDialogOpen] = useState(false);
   
-  // Placeholder for shipping cost logic
   const shippingCost = 0;
 
   const selectedItems = useMemo(() => items.filter(item => item.selected), [items]);
   const subtotal = useMemo(() => selectedItems.reduce((acc, item) => acc + item.price * item.quantity, 0), [selectedItems]);
   const total = subtotal + shippingCost;
 
+  const isProfileIncomplete = !profile?.full_name || !profile?.cpf;
+  const isCheckoutDisabled = !selectedAddressId || !paymentMethod || isProfileIncomplete || isLoadingProfile;
+
   const handleFinalizeOrder = () => {
+    if (isCheckoutDisabled) return;
     if (paymentMethod === 'pix') {
       setIsPixDialogOpen(true);
-    } else {
-      // Lógica para outros métodos de pagamento (ex: cartão) iria aqui
     }
   };
 
@@ -62,11 +67,19 @@ export default function CheckoutPage() {
                 <h2 className="text-xl font-semibold">Resumo do Pedido</h2>
                 <OrderSummary items={selectedItems} shippingCost={shippingCost} />
               </div>
+              {isProfileIncomplete && !isLoadingProfile && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Por favor, <a href="/profile/details" className="font-semibold underline">complete seu perfil</a> (nome e CPF) para continuar.
+                  </AlertDescription>
+                </Alert>
+              )}
               <Button
                 size="lg"
                 className="w-full"
                 onClick={handleFinalizeOrder}
-                disabled={!selectedAddressId || !paymentMethod}
+                disabled={isCheckoutDisabled}
               >
                 Finalizar Pedido
               </Button>
