@@ -18,45 +18,20 @@ import { Order } from "@/types/order";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { OrderInvoice } from "@/components/admin/OrderInvoice";
 
-interface OrderDetailsData extends Order {
-  profiles: { full_name: string; phone: string; cpf: string; email: string; } | null;
-  addresses: {
-    street: string;
-    number: string;
-    complement: string;
-    neighborhood: string;
-    city: string;
-    state: string;
-    zip_code: string;
-  } | null;
-}
-
-interface OrderItemData {
-  quantity: number;
-  price: number;
-  selected_size?: string;
-  selected_color?: { code: string; name: string };
-  products: {
-    name: string;
-    image_urls: string[];
-  } | null;
-}
-
 async function fetchOrderDetails(orderId: string) {
-  const { data: orderData, error: orderError } = await supabase
+  const { data, error } = await supabase
     .from("orders")
-    .select("*, profiles(full_name, phone, cpf, email), addresses(*)")
+    .select(`
+      *,
+      profiles (full_name, phone, cpf, email),
+      shipping_address:addresses (*),
+      order_items (*, products (*))
+    `)
     .eq("id", orderId)
     .single();
-  if (orderError) throw new Error(orderError.message);
 
-  const { data: itemsData, error: itemsError } = await supabase
-    .from("order_items")
-    .select("*, products(*)")
-    .eq("order_id", orderId);
-  if (itemsError) throw new Error(itemsError.message);
-
-  return { order: orderData as OrderDetailsData, items: itemsData as OrderItemData[] };
+  if (error) throw new Error(error.message);
+  return data;
 }
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -74,7 +49,7 @@ const translateStatus = (status: string): string => {
 
 export default function OrderDetails({ orderId }: { orderId: string }) {
   const [isUpdateDialogOpen, setUpdateDialogOpen] = useState(false);
-  const { data, isLoading, isError } = useQuery({
+  const { data: order, isLoading, isError } = useQuery({
     queryKey: ["orderDetails", orderId],
     queryFn: () => fetchOrderDetails(orderId),
     enabled: !!orderId,
@@ -84,11 +59,9 @@ export default function OrderDetails({ orderId }: { orderId: string }) {
     return <div className="flex justify-center items-center h-96"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
 
-  if (isError || !data) {
+  if (isError || !order) {
     return <div className="text-center text-red-500 py-10">Erro ao carregar detalhes do pedido.</div>;
   }
-
-  const { order, items } = data;
 
   return (
     <ScrollArea className="flex-grow pr-6 -mr-6">
@@ -102,7 +75,7 @@ export default function OrderDetails({ orderId }: { orderId: string }) {
           </div>
           <div className="flex gap-2 self-start sm:self-auto">
             <PDFDownloadLink
-              document={<OrderInvoice order={order} items={items} />}
+              document={<OrderInvoice order={order} />}
               fileName={`pedido_${order.id.substring(0, 8)}.pdf`}
             >
               {({ loading }) => (
@@ -132,7 +105,7 @@ export default function OrderDetails({ orderId }: { orderId: string }) {
 
         <div className="space-y-4">
           <h4 className="font-semibold flex items-center"><Package className="mr-2 h-4 w-4" /> Itens do Pedido</h4>
-          {items.map((item, index) => (
+          {order.order_items?.map((item: any, index: number) => (
             <div key={index} className="flex items-center gap-4">
               <img
                 src={item.products?.image_urls?.[0] || '/placeholder.svg'}
@@ -198,11 +171,11 @@ export default function OrderDetails({ orderId }: { orderId: string }) {
           </div>
           <div className="space-y-2">
             <h4 className="font-semibold flex items-center"><MapPin className="mr-2 h-4 w-4" /> Endereço de Entrega</h4>
-            {order.addresses ? (
+            {order.shipping_address ? (
               <address className="text-sm not-italic text-muted-foreground">
-                {order.addresses.street}, {order.addresses.number}<br />
-                {order.addresses.neighborhood}<br />
-                {order.addresses.city}, {order.addresses.state} - {order.addresses.zip_code}
+                {order.shipping_address.street}, {order.shipping_address.number}<br />
+                {order.shipping_address.neighborhood}<br />
+                {order.shipping_address.city}, {order.shipping_address.state} - {order.shipping_address.zip_code}
               </address>
             ) : (
               <p className="text-sm text-muted-foreground">Endereço não informado.</p>

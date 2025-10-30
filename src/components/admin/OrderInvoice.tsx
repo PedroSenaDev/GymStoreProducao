@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
 const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 const formatDateTime = (date: string) => format(new Date(date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
 
-export const OrderInvoice = ({ order, items }: { order: any, items: any[] }) => (
+export const OrderInvoice = ({ order }: { order: any }) => (
   <Document>
     <Page size="A4" style={styles.page}>
       {/* Cabeçalho */}
@@ -144,9 +144,9 @@ export const OrderInvoice = ({ order, items }: { order: any, items: any[] }) => 
       {/* Endereço de Entrega */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Endereço de Entrega</Text>
-        <Text style={styles.text}>{order.addresses?.street || 'Rua não informada'}, {order.addresses?.number || 'S/N'}</Text>
-        <Text style={styles.text}>{order.addresses?.neighborhood || 'Bairro não informado'} - {order.addresses?.city || 'Cidade não informada'}, {order.addresses?.state || 'UF'}</Text>
-        <Text style={styles.text}>CEP: {order.addresses?.zip_code || 'Não informado'}</Text>
+        <Text style={styles.text}>{order.shipping_address?.street || 'Rua não informada'}, {order.shipping_address?.number || 'S/N'}</Text>
+        <Text style={styles.text}>{order.shipping_address?.neighborhood || 'Bairro não informado'} - {order.shipping_address?.city || 'Cidade não informada'}, {order.shipping_address?.state || 'UF'}</Text>
+        <Text style={styles.text}>CEP: {order.shipping_address?.zip_code || 'Não informado'}</Text>
       </View>
 
       {/* Itens do Pedido */}
@@ -159,7 +159,7 @@ export const OrderInvoice = ({ order, items }: { order: any, items: any[] }) => 
             <Text style={[styles.colHeader, styles.colPrice]}>Preço Unit.</Text>
             <Text style={[styles.colHeader, styles.colTotal]}>Subtotal</Text>
           </View>
-          {items.map((item, index) => (
+          {order.order_items?.map((item: any, index: number) => (
             <View key={index} style={styles.tableRow}>
               <View style={[styles.col, styles.colProduct]}>
                 <Text>{item.products?.name || 'Produto desconhecido'}</Text>
