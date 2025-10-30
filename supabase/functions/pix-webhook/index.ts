@@ -39,8 +39,8 @@ serve(async (req) => {
     const payload = await req.json()
     console.log("Webhook payload received:", JSON.stringify(payload, null, 2));
 
-    const pixChargeId = payload?.data?.id;
-    const paymentStatus = payload?.data?.status;
+    const pixChargeId = payload?.data?.pixQrCode?.id;
+    const paymentStatus = payload?.data?.pixQrCode?.status;
 
     if (!pixChargeId || !paymentStatus) {
       throw new Error("Payload inválido do webhook: 'id' ou 'status' não encontrados.");
