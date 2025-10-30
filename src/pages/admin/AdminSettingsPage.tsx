@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Policy } from "@/types/policy";
 import { Button } from "@/components/ui/button";
@@ -17,9 +17,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Loader2, PlusCircle, Edit } from "lucide-react";
+import { Loader2, PlusCircle, Edit, RefreshCw } from "lucide-react";
 import PolicyForm from "./PolicyForm";
 import AboutUsForm from "./AboutUsForm";
+import { showError, showSuccess } from "@/utils/toast";
 
 async function fetchPolicies(): Promise<Policy[]> {
   const { data, error } = await supabase.from("policies").select("*").not('display_area', 'eq', 'about_us').order('created_at', { ascending: false });
@@ -37,6 +38,8 @@ export default function AdminSettingsPage() {
   const [isPolicyDialogOpen, setIsPolicyDialogOpen] = useState(false);
   const [isAboutUsDialogOpen, setIsAboutUsDialogOpen] = useState(false);
   const [selectedPolicy, setSelectedPolicy] = useState<Policy | undefined>(undefined);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data: policies, isLoading: isLoadingPolicies } = useQuery({
     queryKey: ["policies"],
@@ -58,6 +61,20 @@ export default function AdminSettingsPage() {
     setIsPolicyDialogOpen(true);
   };
 
+  const handleSync = async () => {
+    setIsSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-pending-orders');
+      if (error) throw error;
+      showSuccess(data.message || "Sincronização concluída!");
+      queryClient.invalidateQueries({ queryKey: ["adminOrders"] });
+    } catch (error: any) {
+      showError(error.message || "Falha na sincronização.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const isLoading = isLoadingPolicies || isLoadingAboutUs;
 
   return (
@@ -70,6 +87,25 @@ export default function AdminSettingsPage() {
         </div>
       ) : (
         <div className="space-y-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Sincronização de Pedidos</CardTitle>
+              <CardDescription>
+                Sincronize manualmente o status de pagamentos Pix que não foram atualizados automaticamente.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={handleSync} disabled={isSyncing}>
+                {isSyncing ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                )}
+                Sincronizar Pedidos Pendentes
+              </Button>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Seção "Sobre Nossa Loja"</CardTitle>
