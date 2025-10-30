@@ -19,8 +19,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 const links = [
-  { to: '/admin', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
-  { to: '/admin/orders', label: 'Pedidos', icon: <ShoppingCart size={20} /> },
   { to: '/admin/products', label: 'Produtos', icon: <Package size={20} /> },
   { to: '/admin/categories', label: 'Categorias', icon: <Tags size={20} /> },
   { to: '/admin/settings', label: 'Configurações', icon: <Settings size={20} /> },
