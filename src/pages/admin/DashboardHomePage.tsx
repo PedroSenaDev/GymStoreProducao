@@ -18,9 +18,9 @@ async function fetchDashboardData() {
     recentOrdersResponse
   ] = await Promise.all([
     supabase.from('orders').select('id, total_amount'),
-    // Corrected method to get count, using select('*') as per Supabase docs
-    supabase.from('products').select('*', { count: 'exact', head: true }),
-    supabase.from('profiles').select('*', { count: 'exact', head: true }),
+    // Corrected method to get count for robustness
+    supabase.from('products').select('id', { count: 'exact' }),
+    supabase.from('profiles').select('id', { count: 'exact' }),
     supabase
       .from('orders')
       .select('id, total_amount, created_at, profiles(full_name, email)')
