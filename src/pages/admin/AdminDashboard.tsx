@@ -14,6 +14,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useSessionStore } from '@/store/sessionStore';
+import { useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 const links = [
   { to: '/admin', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
@@ -40,6 +43,43 @@ const SidebarLogo = () => {
 
 const AdminLayoutContent = () => {
   const { logout } = useSessionStore();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    // This subscription listens for any changes in the database
+    // and automatically refetches the data for the dashboard.
+    const channel = supabase
+      .channel('admin-dashboard-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['dashboardData'] });
+          queryClient.invalidateQueries({ queryKey: ['adminOrders'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'products' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['dashboardData'] });
+          queryClient.invalidateQueries({ queryKey: ['products'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'profiles' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['dashboardData'] });
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription on component unmount
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen w-full bg-muted/40">
