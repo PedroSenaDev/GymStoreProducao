@@ -84,31 +84,47 @@ export default function UpdateOrderForm({ order, onFinished }: UpdateOrderFormPr
     onSuccess: async (values) => {
       showSuccess("Pedido atualizado com sucesso!");
       
-      // Enviar e-mail se necessário
       if ((values.status === 'shipped' || values.status === 'delivered') && order.profiles?.email) {
         const toastId = showLoading("Enviando e-mail de notificação...");
+        
         const subject = values.status === 'shipped' 
           ? `Seu Pedido #${order.id.substring(0, 8)} foi enviado!`
           : `Seu Pedido #${order.id.substring(0, 8)} foi entregue!`;
         
-        const body = values.status === 'shipped'
-          ? `<p>Olá, ${order.profiles.full_name}. Seu pedido foi enviado e está a caminho!</p>
-             ${values.tracking_code ? `<p>Código de rastreio: <strong>${values.tracking_code}</strong></p>` : ''}
-             <p>Acompanhe o status em: <a href="${window.location.origin}/profile/orders">Meus Pedidos</a></p>`
-          : `<p>Olá, ${order.profiles.full_name}. Ótima notícia! Seu pedido foi entregue.</p>
-             <p>Esperamos que você goste dos seus produtos! Para ver detalhes, acesse: <a href="${window.location.origin}/profile/orders">Meus Pedidos</a></p>`;
+        const bodyContent = values.status === 'shipped'
+          ? `<p>Seu pedido foi enviado e já está a caminho!</p>
+             ${values.tracking_code ? `<p>Você pode rastreá-lo usando o código: <strong>${values.tracking_code}</strong></p>` : ''}`
+          : `<p>Ótima notícia! Seu pedido foi entregue.</p>
+             <p>Esperamos que você aproveite ao máximo seus novos produtos. Foi um prazer atendê-lo!</p>`;
+
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; background-color: #f4f4f7; color: #333; line-height: 1.5; margin: 0; padding: 20px;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e2e2; border-radius: 8px; padding: 40px;">
+              <div style="text-align: center; margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 20px;">
+                <h1 style="font-size: 24px; font-weight: 800; letter-spacing: 0.1em; color: #111; margin: 0;">GYMSTORE</h1>
+              </div>
+              <h2 style="font-size: 20px; color: #111;">${subject}</h2>
+              <p>Olá, ${order.profiles.full_name},</p>
+              ${bodyContent}
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="https://gymstoremoc.vercel.app/profile/orders" style="display: inline-block; background-color: #111; color: #ffffff !important; padding: 12px 24px; text-align: center; text-decoration: none; border-radius: 6px; font-weight: 500;">
+                  Acompanhar Meus Pedidos
+                </a>
+              </div>
+              <p>Agradecemos pela sua preferência!</p>
+              <p>Atenciosamente,<br>Equipe GYMSTORE</p>
+              <div style="margin-top: 30px; text-align: center; font-size: 12px; color: #888;">
+                <p>&copy; ${new Date().getFullYear()} GYMSTORE. Todos os direitos reservados.</p>
+              </div>
+            </div>
+          </div>
+        `;
 
         const { error: emailError } = await supabase.functions.invoke('send-email', {
           body: {
             to: order.profiles.email,
             subject,
-            htmlContent: `
-              <div style="font-family: Arial, sans-serif; color: #333;">
-                <h1 style="color: #111;">${subject}</h1>
-                ${body}
-                <p>Atenciosamente,<br>Equipe GYMSTORE</p>
-              </div>
-            `,
+            htmlContent: emailHtml,
           },
         });
         dismissToast(toastId);
