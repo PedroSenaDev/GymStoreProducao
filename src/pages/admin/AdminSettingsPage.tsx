@@ -66,6 +66,18 @@ export default function AdminSettingsPage() {
   const { data: aboutUsPolicy, isLoading: isLoadingAboutUs } = useQuery({ queryKey: ["aboutUsPolicy"], queryFn: fetchAboutUsPolicy });
   const { data: sizeCharts, isLoading: isLoadingSizeCharts } = useQuery({ queryKey: ["sizeCharts"], queryFn: fetchSizeCharts });
 
+  const { mutate: deletePolicy } = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("policies").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      showSuccess("Política excluída com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["policies"] });
+    },
+    onError: (error: any) => showError(error.message),
+  });
+
   const { mutate: deleteSizeChart } = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("size_charts").delete().eq("id", id);
@@ -231,9 +243,32 @@ export default function AdminSettingsPage() {
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between text-lg">
                       {policy.title}
-                      <Button variant="ghost" size="icon" onClick={() => handleEditPolicy(policy)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center">
+                        <Button variant="ghost" size="icon" onClick={() => handleEditPolicy(policy)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="text-red-600 hover:text-red-700">
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Esta ação não pode ser desfeita. A política será excluída permanentemente.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => deletePolicy(policy.id)}>
+                                        Excluir
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="flex-grow">
