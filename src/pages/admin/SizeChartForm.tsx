@@ -14,12 +14,19 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { showError, showSuccess } from "@/utils/toast";
 import { SizeChart } from "@/types/sizeChart";
 import { Product } from "@/types/product";
+import { Category } from "@/types/category";
 import { Loader2, Search, X } from "lucide-react";
 import SingleImageUpload from "@/components/admin/SingleImageUpload";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 
 const formSchema = z.object({
@@ -36,6 +43,7 @@ export default function SizeChartForm({ sizeChart, onFinished }: SizeChartFormPr
   const queryClient = useQueryClient();
   const [productSearch, setProductSearch] = useState("");
   const [linkedProducts, setLinkedProducts] = useState<Product[]>([]);
+  const [isAddingByCategory, setIsAddingByCategory] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -54,11 +62,20 @@ export default function SizeChartForm({ sizeChart, onFinished }: SizeChartFormPr
           .select("*")
           .eq("size_chart_id", sizeChart.id);
         if (error) console.error(error);
-        else setLinkedProducts(data);
+        else setLinkedProducts(data || []);
       };
       fetchLinkedProducts();
     }
   }, [sizeChart]);
+
+  const { data: categories, isLoading: isLoadingCategories } = useQuery({
+    queryKey: ["categories"],
+    queryFn: async (): Promise<Category[]> => {
+      const { data, error } = await supabase.from("categories").select("*").order('name');
+      if (error) throw new Error(error.message);
+      return data;
+    },
+  });
 
   const { data: searchedProducts } = useQuery({
     queryKey: ["productSearch", productSearch],
@@ -75,7 +92,6 @@ export default function SizeChartForm({ sizeChart, onFinished }: SizeChartFormPr
 
   const { mutate, isPending } = useMutation({
     mutationFn: async (values: z.infer<typeof formSchema>) => {
-      // 1. Upsert the size chart
       const { data: chartData, error: chartError } = await supabase
         .from("size_charts")
         .upsert({ id: sizeChart?.id, ...values })
@@ -85,7 +101,6 @@ export default function SizeChartForm({ sizeChart, onFinished }: SizeChartFormPr
 
       const newChartId = chartData.id;
 
-      // 2. Unlink all products currently linked to this chart
       if (sizeChart) {
         const { error: unlinkError } = await supabase
           .from("products")
@@ -94,7 +109,6 @@ export default function SizeChartForm({ sizeChart, onFinished }: SizeChartFormPr
         if (unlinkError) throw unlinkError;
       }
 
-      // 3. Link the selected products to the new chart
       if (linkedProducts.length > 0) {
         const productIds = linkedProducts.map(p => p.id);
         const { error: linkError } = await supabase
@@ -124,6 +138,26 @@ export default function SizeChartForm({ sizeChart, onFinished }: SizeChartFormPr
     setLinkedProducts(prev => prev.filter(p => p.id !== productId));
   };
 
+  const handleAddCategoryProducts = async (categoryId: string) => {
+    if (!categoryId) return;
+    setIsAddingByCategory(true);
+    try {
+      const { data: categoryProducts, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("category_id", categoryId);
+      if (error) throw error;
+
+      const newProducts = categoryProducts.filter(p => !linkedProducts.some(lp => lp.id === p.id));
+      setLinkedProducts(prev => [...prev, ...newProducts]);
+      showSuccess(`${newProducts.length} produto(s) da categoria foram adicionados.`);
+    } catch (error: any) {
+      showError("Erro ao buscar produtos da categoria: " + error.message);
+    } finally {
+      setIsAddingByCategory(false);
+    }
+  };
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(v => mutate(v))} className="space-y-6">
@@ -151,23 +185,36 @@ export default function SizeChartForm({ sizeChart, onFinished }: SizeChartFormPr
         />
         <div>
           <FormLabel>Vincular a Produtos</FormLabel>
-          <div className="relative mt-2">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar produto por nome..."
-              className="pl-9"
-              value={productSearch}
-              onChange={(e) => setProductSearch(e.target.value)}
-            />
-            {searchedProducts && productSearch && (
-              <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg">
-                {searchedProducts.map(p => (
-                  <div key={p.id} onClick={() => addProduct(p)} className="p-2 hover:bg-muted cursor-pointer">
-                    {p.name}
-                  </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar produto por nome..."
+                className="pl-9"
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
+              />
+              {searchedProducts && productSearch && (
+                <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg">
+                  {searchedProducts.map(p => (
+                    <div key={p.id} onClick={() => addProduct(p)} className="p-2 hover:bg-muted cursor-pointer text-sm">
+                      {p.name}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <Select onValueChange={handleAddCategoryProducts} disabled={isAddingByCategory || isLoadingCategories}>
+              <SelectTrigger>
+                <SelectValue placeholder="Ou adicione por categoria" />
+                {isAddingByCategory && <Loader2 className="h-4 w-4 animate-spin" />}
+              </SelectTrigger>
+              <SelectContent>
+                {categories?.map(cat => (
+                  <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                 ))}
-              </div>
-            )}
+              </SelectContent>
+            </Select>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             {linkedProducts.map(p => (
