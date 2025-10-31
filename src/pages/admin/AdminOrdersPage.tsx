@@ -179,7 +179,7 @@ export default function AdminOrdersPage() {
       </Card>
 
       <Dialog open={!!selectedOrder} onOpenChange={(isOpen) => !isOpen && setSelectedOrder(null)}>
-        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Detalhes do Pedido</DialogTitle>
           </DialogHeader>

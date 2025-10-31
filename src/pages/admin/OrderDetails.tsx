@@ -113,7 +113,7 @@ export default function OrderDetails({ orderId }: { orderId: string }) {
                 className="h-16 w-16 rounded-md object-cover"
               />
               <div className="flex-1">
-                <p className="font-medium">{item.products?.name || 'Produto não encontrado'}</p>
+                <p className="font-medium break-words">{item.products?.name || 'Produto não encontrado'}</p>
                 <div className="text-sm text-muted-foreground">
                   <p>{item.quantity} x {formatCurrency(item.price)}</p>
                   {item.selected_size && <p>Tamanho: {item.selected_size}</p>}
