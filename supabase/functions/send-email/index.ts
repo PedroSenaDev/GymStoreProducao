@@ -38,7 +38,7 @@ serve(async (req) => {
         'Accept': 'application/json',
       },
       body: JSON.stringify({
-        sender: { name: 'GYMSTORE', email: 'contato@gymstore.com' },
+        sender: { name: 'GYMSTORE', email: 'gymstoreemoc@gmail.com' },
         to: [{ email: to }],
         subject: subject,
         htmlContent: htmlContent,
