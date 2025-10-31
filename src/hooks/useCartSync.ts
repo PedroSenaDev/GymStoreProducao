@@ -26,13 +26,16 @@ const fetchCartProducts = async (dbItems: any[]): Promise<CartItem[]> => {
         const product = productsMap.get(item.product_id);
         if (!product) return null;
 
+        const selectedColorObject = product.colors.find(c => c.code === item.selected_color) || null;
+
         return {
             ...product,
             quantity: item.quantity,
             selectedSize: item.selected_size,
-            selectedColor: item.selected_color,
+            selectedColor: selectedColorObject,
             cartItemId: `${product.id}-${item.selected_size || 'none'}-${item.selected_color || 'none'}`,
             selected: true, // Default to selected when fetching from DB
+            dbCartItemId: item.id, // Capture the database ID
         };
     }).filter((item): item is CartItem => item !== null);
 };
@@ -80,7 +83,7 @@ export const useCartSync = () => {
                             product_id: item.id,
                             quantity: item.quantity,
                             selected_size: item.selectedSize,
-                            selected_color: item.selectedColor,
+                            selected_color: item.selectedColor?.code,
                         })),
                         { onConflict: 'user_id,product_id,selected_size,selected_color' }
                     );

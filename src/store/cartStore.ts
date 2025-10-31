@@ -73,16 +73,11 @@ export const useCartStore = create<CartState>()(
 
         set({ items: get().items.filter((item) => item.cartItemId !== cartItemId) });
 
-        if (session && itemToRemove) {
+        if (session && itemToRemove?.dbCartItemId) {
           const { error } = await supabase
             .from('cart_items')
             .delete()
-            .match({
-              user_id: session.user.id,
-              product_id: itemToRemove.id,
-              selected_size: itemToRemove.selectedSize,
-              selected_color: itemToRemove.selectedColor?.code,
-            });
+            .eq('id', itemToRemove.dbCartItemId);
           if (error) console.error("Error removing item from DB:", error);
         }
       },
@@ -101,16 +96,11 @@ export const useCartStore = create<CartState>()(
           ),
         });
 
-        if (session && itemToUpdate) {
+        if (session && itemToUpdate?.dbCartItemId) {
           const { error } = await supabase
             .from('cart_items')
             .update({ quantity })
-            .match({
-              user_id: session.user.id,
-              product_id: itemToUpdate.id,
-              selected_size: itemToUpdate.selectedSize,
-              selected_color: itemToUpdate.selectedColor?.code,
-            });
+            .eq('id', itemToUpdate.dbCartItemId);
           if (error) console.error("Error updating quantity in DB:", error);
         }
       },
@@ -139,27 +129,22 @@ export const useCartStore = create<CartState>()(
       
         // Sync with DB if logged in
         if (session) {
-          const deletePromises = itemsToRemove.map(item =>
-            supabase
+          const dbIdsToDelete = itemsToRemove
+            .map(item => item.dbCartItemId)
+            .filter((id): id is string => !!id);
+
+          if (dbIdsToDelete.length > 0) {
+            const { error } = await supabase
               .from('cart_items')
               .delete()
-              .match({
-                user_id: session.user.id,
-                product_id: item.id,
-                selected_size: item.selectedSize,
-                selected_color: item.selectedColor?.code,
-              })
-          );
+              .in('id', dbIdsToDelete);
       
-          const results = await Promise.all(deletePromises);
-      
-          const failedDeletions = results.filter(result => result.error);
-      
-          if (failedDeletions.length > 0) {
-            console.error("Failed to delete some items from DB:", failedDeletions.map(f => f.error));
-            // Revert the optimistic update on failure
-            set({ items: allItems });
-            showError("Ocorreu um erro ao remover alguns itens. Tente novamente.");
+            if (error) {
+              console.error("Failed to delete items from DB:", error);
+              // Revert the optimistic update on failure
+              set({ items: allItems });
+              showError("Ocorreu um erro ao remover os itens. Tente novamente.");
+            }
           }
         }
       },

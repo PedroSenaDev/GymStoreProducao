@@ -7,4 +7,5 @@ export interface CartItem extends Product {
   // Unique ID for this specific item instance in the cart (product.id + size + color)
   cartItemId: string; 
   selected: boolean;
+  dbCartItemId?: string; // The actual primary key from the cart_items table
 }
