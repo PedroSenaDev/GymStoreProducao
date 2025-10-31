@@ -179,16 +179,16 @@ export default function ProductDetailPage() {
             <p className="text-sm font-semibold text-destructive">Produto esgotado</p>
           )}
 
+          <div className="space-y-2 pt-4">
+            <h3 className="text-lg font-semibold">Descrição</h3>
+            <div className="prose prose-sm max-w-none text-muted-foreground">
+              <p>{product.description || "Nenhuma descrição disponível."}</p>
+            </div>
+          </div>
+
           <Separator />
           
-          <Accordion type="single" collapsible className="w-full" defaultValue="description">
-            <AccordionItem value="description">
-              <AccordionTrigger>Descrição</AccordionTrigger>
-              <AccordionContent className="prose prose-sm max-w-none text-muted-foreground">
-                <p>{product.description || "Nenhuma descrição disponível."}</p>
-              </AccordionContent>
-            </AccordionItem>
-
+          <Accordion type="single" collapsible className="w-full">
             {product.size_charts && (
               <AccordionItem value="size-chart">
                 <AccordionTrigger>{product.size_charts.title}</AccordionTrigger>
