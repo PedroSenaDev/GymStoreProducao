@@ -56,7 +56,6 @@ interface PixInformationDialogProps {
 
 export function PixInformationDialog({ open, onOpenChange, totalAmount, items, selectedAddressId, paymentMethod }: PixInformationDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingPayment, setIsCheckingPayment] = useState(false);
   const [isPaymentConfirmed, setIsPaymentConfirmed] = useState(false);
   const [pixData, setPixData] = useState<PixData | null>(null);
   const session = useSessionStore((state) => state.session);
@@ -86,7 +85,7 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
         .insert({
           user_id: session.user.id,
           total_amount: totalAmount,
-          status: 'processing', // O pedido já nasce como 'processando'
+          status: 'pending', // O pedido agora nasce como 'pendente'
           shipping_address_id: selectedAddressId,
           payment_method: paymentMethod,
           shipping_cost: 0, // Placeholder
@@ -118,7 +117,6 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
     },
     onSuccess: () => {
       setIsPaymentConfirmed(true);
-      showSuccess("Pagamento confirmado e pedido criado!");
     },
     onError: (error: Error) => {
       showError(`Erro ao criar pedido: ${error.message}`);
@@ -139,29 +137,6 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
     }
   };
 
-  const handleCheckPayment = async () => {
-    if (!pixData) return;
-    setIsCheckingPayment(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('check-pix-status', {
-        body: { pix_charge_id: pixData.pix_charge_id },
-      });
-
-      if (error || data.error) throw new Error(error?.message || data.error);
-
-      if (data.status === 'PAID' || data.status === 'CONFIRMED') {
-        // Pagamento confirmado, AGORA sim criamos o pedido
-        createOrder({ pixChargeId: pixData.pix_charge_id });
-      } else {
-        showError("Pagamento ainda não foi confirmado. Tente novamente em alguns instantes.");
-      }
-    } catch (err: any) {
-      showError(err.message);
-    } finally {
-      setIsCheckingPayment(false);
-    }
-  };
-
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
@@ -176,7 +151,11 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
       });
 
       if (error || data.error) throw new Error(error?.message || data.error);
+      
+      // Após gerar o PIX, cria o pedido como pendente
+      await createOrder({ pixChargeId: data.pix_charge_id });
       setPixData(data);
+
     } catch (err: any) {
       showError(err.message || "Erro ao gerar QR Code.");
     } finally {
@@ -189,9 +168,9 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
       return (
         <div className="flex flex-col items-center gap-6 py-8 text-center">
           <CheckCircle className="h-20 w-20 text-green-500" />
-          <h3 className="text-2xl font-bold">Pagamento Confirmado!</h3>
+          <h3 className="text-2xl font-bold">Pedido Realizado!</h3>
           <p className="text-muted-foreground">
-            Seu pedido foi recebido e está sendo preparado. Em breve, seu produto chegará em sua casa.
+            Seu pedido foi criado com sucesso. Assim que o pagamento for confirmado, você receberá um e-mail.
           </p>
           <DialogFooter className="w-full pt-4">
             <Button onClick={() => handleCloseAndNavigate(false)} className="w-full">
@@ -213,13 +192,9 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
               <Button size="icon" onClick={handleCopyToClipboard}><Copy className="h-4 w-4" /></Button>
             </div>
           </div>
-          <DialogFooter className="w-full flex-col sm:flex-col sm:space-x-0 gap-2">
-            <Button onClick={handleCheckPayment} disabled={isCheckingPayment || isCreatingOrder} className="w-full">
-              {(isCheckingPayment || isCreatingOrder) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Já efetuei o pagamento
-            </Button>
-            <Button onClick={() => onOpenChange(false)} variant="outline" className="w-full">
-              Pagar depois
+          <DialogFooter className="w-full">
+            <Button onClick={() => handleCloseAndNavigate(false)} className="w-full">
+              Fechar
             </Button>
           </DialogFooter>
         </div>
@@ -234,9 +209,9 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
           <FormField control={form.control} name="cpf" render={({ field }) => (<FormItem><FormLabel>CPF</FormLabel><FormControl><Input placeholder="000.000.000-00" {...field} /></FormControl><FormMessage /></FormItem>)} />
           <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel>Telefone</FormLabel><FormControl><Input placeholder="(00) 00000-0000" {...field} /></FormControl><FormMessage /></FormItem>)} />
           <DialogFooter>
-            <Button type="submit" disabled={isLoading} className="w-full">
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Gerar QR Code
+            <Button type="submit" disabled={isLoading || isCreatingOrder} className="w-full">
+              {(isLoading || isCreatingOrder) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Gerar QR Code e Criar Pedido
             </Button>
           </DialogFooter>
         </form>
