@@ -1,18 +1,22 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Função para buscar coordenadas de um CEP usando a API ViaCEP
+const supabaseAdmin = createClient(
+  Deno.env.get('SUPABASE_URL') ?? '',
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+)
+
 async function getCoordsFromCep(cep: string) {
   const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
   if (!response.ok) throw new Error(`Falha ao buscar o CEP ${cep}`);
   const data = await response.json();
   if (data.erro) throw new Error(`CEP ${cep} não encontrado.`);
   
-  // A API ViaCEP não fornece lat/lon, então usaremos outra API para isso
   const geoResponse = await fetch(`https://nominatim.openstreetmap.org/search?postalcode=${cep}&country=brasil&format=json&limit=1`);
   if (!geoResponse.ok) throw new Error(`Falha ao geolocalizar o CEP ${cep}`);
   const geoData = await geoResponse.json();
@@ -24,7 +28,6 @@ async function getCoordsFromCep(cep: string) {
   };
 }
 
-// Fórmula de Haversine para calcular a distância entre dois pontos geográficos
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // Raio da Terra em km
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -43,10 +46,22 @@ serve(async (req) => {
   }
 
   try {
-    const { originCep, destinationCep } = await req.json();
-    if (!originCep || !destinationCep) {
-      throw new Error("CEP de origem e destino são obrigatórios.");
+    const { destinationCep } = await req.json();
+    if (!destinationCep) {
+      throw new Error("CEP de destino é obrigatório.");
     }
+
+    // Fetch origin CEP from the database
+    const { data: cepSetting, error: cepError } = await supabaseAdmin
+      .from('settings')
+      .select('value')
+      .eq('key', 'store_cep')
+      .single();
+
+    if (cepError || !cepSetting || !cepSetting.value) {
+      throw new Error("CEP de origem da loja não está configurado no painel de administração.");
+    }
+    const originCep = cepSetting.value;
 
     const [originCoords, destinationCoords] = await Promise.all([
       getCoordsFromCep(originCep),

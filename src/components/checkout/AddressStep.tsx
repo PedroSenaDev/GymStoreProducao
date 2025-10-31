@@ -20,8 +20,6 @@ import AddressForm from "@/pages/profile/AddressForm";
 import { Skeleton } from "../ui/skeleton";
 import { showError } from "@/utils/toast";
 
-const STORE_CEP = import.meta.env.VITE_STORE_CEP;
-
 async function fetchAddresses(userId: string): Promise<Address[]> {
   const { data, error } = await supabase
     .from("addresses")
@@ -45,7 +43,7 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
   const session = useSessionStore((state) => state.session);
   const userId = session?.user.id;
 
-  const { data: addresses, isLoading } = useQuery({
+  const { data: addresses, isLoading: isLoadingAddresses } = useQuery({
     queryKey: ["addresses", userId],
     queryFn: () => fetchAddresses(userId!),
     enabled: !!userId,
@@ -55,11 +53,6 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
     const calculateShipping = async () => {
       if (!selectedAddressId || !addresses) {
         onShippingChange(0, 0, null);
-        return;
-      }
-
-      if (!STORE_CEP) {
-        setShippingError("O CEP da loja não está configurado. Contate o suporte.");
         return;
       }
 
@@ -73,7 +66,6 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
         // 1. Calculate distance
         const { data: distanceData, error: distanceError } = await supabase.functions.invoke('calculate-distance', {
           body: {
-            originCep: STORE_CEP.replace(/\D/g, ''),
             destinationCep: selectedAddress.zip_code.replace(/\D/g, ''),
           },
         });
@@ -100,7 +92,7 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
     calculateShipping();
   }, [selectedAddressId, addresses, onShippingChange]);
 
-  if (isLoading) {
+  if (isLoadingAddresses) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-24 w-full" />
@@ -166,7 +158,7 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
           </Alert>
         )}
 
-        {!isLoading && addresses?.length === 0 && (
+        {!isLoadingAddresses && addresses?.length === 0 && (
             <div className="text-center py-10">
                 <MapPin className="mx-auto h-12 w-12 text-muted-foreground" />
                 <h3 className="mt-4 text-lg font-semibold">Nenhum endereço cadastrado</h3>
