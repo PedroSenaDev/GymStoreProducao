@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Policy } from "@/types/policy";
+import { SizeChart } from "@/types/sizeChart";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -17,9 +18,20 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Loader2, PlusCircle, Edit, RefreshCw } from "lucide-react";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+  } from "@/components/ui/alert-dialog";
+import { Loader2, PlusCircle, Edit, Trash2 } from "lucide-react";
 import PolicyForm from "./PolicyForm";
 import AboutUsForm from "./AboutUsForm";
+import SizeChartForm from "./SizeChartForm";
 import { showError, showSuccess } from "@/utils/toast";
 
 async function fetchPolicies(): Promise<Policy[]> {
@@ -34,48 +46,54 @@ async function fetchAboutUsPolicy(): Promise<Policy | null> {
     return data;
 }
 
+async function fetchSizeCharts(): Promise<SizeChart[]> {
+    const { data, error } = await supabase.from("size_charts").select("*").order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return data;
+}
+
 export default function AdminSettingsPage() {
   const [isPolicyDialogOpen, setIsPolicyDialogOpen] = useState(false);
   const [isAboutUsDialogOpen, setIsAboutUsDialogOpen] = useState(false);
+  const [isSizeChartDialogOpen, setIsSizeChartDialogOpen] = useState(false);
   const [selectedPolicy, setSelectedPolicy] = useState<Policy | undefined>(undefined);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [selectedSizeChart, setSelectedSizeChart] = useState<SizeChart | undefined>(undefined);
   const queryClient = useQueryClient();
 
-  const { data: policies, isLoading: isLoadingPolicies } = useQuery({
-    queryKey: ["policies"],
-    queryFn: fetchPolicies,
-  });
+  const { data: policies, isLoading: isLoadingPolicies } = useQuery({ queryKey: ["policies"], queryFn: fetchPolicies });
+  const { data: aboutUsPolicy, isLoading: isLoadingAboutUs } = useQuery({ queryKey: ["aboutUsPolicy"], queryFn: fetchAboutUsPolicy });
+  const { data: sizeCharts, isLoading: isLoadingSizeCharts } = useQuery({ queryKey: ["sizeCharts"], queryFn: fetchSizeCharts });
 
-  const { data: aboutUsPolicy, isLoading: isLoadingAboutUs } = useQuery({
-    queryKey: ["aboutUsPolicy"],
-    queryFn: fetchAboutUsPolicy,
+  const { mutate: deleteSizeChart } = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("size_charts").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      showSuccess("Tabela de medidas excluída com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["sizeCharts"] });
+    },
+    onError: (error: any) => showError(error.message),
   });
 
   const handleEditPolicy = (policy: Policy) => {
     setSelectedPolicy(policy);
     setIsPolicyDialogOpen(true);
   };
-
   const handleAddNewPolicy = () => {
     setSelectedPolicy(undefined);
     setIsPolicyDialogOpen(true);
   };
-
-  const handleSync = async () => {
-    setIsSyncing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('sync-pending-orders');
-      if (error) throw error;
-      showSuccess(data.message || "Sincronização concluída!");
-      queryClient.invalidateQueries({ queryKey: ["adminOrders"] });
-    } catch (error: any) {
-      showError(error.message || "Falha na sincronização.");
-    } finally {
-      setIsSyncing(false);
-    }
+  const handleEditSizeChart = (chart: SizeChart) => {
+    setSelectedSizeChart(chart);
+    setIsSizeChartDialogOpen(true);
+  };
+  const handleAddNewSizeChart = () => {
+    setSelectedSizeChart(undefined);
+    setIsSizeChartDialogOpen(true);
   };
 
-  const isLoading = isLoadingPolicies || isLoadingAboutUs;
+  const isLoading = isLoadingPolicies || isLoadingAboutUs || isLoadingSizeCharts;
 
   return (
     <div>
@@ -87,25 +105,6 @@ export default function AdminSettingsPage() {
         </div>
       ) : (
         <div className="space-y-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Sincronização de Pedidos</CardTitle>
-              <CardDescription>
-                Sincronize manualmente o status de pagamentos Pix que não foram atualizados automaticamente.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={handleSync} disabled={isSyncing}>
-                {isSyncing ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                )}
-                Sincronizar Pedidos Pendentes
-              </Button>
-            </CardContent>
-          </Card>
-
           <Card>
             <CardHeader>
               <CardTitle>Seção "Sobre Nossa Loja"</CardTitle>
@@ -129,6 +128,72 @@ export default function AdminSettingsPage() {
                         />
                     </DialogContent>
                 </Dialog>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <CardTitle>Tabelas de Medidas</CardTitle>
+                  <CardDescription className="pt-1.5">Gerencie as tabelas de medidas dos produtos.</CardDescription>
+                </div>
+                <Dialog open={isSizeChartDialogOpen} onOpenChange={setIsSizeChartDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button onClick={handleAddNewSizeChart} size="sm" className="w-full flex-shrink-0 sm:w-auto">
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      Adicionar Tabela
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>{selectedSizeChart ? "Editar" : "Adicionar"} Tabela de Medidas</DialogTitle>
+                    </DialogHeader>
+                    <SizeChartForm
+                      sizeChart={selectedSizeChart}
+                      onFinished={() => setIsSizeChartDialogOpen(false)}
+                    />
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </CardHeader>
+            <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {sizeCharts?.map((chart) => (
+                <Card key={chart.id} className="flex flex-col">
+                  <CardHeader>
+                    <CardTitle className="text-lg">{chart.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex-grow flex items-center justify-center">
+                    <img src={chart.image_url} alt={chart.title} className="max-h-32 rounded-md" />
+                  </CardContent>
+                  <CardFooter className="flex justify-end gap-2 pt-4">
+                    <Button variant="ghost" size="icon" onClick={() => handleEditSizeChart(chart)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="text-red-600 hover:text-red-700">
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Esta ação não pode ser desfeita. A tabela será excluída e desvinculada de todos os produtos.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteSizeChart(chart.id)}>
+                                    Excluir
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                  </CardFooter>
+                </Card>
+              ))}
             </CardContent>
           </Card>
 

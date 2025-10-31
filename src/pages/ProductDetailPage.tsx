@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Product } from '@/types/product';
 import { Policy } from '@/types/policy';
+import { SizeChart } from '@/types/sizeChart';
 import { Loader2, ShoppingCart, ArrowLeft } from 'lucide-react';
 import { ProductImageGallery } from '@/components/ProductImageGallery';
 import { Badge } from '@/components/ui/badge';
@@ -22,15 +23,20 @@ import { useCartStore } from '@/store/cartStore';
 import { showError, showSuccess } from '@/utils/toast';
 import { RelatedProducts } from '@/components/RelatedProducts';
 
-async function fetchProductById(id: string): Promise<Product & { categories?: { name: string } }> {
+interface ProductWithDetails extends Product {
+  categories?: { name: string };
+  size_charts?: SizeChart;
+}
+
+async function fetchProductById(id: string): Promise<ProductWithDetails> {
   const { data, error } = await supabase
     .from('products')
-    .select('*, categories(name)')
+    .select('*, categories(name), size_charts(*)')
     .eq('id', id)
     .single();
 
   if (error) throw new Error(error.message);
-  return data;
+  return data as ProductWithDetails;
 }
 
 async function fetchDisplayPolicies(): Promise<Policy[]> {
@@ -119,7 +125,6 @@ export default function ProductDetailPage() {
 
         <div className="flex flex-col space-y-6">
           <div>
-            {/* @ts-ignore */}
             {product.categories?.name && <Badge variant="outline">{product.categories.name}</Badge>}
             <h1 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">{product.name}</h1>
           </div>
@@ -176,23 +181,32 @@ export default function ProductDetailPage() {
 
           <Separator />
           
-          <div className="space-y-4">
-            <h3 className="font-semibold">Descrição</h3>
-            <p className="text-muted-foreground">{product.description || "Nenhuma descrição disponível."}</p>
-          </div>
+          <Accordion type="single" collapsible className="w-full" defaultValue="description">
+            <AccordionItem value="description">
+              <AccordionTrigger>Descrição</AccordionTrigger>
+              <AccordionContent className="prose prose-sm max-w-none text-muted-foreground">
+                <p>{product.description || "Nenhuma descrição disponível."}</p>
+              </AccordionContent>
+            </AccordionItem>
 
-          {policies && policies.length > 0 && (
-            <Accordion type="single" collapsible className="w-full">
-              {policies.map(policy => (
-                <AccordionItem value={policy.id} key={policy.id}>
-                  <AccordionTrigger>{policy.title}</AccordionTrigger>
-                  <AccordionContent className="prose prose-sm max-w-none text-muted-foreground">
-                    <p style={{ whiteSpace: 'pre-line' }}>{policy.content}</p>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          )}
+            {product.size_charts && (
+              <AccordionItem value="size-chart">
+                <AccordionTrigger>{product.size_charts.title}</AccordionTrigger>
+                <AccordionContent>
+                  <img src={product.size_charts.image_url} alt={product.size_charts.title} className="w-full rounded-md" />
+                </AccordionContent>
+              </AccordionItem>
+            )}
+
+            {policies?.map(policy => (
+              <AccordionItem value={policy.id} key={policy.id}>
+                <AccordionTrigger>{policy.title}</AccordionTrigger>
+                <AccordionContent className="prose prose-sm max-w-none text-muted-foreground">
+                  <p style={{ whiteSpace: 'pre-line' }}>{policy.content}</p>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
         </div>
       </div>
       {product && (
