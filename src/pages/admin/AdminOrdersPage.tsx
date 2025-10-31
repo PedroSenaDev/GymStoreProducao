@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Order } from "@/types/order";
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
@@ -26,11 +27,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Eye } from "lucide-react";
-import { format } from "date-fns";
+import { Loader2, Eye, Search } from "lucide-react";
+import { format, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import OrderDetails from "./OrderDetails";
 import { cn } from "@/lib/utils";
+import { DateRangePicker } from "@/components/admin/DateRangePicker";
+import { DateRange } from "react-day-picker";
 
 type OrderWithProfile = Order & {
   profiles: Pick<Profile, 'full_name'> | null;
@@ -70,11 +73,32 @@ const getStatusVariant = (status: string) => {
 
 export default function AdminOrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<OrderWithProfile | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   const { data: orders, isLoading } = useQuery({
     queryKey: ["adminOrders"],
     queryFn: fetchOrders,
   });
+
+  const filteredOrders = useMemo(() => {
+    if (!orders) return [];
+    return orders.filter(order => {
+      const customerName = order.profiles?.full_name?.toLowerCase() || '';
+      const matchesSearch = customerName.includes(searchTerm.toLowerCase());
+
+      const orderDate = new Date(order.created_at);
+      let matchesDate = true;
+      if (dateRange?.from) {
+        matchesDate = matchesDate && orderDate >= startOfDay(dateRange.from);
+      }
+      if (dateRange?.to) {
+        matchesDate = matchesDate && orderDate <= endOfDay(dateRange.to);
+      }
+
+      return matchesSearch && matchesDate;
+    });
+  }, [orders, searchTerm, dateRange]);
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   const formatDate = (date: string) => format(new Date(date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
@@ -87,8 +111,23 @@ export default function AdminOrdersPage() {
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
               <CardTitle>Histórico de Pedidos</CardTitle>
-              <CardDescription>Visualize e gerencie todos os pedidos recebidos.</CardDescription>
+              <CardDescription>
+                {filteredOrders ? `${filteredOrders.length} pedido(s) encontrado(s).` : 'Carregando...'}
+              </CardDescription>
             </div>
+          </div>
+          <div className="flex flex-col md:flex-row items-center gap-4 pt-4">
+            <div className="relative w-full md:flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Buscar por nome do cliente..."
+                className="pl-10 w-full"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <DateRangePicker date={dateRange} onDateChange={setDateRange} />
           </div>
         </CardHeader>
         <CardContent>
@@ -111,7 +150,7 @@ export default function AdminOrdersPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {orders?.map((order) => (
+                    {filteredOrders?.map((order) => (
                       <TableRow key={order.id}>
                         <TableCell className="font-medium">{order.profiles?.full_name || 'Cliente não encontrado'}</TableCell>
                         <TableCell>{formatDate(order.created_at)}</TableCell>
@@ -141,7 +180,7 @@ export default function AdminOrdersPage() {
 
               {/* Layout de Cartões para Telas Pequenas */}
               <div className="md:hidden space-y-4">
-                {orders?.map((order) => (
+                {filteredOrders?.map((order) => (
                   <Card key={order.id}>
                     <CardHeader>
                       <div className="flex justify-between items-start">
