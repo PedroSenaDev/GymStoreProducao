@@ -1,6 +1,6 @@
 import { useProfile } from '@/hooks/useProfile';
 import { Link, Navigate, Outlet } from 'react-router-dom';
-import { Loader2, LayoutDashboard, Package, Tags, User, LogOut, Settings, ExternalLink, ShoppingCart, Megaphone } from 'lucide-react';
+import { Loader2, LayoutDashboard, Package, Tags, User, LogOut, Settings, ExternalLink, ShoppingCart } from 'lucide-react';
 import { Sidebar, SidebarBody, SidebarHeader, SidebarLink } from '@/components/admin/AdminSidebar';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -23,7 +23,6 @@ const links = [
   { to: '/admin/orders', label: 'Pedidos', icon: <ShoppingCart size={20} /> },
   { to: '/admin/products', label: 'Produtos', icon: <Package size={20} /> },
   { to: '/admin/categories', label: 'Categorias', icon: <Tags size={20} /> },
-  { to: '/admin/campaigns', label: 'Campanhas', icon: <Megaphone size={20} /> },
   { to: '/admin/settings', label: 'Configurações', icon: <Settings size={20} /> },
 ];
 
