@@ -37,7 +37,7 @@ import { showError, showSuccess } from "@/utils/toast";
 async function fetchPolicies(): Promise<Policy[]> {
   const { data, error } = await supabase.from("policies").select("*").not('display_area', 'eq', 'about_us').order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
-  return data;
+  return data || [];
 }
 
 async function fetchAboutUsPolicy(): Promise<Policy | null> {
@@ -49,7 +49,7 @@ async function fetchAboutUsPolicy(): Promise<Policy | null> {
 async function fetchSizeCharts(): Promise<SizeChart[]> {
     const { data, error } = await supabase.from("size_charts").select("*").order('created_at', { ascending: false });
     if (error) throw new Error(error.message);
-    return data;
+    return data || [];
 }
 
 export default function AdminSettingsPage() {
