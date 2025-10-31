@@ -20,6 +20,7 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
   const [isPixDialogOpen, setIsPixDialogOpen] = useState(false);
   const [shippingCost, setShippingCost] = useState(0);
+  const [shippingDistance, setShippingDistance] = useState(0);
   const [shippingZoneId, setShippingZoneId] = useState<string | null>(null);
 
   const selectedItems = useMemo(() => items.filter(item => item.selected), [items]);
@@ -36,8 +37,9 @@ export default function CheckoutPage() {
     }
   };
 
-  const handleShippingChange = (cost: number, zoneId: string | null) => {
+  const handleShippingChange = (cost: number, distance: number, zoneId: string | null) => {
     setShippingCost(cost);
+    setShippingDistance(distance);
     setShippingZoneId(zoneId);
   };
 
@@ -61,7 +63,7 @@ export default function CheckoutPage() {
               <AddressStep 
                 selectedAddressId={selectedAddressId} 
                 onAddressSelect={setSelectedAddressId}
-                onShippingCostChange={handleShippingChange}
+                onShippingChange={handleShippingChange}
               />
             </div>
             <div className="space-y-4">
@@ -104,6 +106,7 @@ export default function CheckoutPage() {
         selectedAddressId={selectedAddressId}
         paymentMethod={paymentMethod}
         shippingCost={shippingCost}
+        shippingDistance={shippingDistance}
         shippingZoneId={shippingZoneId}
       />
     </div>

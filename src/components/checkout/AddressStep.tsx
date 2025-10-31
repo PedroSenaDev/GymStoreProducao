@@ -8,7 +8,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, PlusCircle, MapPin, AlertCircle } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
@@ -19,6 +18,9 @@ import {
 } from "@/components/ui/dialog";
 import AddressForm from "@/pages/profile/AddressForm";
 import { Skeleton } from "../ui/skeleton";
+import { showError } from "@/utils/toast";
+
+const STORE_CEP = import.meta.env.VITE_STORE_CEP;
 
 async function fetchAddresses(userId: string): Promise<Address[]> {
   const { data, error } = await supabase
@@ -32,14 +34,13 @@ async function fetchAddresses(userId: string): Promise<Address[]> {
 
 interface AddressStepProps {
   selectedAddressId: string | null;
-  onAddressSelect: (id: string) => void;
-  onShippingCostChange: (cost: number, zoneId: string | null) => void;
+  onAddressSelect: (id: string | null) => void;
+  onShippingChange: (cost: number, distance: number, zoneId: string | null) => void;
 }
 
-export function AddressStep({ selectedAddressId, onAddressSelect, onShippingCostChange }: AddressStepProps) {
+export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChange }: AddressStepProps) {
   const [isFormOpen, setFormOpen] = useState(false);
-  const [distance, setDistance] = useState("");
-  const [debouncedDistance, setDebouncedDistance] = useState("");
+  const [isCalculating, setIsCalculating] = useState(false);
   const [shippingError, setShippingError] = useState<string | null>(null);
   const session = useSessionStore((state) => state.session);
   const userId = session?.user.id;
@@ -51,34 +52,53 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingCost
   });
 
   useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedDistance(distance);
-    }, 500); // 500ms delay
+    const calculateShipping = async () => {
+      if (!selectedAddressId || !addresses) {
+        onShippingChange(0, 0, null);
+        return;
+      }
 
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [distance]);
+      if (!STORE_CEP) {
+        setShippingError("O CEP da loja não está configurado. Contate o suporte.");
+        return;
+      }
 
-  useEffect(() => {
-    const getFee = async () => {
-      if (debouncedDistance && parseFloat(debouncedDistance) > 0) {
-        setShippingError(null);
-        const { data, error } = await supabase.rpc('get_shipping_fee', { distance: parseFloat(debouncedDistance) });
-        
-        if (error || !data || data.length === 0) {
-          onShippingCostChange(0, null);
-          setShippingError("Não foi possível encontrar uma taxa de frete para esta distância.");
-        } else {
-          onShippingCostChange(data[0].price, data[0].zone_id);
+      const selectedAddress = addresses.find(addr => addr.id === selectedAddressId);
+      if (!selectedAddress) return;
+
+      setIsCalculating(true);
+      setShippingError(null);
+
+      try {
+        // 1. Calculate distance
+        const { data: distanceData, error: distanceError } = await supabase.functions.invoke('calculate-distance', {
+          body: {
+            originCep: STORE_CEP.replace(/\D/g, ''),
+            destinationCep: selectedAddress.zip_code.replace(/\D/g, ''),
+          },
+        });
+        if (distanceError || distanceData.error) throw new Error(distanceError?.message || distanceData.error);
+        const distance = parseFloat(distanceData.distance);
+
+        // 2. Get shipping fee based on distance
+        const { data: feeData, error: feeError } = await supabase.rpc('get_shipping_fee', { distance });
+        if (feeError || !feeData || feeData.length === 0) {
+          throw new Error("Não foi possível encontrar uma taxa de frete para este endereço.");
         }
-      } else {
-        onShippingCostChange(0, null);
-        setShippingError(null);
+        
+        onShippingChange(feeData[0].price, distance, feeData[0].zone_id);
+
+      } catch (err: any) {
+        showError(err.message);
+        setShippingError(err.message);
+        onShippingChange(0, 0, null);
+      } finally {
+        setIsCalculating(false);
       }
     };
-    getFee();
-  }, [debouncedDistance, onShippingCostChange]);
+
+    calculateShipping();
+  }, [selectedAddressId, addresses, onShippingChange]);
 
   if (isLoading) {
     return (
@@ -132,6 +152,20 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingCost
           </DialogContent>
         </Dialog>
 
+        {isCalculating && (
+          <div className="flex items-center justify-center gap-2 text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>Calculando frete...</span>
+          </div>
+        )}
+
+        {shippingError && (
+          <Alert variant="destructive" className="mt-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{shippingError}</AlertDescription>
+          </Alert>
+        )}
+
         {!isLoading && addresses?.length === 0 && (
             <div className="text-center py-10">
                 <MapPin className="mx-auto h-12 w-12 text-muted-foreground" />
@@ -139,24 +173,6 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingCost
                 <p className="mt-1 text-sm text-muted-foreground">Adicione um endereço para continuar.</p>
             </div>
         )}
-
-        <div>
-          <Label htmlFor="distance">Distância de Entrega (KM)</Label>
-          <Input
-            id="distance"
-            type="number"
-            placeholder="Ex: 7.5"
-            value={distance}
-            onChange={(e) => setDistance(e.target.value)}
-            className="mt-2"
-          />
-          {shippingError && (
-            <Alert variant="destructive" className="mt-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{shippingError}</AlertDescription>
-            </Alert>
-          )}
-        </div>
       </CardContent>
     </Card>
   );
