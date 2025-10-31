@@ -123,19 +123,25 @@ serve(async (req) => {
         console.log(`Pedido ${order.id} atualizado para 'processing'.`);
 
         // Enviar e-mail de confirmação
-        const emailHtml = generatePaymentApprovedEmail(order);
-        const { error: emailError } = await supabaseAdmin.functions.invoke('send-email', {
-          body: {
-            to: order.profiles.email,
-            subject: `Pagamento Aprovado - Pedido #${order.id.substring(0, 8)}`,
-            htmlContent: emailHtml,
-          },
-        });
-
-        if (emailError) {
-          console.error(`Falha ao enviar e-mail para o pedido ${order.id}:`, emailError);
+        if (!order.profiles) {
+            console.error(`Pedido ${order.id}: Perfil do usuário não encontrado. Não é possível enviar e-mail.`);
+        } else if (!order.profiles.email) {
+            console.error(`Pedido ${order.id}: E-mail não encontrado no perfil do usuário. Não é possível enviar e-mail.`);
         } else {
-          console.log(`E-mail de pagamento aprovado enviado para ${order.profiles.email}`);
+            const emailHtml = generatePaymentApprovedEmail(order);
+            const { error: emailError } = await supabaseAdmin.functions.invoke('send-email', {
+              body: {
+                to: order.profiles.email,
+                subject: `Pagamento Aprovado - Pedido #${order.id.substring(0, 8)}`,
+                htmlContent: emailHtml,
+              },
+            });
+    
+            if (emailError) {
+              console.error(`Falha ao enviar e-mail para o pedido ${order.id}:`, emailError);
+            } else {
+              console.log(`E-mail de pagamento aprovado enviado para ${order.profiles.email}`);
+            }
         }
       }
     }
