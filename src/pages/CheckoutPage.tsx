@@ -19,21 +19,26 @@ export default function CheckoutPage() {
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
   const [isPixDialogOpen, setIsPixDialogOpen] = useState(false);
-  
-  const shippingCost = 0;
+  const [shippingCost, setShippingCost] = useState(0);
+  const [shippingZoneId, setShippingZoneId] = useState<string | null>(null);
 
   const selectedItems = useMemo(() => items.filter(item => item.selected), [items]);
   const subtotal = useMemo(() => selectedItems.reduce((acc, item) => acc + item.price * item.quantity, 0), [selectedItems]);
   const total = subtotal + shippingCost;
 
   const isProfileIncomplete = !profile?.full_name || !profile?.cpf;
-  const isCheckoutDisabled = !selectedAddressId || !paymentMethod || isProfileIncomplete || isLoadingProfile;
+  const isCheckoutDisabled = !selectedAddressId || !paymentMethod || isProfileIncomplete || isLoadingProfile || shippingCost <= 0;
 
   const handleFinalizeOrder = () => {
     if (isCheckoutDisabled) return;
     if (paymentMethod === 'pix') {
       setIsPixDialogOpen(true);
     }
+  };
+
+  const handleShippingChange = (cost: number, zoneId: string | null) => {
+    setShippingCost(cost);
+    setShippingZoneId(zoneId);
   };
 
   if (!session) {
@@ -52,8 +57,12 @@ export default function CheckoutPage() {
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-3 lg:items-start">
           <div className="space-y-8 lg:col-span-2">
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold">1. Endereço de Entrega</h2>
-              <AddressStep selectedAddressId={selectedAddressId} onAddressSelect={setSelectedAddressId} />
+              <h2 className="text-xl font-semibold">1. Endereço e Frete</h2>
+              <AddressStep 
+                selectedAddressId={selectedAddressId} 
+                onAddressSelect={setSelectedAddressId}
+                onShippingCostChange={handleShippingChange}
+              />
             </div>
             <div className="space-y-4">
               <h2 className="text-xl font-semibold">2. Método de Pagamento</h2>
@@ -94,6 +103,8 @@ export default function CheckoutPage() {
         items={selectedItems}
         selectedAddressId={selectedAddressId}
         paymentMethod={paymentMethod}
+        shippingCost={shippingCost}
+        shippingZoneId={shippingZoneId}
       />
     </div>
   );

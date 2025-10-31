@@ -52,9 +52,11 @@ interface PixInformationDialogProps {
   items: CartItem[];
   selectedAddressId: string | null;
   paymentMethod: string | null;
+  shippingCost: number;
+  shippingZoneId: string | null;
 }
 
-export function PixInformationDialog({ open, onOpenChange, totalAmount, items, selectedAddressId, paymentMethod }: PixInformationDialogProps) {
+export function PixInformationDialog({ open, onOpenChange, totalAmount, items, selectedAddressId, paymentMethod, shippingCost, shippingZoneId }: PixInformationDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isPaymentConfirmed, setIsPaymentConfirmed] = useState(false);
   const [pixData, setPixData] = useState<PixData | null>(null);
@@ -85,11 +87,12 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
         .insert({
           user_id: session.user.id,
           total_amount: totalAmount,
-          status: 'pending', // O pedido agora nasce como 'pendente'
+          status: 'pending',
           shipping_address_id: selectedAddressId,
           payment_method: paymentMethod,
-          shipping_cost: 0, // Placeholder
+          shipping_cost: shippingCost,
           pix_charge_id: pixChargeId,
+          shipping_zone_id: shippingZoneId,
         })
         .select('id')
         .single();
@@ -152,7 +155,6 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
 
       if (error || data.error) throw new Error(error?.message || data.error);
       
-      // Após gerar o PIX, cria o pedido como pendente
       await createOrder({ pixChargeId: data.pix_charge_id });
       setPixData(data);
 
