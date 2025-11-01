@@ -29,7 +29,7 @@ async function getCoordsFromCep(cep: string) {
   
   if (!geoResponse.ok) throw new Error(`Falha ao geolocalizar o CEP ${cep} no OpenStreetMap.`);
   const geoData = await geoResponse.json();
-  if (geoData.length === 0) throw new Error(`Não foi possível encontrar coordenadas para o CEP ${cep}. Verifique o endereço.`);
+  if (geoData.length === 0) throw new Error(`Não foi possível localizar o endereço. Verifique se a rua e o número estão corretos e tente novamente.`);
 
   return {
     lat: parseFloat(geoData[0].lat),

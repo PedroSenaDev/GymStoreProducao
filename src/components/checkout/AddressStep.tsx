@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import AddressForm from "@/pages/profile/AddressForm";
 import { Skeleton } from "../ui/skeleton";
-import { showError } from "@/utils/toast";
+import { showError, showSuccess } from "@/utils/toast";
 
 async function fetchAddresses(userId: string): Promise<Address[]> {
   const { data, error } = await supabase
@@ -37,6 +37,8 @@ async function fetchStoreCep(): Promise<string> {
     }
     return data.value;
 }
+
+const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
 interface AddressStepProps {
   selectedAddressId: string | null;
@@ -91,7 +93,9 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
           throw new Error("Não foi possível encontrar uma taxa de frete para este endereço. Pode estar fora da nossa área de entrega.");
         }
         
-        onShippingChange(feeData[0].price, distance, feeData[0].zone_id);
+        const shippingCost = feeData[0].price;
+        onShippingChange(shippingCost, distance, feeData[0].zone_id);
+        showSuccess(`Frete calculado: ${formatCurrency(shippingCost)}`);
 
       } catch (err: any) {
         showError(err.message);
