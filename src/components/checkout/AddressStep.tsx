@@ -30,6 +30,14 @@ async function fetchAddresses(userId: string): Promise<Address[]> {
   return data;
 }
 
+async function fetchStoreCep(): Promise<string> {
+    const { data, error } = await supabase.from('settings').select('value').eq('key', 'store_cep').single();
+    if (error || !data?.value) {
+        throw new Error("CEP de origem da loja não configurado.");
+    }
+    return data.value;
+}
+
 interface AddressStepProps {
   selectedAddressId: string | null;
   onAddressSelect: (id: string | null) => void;
@@ -49,9 +57,14 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
     enabled: !!userId,
   });
 
+  const { data: storeCep } = useQuery({
+    queryKey: ["storeCep"],
+    queryFn: fetchStoreCep,
+  });
+
   useEffect(() => {
     const calculateShipping = async () => {
-      if (!selectedAddressId || !addresses) {
+      if (!selectedAddressId || !addresses || !storeCep) {
         onShippingChange(0, 0, null);
         return;
       }
@@ -63,9 +76,10 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
       setShippingError(null);
 
       try {
-        // 1. Calculate distance
-        const { data: distanceData, error: distanceError } = await supabase.functions.invoke('calculate-distance', {
+        // 1. Calculate distance using Google Maps
+        const { data: distanceData, error: distanceError } = await supabase.functions.invoke('calculate-google-maps-distance', {
           body: {
+            originCep: storeCep.replace(/\D/g, ''),
             destinationCep: selectedAddress.zip_code.replace(/\D/g, ''),
           },
         });
@@ -75,7 +89,7 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
         // 2. Get shipping fee based on distance
         const { data: feeData, error: feeError } = await supabase.rpc('get_shipping_fee', { distance });
         if (feeError || !feeData || feeData.length === 0) {
-          throw new Error("Não foi possível encontrar uma taxa de frete para este endereço.");
+          throw new Error("Não foi possível encontrar uma taxa de frete para este endereço. Pode estar fora da nossa área de entrega.");
         }
         
         onShippingChange(feeData[0].price, distance, feeData[0].zone_id);
@@ -90,7 +104,7 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
     };
 
     calculateShipping();
-  }, [selectedAddressId, addresses, onShippingChange]);
+  }, [selectedAddressId, addresses, storeCep, onShippingChange]);
 
   if (isLoadingAddresses) {
     return (
