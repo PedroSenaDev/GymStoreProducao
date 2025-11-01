@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@/lib/resolvers";
 import { z } from "@/lib/zod-pt";
@@ -21,14 +21,14 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Loader2, Copy } from "lucide-react";
+import { Loader2, Copy, CheckCircle } from "lucide-react";
 import { showError, showSuccess } from "@/utils/toast";
 import { isValidCPF, isValidPhone } from "@/lib/validators";
 import { useSessionStore } from "@/store/sessionStore";
 import { useProfile } from "@/hooks/useProfile";
 import { Label } from "../ui/label";
 import { useNavigate } from "react-router-dom";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CartItem } from "@/types/cart";
 import { useCartStore } from "@/store/cartStore";
 
@@ -58,12 +58,16 @@ interface PixInformationDialogProps {
 }
 
 export function PixInformationDialog({ open, onOpenChange, totalAmount, items, selectedAddressId, paymentMethod, shippingCost, shippingDistance, shippingZoneId }: PixInformationDialogProps) {
-  const [isLoading, setIsLoading] = useState(false);
   const [pixData, setPixData] = useState<PixData | null>(null);
+  const [orderId, setOrderId] = useState<string | null>(null);
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false);
+  const [isOrderConfirmed, setIsOrderConfirmed] = useState(false);
   const session = useSessionStore((state) => state.session);
   const { data: profile } = useProfile();
   const navigate = useNavigate();
   const { removeSelectedItems } = useCartStore();
+  const queryClient = useQueryClient();
+  const pollingInterval = useRef<NodeJS.Timeout | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -77,52 +81,71 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
 
   const { mutate: createOrder, isPending: isCreatingOrder } = useMutation({
     mutationFn: async ({ pixChargeId }: { pixChargeId: string }) => {
-      if (!session?.user.id) throw new Error("Usuário não autenticado.");
-      if (!selectedAddressId) throw new Error("Endereço de entrega não selecionado.");
-      if (!paymentMethod) throw new Error("Método de pagamento não selecionado.");
-      if (items.length === 0) throw new Error("Carrinho vazio.");
-
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          user_id: session.user.id,
-          total_amount: totalAmount,
-          status: 'pending',
-          shipping_address_id: selectedAddressId,
-          payment_method: paymentMethod,
-          shipping_cost: shippingCost,
-          shipping_distance: shippingDistance,
-          pix_charge_id: pixChargeId,
-          shipping_zone_id: shippingZoneId,
-        })
-        .select('id')
-        .single();
-
+      if (!session?.user.id || !selectedAddressId || !paymentMethod || items.length === 0) {
+        throw new Error("Dados do pedido incompletos.");
+      }
+      const { data: orderData, error: orderError } = await supabase.from('orders').insert({
+        user_id: session.user.id, total_amount: totalAmount, status: 'pending',
+        shipping_address_id: selectedAddressId, payment_method: paymentMethod,
+        shipping_cost: shippingCost, shipping_distance: shippingDistance,
+        pix_charge_id: pixChargeId, shipping_zone_id: shippingZoneId,
+      }).select('id').single();
       if (orderError) throw orderError;
-      const orderId = orderData.id;
-
+      const newOrderId = orderData.id;
       const orderItems = items.map(item => ({
-        order_id: orderId,
-        product_id: item.id,
-        quantity: item.quantity,
-        price: item.price,
-        selected_size: item.selectedSize,
-        selected_color: item.selectedColor,
+        order_id: newOrderId, product_id: item.id, quantity: item.quantity,
+        price: item.price, selected_size: item.selectedSize, selected_color: item.selectedColor,
       }));
       const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
-
       if (itemsError) {
-        await supabase.from('orders').delete().eq('id', orderId);
+        await supabase.from('orders').delete().eq('id', newOrderId);
         throw itemsError;
       }
-
-      await removeSelectedItems();
-      return orderData;
+      return newOrderId;
     },
-    onError: (error: Error) => {
-      showError(`Erro ao criar pedido: ${error.message}`);
-    },
+    onError: (error: Error) => showError(`Erro ao criar pedido: ${error.message}`),
   });
+
+  const { mutate: confirmOrderPayment } = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('orders').update({ status: 'processing' }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: (_, id) => {
+      setIsOrderConfirmed(true);
+      if (pollingInterval.current) clearInterval(pollingInterval.current);
+      queryClient.invalidateQueries({ queryKey: ["userOrders", session?.user.id] });
+      removeSelectedItems();
+    },
+    onError: (error: Error) => showError(`Erro ao confirmar pagamento: ${error.message}`),
+  });
+
+  const checkPixStatus = async (chargeId: string, currentOrderId: string) => {
+    if (isCheckingStatus) return;
+    setIsCheckingStatus(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('check-pix-status', { body: { pix_charge_id: chargeId } });
+      if (error || data.error) throw new Error(error?.message || data.error);
+      if (data.status === 'PAID' || data.status === 'CONFIRMED') {
+        confirmOrderPayment(currentOrderId);
+      }
+    } catch (err: any) {
+      console.error("Falha ao verificar status do Pix:", err.message);
+    } finally {
+      setIsCheckingStatus(false);
+    }
+  };
+
+  useEffect(() => {
+    if (pixData && orderId && !isOrderConfirmed) {
+      pollingInterval.current = setInterval(() => {
+        checkPixStatus(pixData.pix_charge_id, orderId);
+      }, 5000); // Verifica a cada 5 segundos
+    }
+    return () => {
+      if (pollingInterval.current) clearInterval(pollingInterval.current);
+    };
+  }, [pixData, orderId, isOrderConfirmed]);
 
   const handleCopyToClipboard = () => {
     if (pixData?.br_code) {
@@ -131,43 +154,51 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
     }
   };
 
-  const handleCloseAndNavigate = (isOpen: boolean) => {
+  const handleCloseDialog = (isOpen: boolean) => {
     onOpenChange(isOpen);
-    if (!isOpen) {
+    if (!isOpen && isOrderConfirmed) {
       navigate('/profile/orders');
     }
   };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsLoading(true);
     try {
-      const { data: pixGenerationData, error } = await supabase.functions.invoke('generate-pix', {
+      const { data: pixGenData, error } = await supabase.functions.invoke('generate-pix', {
         body: {
-          amount: totalAmount,
-          customerName: values.name,
-          customerEmail: values.email,
-          customerMobile: values.phone,
-          customerDocument: values.cpf,
+          amount: totalAmount, customerName: values.name, customerEmail: values.email,
+          customerMobile: values.phone, customerDocument: values.cpf,
         },
       });
-
-      if (error || pixGenerationData.error) throw new Error(error?.message || pixGenerationData.error);
+      if (error || pixGenData.error) throw new Error(error?.message || pixGenData.error);
       
-      createOrder({ pixChargeId: pixGenerationData.pix_charge_id }, {
-        onSuccess: () => {
-          setPixData(pixGenerationData);
+      createOrder({ pixChargeId: pixGenData.pix_charge_id }, {
+        onSuccess: (newOrderId) => {
+          setPixData(pixGenData);
+          setOrderId(newOrderId);
         },
       });
-
     } catch (err: any) {
       showError(err.message || "Erro ao gerar QR Code.");
-    } finally {
-      setIsLoading(false);
     }
   }
 
   const renderContent = () => {
-    if (pixData) {
+    if (isOrderConfirmed) {
+      return (
+        <div className="flex flex-col items-center gap-6 py-8 text-center">
+          <CheckCircle className="h-20 w-20 text-green-500" />
+          <h3 className="text-xl font-semibold">Pagamento Confirmado!</h3>
+          <p className="text-muted-foreground">Seu pedido foi recebido e está sendo processado. Você pode acompanhar o status na área "Meus Pedidos".</p>
+          <DialogFooter className="w-full pt-4">
+            <Button onClick={() => handleCloseDialog(false)} className="w-full">
+              Ir para Meus Pedidos
+            </Button>
+          </DialogFooter>
+        </div>
+      );
+    }
+
+    if (pixData && orderId) {
       return (
         <div className="flex flex-col items-center gap-6 py-4">
           <img src={pixData.qr_code_url} alt="QR Code Pix" className="w-56 h-56 rounded-lg" />
@@ -179,8 +210,9 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
             </div>
           </div>
           <DialogFooter className="w-full">
-            <Button onClick={() => handleCloseAndNavigate(false)} className="w-full">
-              Fechar e Acompanhar Pedido
+            <Button onClick={() => checkPixStatus(pixData.pix_charge_id, orderId)} disabled={isCheckingStatus} className="w-full">
+              {isCheckingStatus && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Já Paguei
             </Button>
           </DialogFooter>
         </div>
@@ -195,8 +227,8 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
           <FormField control={form.control} name="cpf" render={({ field }) => (<FormItem><FormLabel>CPF</FormLabel><FormControl><Input placeholder="000.000.000-00" {...field} /></FormControl><FormMessage /></FormItem>)} />
           <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel>Telefone</FormLabel><FormControl><Input placeholder="(00) 00000-0000" {...field} /></FormControl><FormMessage /></FormItem>)} />
           <DialogFooter>
-            <Button type="submit" disabled={isLoading || isCreatingOrder} className="w-full">
-              {(isLoading || isCreatingOrder) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button type="submit" disabled={isCreatingOrder} className="w-full">
+              {isCreatingOrder && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Gerar QR Code e Criar Pedido
             </Button>
           </DialogFooter>
@@ -206,12 +238,12 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleCloseDialog}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Pagamento com Pix</DialogTitle>
           <DialogDescription>
-            {pixData ? "Escaneie o QR Code ou copie o código para pagar." : "Preencha seus dados para gerar o QR Code."}
+            {isOrderConfirmed ? "Sucesso!" : pixData ? "Escaneie o QR Code ou copie o código para pagar." : "Preencha seus dados para gerar o QR Code."}
           </DialogDescription>
         </DialogHeader>
         {renderContent()}
