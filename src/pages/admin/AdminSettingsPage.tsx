@@ -36,6 +36,13 @@ import AboutUsForm from "./AboutUsForm";
 import SizeChartForm from "./SizeChartForm";
 import { showError, showSuccess } from "@/utils/toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 async function fetchPolicies(): Promise<Policy[]> {
   const { data, error } = await supabase.from("policies").select("*").not('display_area', 'eq', 'about_us').order('created_at', { ascending: false });
@@ -56,6 +63,7 @@ async function fetchSizeCharts(): Promise<SizeChart[]> {
 }
 
 export default function AdminSettingsPage() {
+  const [activeTab, setActiveTab] = useState("about");
   const [isPolicyDialogOpen, setIsPolicyDialogOpen] = useState(false);
   const [isAboutUsDialogOpen, setIsAboutUsDialogOpen] = useState(false);
   const [isSizeChartDialogOpen, setIsSizeChartDialogOpen] = useState(false);
@@ -119,8 +127,20 @@ export default function AdminSettingsPage() {
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>
       ) : (
-        <Tabs defaultValue="about" className="w-full">
-          <TabsList className="grid w-full grid-cols-1 md:grid-cols-3">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <div className="md:hidden mb-4">
+            <Select value={activeTab} onValueChange={setActiveTab}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione uma seção" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="about">Sobre a Loja</SelectItem>
+                <SelectItem value="size-charts">Tabelas de Medidas</SelectItem>
+                <SelectItem value="policies">Políticas</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <TabsList className="hidden md:grid w-full grid-cols-3">
             <TabsTrigger value="about">Sobre a Loja</TabsTrigger>
             <TabsTrigger value="size-charts">Tabelas de Medidas</TabsTrigger>
             <TabsTrigger value="policies">Políticas</TabsTrigger>
