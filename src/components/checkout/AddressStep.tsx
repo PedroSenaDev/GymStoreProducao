@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Address } from "@/types/address";
@@ -52,6 +52,7 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
   const [shippingError, setShippingError] = useState<string | null>(null);
   const session = useSessionStore((state) => state.session);
   const userId = session?.user.id;
+  const lastCalculatedAddressId = useRef<string | null>(null);
 
   const { data: addresses, isLoading: isLoadingAddresses } = useQuery({
     queryKey: ["addresses", userId],
@@ -68,6 +69,11 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
     const calculateShipping = async () => {
       if (!selectedAddressId || !addresses || !storeCep) {
         onShippingChange(0, 0, null);
+        lastCalculatedAddressId.current = null;
+        return;
+      }
+
+      if (selectedAddressId === lastCalculatedAddressId.current) {
         return;
       }
 
@@ -78,7 +84,6 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
       setShippingError(null);
 
       try {
-        // 1. Calculate distance using the free OpenStreetMap function
         const { data: distanceData, error: distanceError } = await supabase.functions.invoke('calculate-distance', {
           body: {
             destinationCep: selectedAddress.zip_code.replace(/\D/g, ''),
@@ -87,7 +92,6 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
         if (distanceError || distanceData.error) throw new Error(distanceError?.message || distanceData.error);
         const distance = parseFloat(distanceData.distance);
 
-        // 2. Get shipping fee based on distance
         const { data: feeData, error: feeError } = await supabase.rpc('get_shipping_fee', { distance });
         if (feeError || !feeData || feeData.length === 0) {
           throw new Error("Não foi possível encontrar uma taxa de frete para este endereço. Pode estar fora da nossa área de entrega.");
@@ -96,11 +100,13 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
         const shippingCost = feeData[0].price;
         onShippingChange(shippingCost, distance, feeData[0].zone_id);
         showSuccess(`Frete calculado: ${formatCurrency(shippingCost)}`);
+        lastCalculatedAddressId.current = selectedAddressId;
 
       } catch (err: any) {
         showError(err.message);
         setShippingError(err.message);
         onShippingChange(0, 0, null);
+        lastCalculatedAddressId.current = null;
       } finally {
         setIsCalculating(false);
       }
