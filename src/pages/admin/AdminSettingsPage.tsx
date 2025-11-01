@@ -253,9 +253,9 @@ export default function AdminSettingsPage() {
                 {policies?.map((policy) => (
                   <Card key={policy.id} className="flex flex-col">
                     <CardHeader>
-                      <CardTitle className="flex items-center justify-between text-lg">
-                        {policy.title}
-                        <div className="flex items-center">
+                      <CardTitle className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between text-lg">
+                        <span className="break-words pr-2">{policy.title}</span>
+                        <div className="flex items-center self-end sm:self-center flex-shrink-0">
                           <Button variant="ghost" size="icon" onClick={() => handleEditPolicy(policy)}>
                             <Edit className="h-4 w-4" />
                           </Button>
