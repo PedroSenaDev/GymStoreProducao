@@ -40,11 +40,6 @@ const formSchema = z.object({
     code: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Código de cor inválido."),
     name: z.string().min(1, "O nome da cor é obrigatório."),
   })).optional().default([]),
-  // Campos de frete
-  weight: z.coerce.number({ invalid_type_error: "O peso deve ser um número." }).min(0.01, "O peso deve ser maior que zero."),
-  height: z.coerce.number({ invalid_type_error: "A altura deve ser um número." }).min(1, "A altura mínima é 1 cm."),
-  width: z.coerce.number({ invalid_type_error: "A largura deve ser um número." }).min(1, "A largura mínima é 1 cm."),
-  length: z.coerce.number({ invalid_type_error: "O comprimento deve ser um número." }).min(1, "O comprimento mínimo é 1 cm."),
 });
 
 interface ProductFormProps {
@@ -65,10 +60,6 @@ export default function ProductForm({ product, onFinished }: ProductFormProps) {
       image_urls: product?.image_urls || [],
       sizes: product?.sizes?.join(", ") || "",
       colors: product?.colors || [],
-      weight: product?.weight || 0,
-      height: product?.height || 0,
-      width: product?.width || 0,
-      length: product?.length || 0,
     },
   });
 
@@ -215,57 +206,6 @@ export default function ProductForm({ product, onFinished }: ProductFormProps) {
                 </FormItem>
             )}
         />
-
-        <div className="space-y-2 rounded-lg border p-4">
-            <h3 className="font-semibold">Informações de Frete</h3>
-            <p className="text-sm text-muted-foreground">Esses dados são essenciais para o cálculo preciso do frete com os Correios.</p>
-            <div className="grid grid-cols-2 gap-4 pt-2 md:grid-cols-4">
-                <FormField
-                    control={form.control}
-                    name="weight"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Peso (kg)</FormLabel>
-                        <FormControl><Input type="number" step="0.01" placeholder="Ex: 0.3" {...field} /></FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="height"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Altura (cm)</FormLabel>
-                        <FormControl><Input type="number" placeholder="Ex: 5" {...field} /></FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="width"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Largura (cm)</FormLabel>
-                        <FormControl><Input type="number" placeholder="Ex: 20" {...field} /></FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="length"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Comprimento (cm)</FormLabel>
-                        <FormControl><Input type="number" placeholder="Ex: 25" {...field} /></FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-            </div>
-        </div>
 
         <Button type="submit" disabled={isPending} className="w-full">
           {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

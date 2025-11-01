@@ -11,9 +11,4 @@ export interface Product {
   colors: { code: string; name: string }[];
   is_featured: boolean;
   created_at: string;
-  // Campos de frete
-  weight?: number;
-  height?: number;
-  width?: number;
-  length?: number;
 }
