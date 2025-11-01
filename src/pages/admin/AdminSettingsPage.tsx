@@ -128,7 +128,7 @@ export default function AdminSettingsPage() {
         </div>
       ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="mb-4">
+          <div className="mb-4 max-w-sm">
             <Select value={activeTab} onValueChange={setActiveTab}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione uma seção" />
