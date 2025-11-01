@@ -21,7 +21,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Loader2, Copy, CheckCircle } from "lucide-react";
+import { Loader2, Copy } from "lucide-react";
 import { showError, showSuccess } from "@/utils/toast";
 import { isValidCPF, isValidPhone } from "@/lib/validators";
 import { useSessionStore } from "@/store/sessionStore";
@@ -59,7 +59,6 @@ interface PixInformationDialogProps {
 
 export function PixInformationDialog({ open, onOpenChange, totalAmount, items, selectedAddressId, paymentMethod, shippingCost, shippingDistance, shippingZoneId }: PixInformationDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [isPaymentConfirmed, setIsPaymentConfirmed] = useState(false);
   const [pixData, setPixData] = useState<PixData | null>(null);
   const session = useSessionStore((state) => state.session);
   const { data: profile } = useProfile();
@@ -120,9 +119,6 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
       await removeSelectedItems();
       return orderData;
     },
-    onSuccess: () => {
-      setIsPaymentConfirmed(true);
-    },
     onError: (error: Error) => {
       showError(`Erro ao criar pedido: ${error.message}`);
     },
@@ -145,7 +141,7 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('generate-pix', {
+      const { data: pixGenerationData, error } = await supabase.functions.invoke('generate-pix', {
         body: {
           amount: totalAmount,
           customerName: values.name,
@@ -155,10 +151,13 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
         },
       });
 
-      if (error || data.error) throw new Error(error?.message || data.error);
+      if (error || pixGenerationData.error) throw new Error(error?.message || pixGenerationData.error);
       
-      await createOrder({ pixChargeId: data.pix_charge_id });
-      setPixData(data);
+      createOrder({ pixChargeId: pixGenerationData.pix_charge_id }, {
+        onSuccess: () => {
+          setPixData(pixGenerationData);
+        },
+      });
 
     } catch (err: any) {
       showError(err.message || "Erro ao gerar QR Code.");
@@ -168,23 +167,6 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
   }
 
   const renderContent = () => {
-    if (isPaymentConfirmed) {
-      return (
-        <div className="flex flex-col items-center gap-6 py-8 text-center">
-          <CheckCircle className="h-20 w-20 text-green-500" />
-          <h3 className="text-2xl font-bold">Pedido Realizado!</h3>
-          <p className="text-muted-foreground">
-            Seu pedido foi criado com sucesso. Assim que o pagamento for confirmado, você receberá um e-mail.
-          </p>
-          <DialogFooter className="w-full pt-4">
-            <Button onClick={() => handleCloseAndNavigate(false)} className="w-full">
-              Acompanhar Meus Pedidos
-            </Button>
-          </DialogFooter>
-        </div>
-      );
-    }
-
     if (pixData) {
       return (
         <div className="flex flex-col items-center gap-6 py-4">
@@ -198,7 +180,7 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
           </div>
           <DialogFooter className="w-full">
             <Button onClick={() => handleCloseAndNavigate(false)} className="w-full">
-              Fechar
+              Fechar e Acompanhar Pedido
             </Button>
           </DialogFooter>
         </div>
@@ -229,7 +211,7 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
         <DialogHeader>
           <DialogTitle>Pagamento com Pix</DialogTitle>
           <DialogDescription>
-            {isPaymentConfirmed ? "Sucesso!" : pixData ? "Escaneie o QR Code ou copie o código para pagar." : "Preencha seus dados para gerar o QR Code."}
+            {pixData ? "Escaneie o QR Code ou copie o código para pagar." : "Preencha seus dados para gerar o QR Code."}
           </DialogDescription>
         </DialogHeader>
         {renderContent()}
