@@ -66,6 +66,53 @@ export default function UpdateOrderForm({ order, onFinished }: UpdateOrderFormPr
         .eq("id", order.id);
 
       if (error) throw error;
+
+      const statusChanged = values.status !== order.status;
+      if (statusChanged && order.profiles?.email) {
+        let emailSubject = '';
+        let emailContent = '';
+
+        if (values.status === 'shipped') {
+          emailSubject = `Seu pedido #${order.id.substring(0, 8)} foi enviado!`;
+          emailContent = `
+            <div style="font-family: Arial, sans-serif; color: #333;">
+              <h2>Olá ${order.profiles.full_name},</h2>
+              <p>Ótima notícia! Seu pedido <strong>#${order.id.substring(0, 8)}</strong> da GYMSTORE foi enviado.</p>
+              ${values.tracking_code ? `<p>Você pode rastreá-lo usando o código: <strong>${values.tracking_code}</strong></p>` : '<p>Em breve você receberá o código de rastreio.</p>'}
+              <p>Agradecemos pela sua compra!</p>
+              <p>Atenciosamente,<br>Equipe GYMSTORE</p>
+            </div>
+          `;
+        } else if (values.status === 'delivered') {
+          emailSubject = `Seu pedido #${order.id.substring(0, 8)} foi entregue!`;
+          emailContent = `
+            <div style="font-family: Arial, sans-serif; color: #333;">
+              <h2>Olá ${order.profiles.full_name},</h2>
+              <p>Seu pedido <strong>#${order.id.substring(0, 8)}</strong> da GYMSTORE foi marcado como entregue.</p>
+              <p>Esperamos que você aproveite seus produtos! Adoraríamos saber o que você achou.</p>
+              <p>Agradecemos pela sua compra!</p>
+              <p>Atenciosamente,<br>Equipe GYMSTORE</p>
+            </div>
+          `;
+        }
+
+        if (emailSubject && emailContent) {
+          try {
+            const { error: emailError } = await supabase.functions.invoke('send-email', {
+              body: {
+                to: order.profiles.email,
+                subject: emailSubject,
+                htmlContent: emailContent,
+              },
+            });
+            if (emailError) throw emailError;
+            showSuccess("E-mail de notificação enviado ao cliente.");
+          } catch (emailError: any) {
+            console.error("Failed to send status update email:", emailError);
+            showError("O status do pedido foi atualizado, mas falhou ao enviar o e-mail de notificação.");
+          }
+        }
+      }
     },
     onSuccess: () => {
       showSuccess("Pedido atualizado com sucesso!");
