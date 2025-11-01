@@ -120,7 +120,7 @@ export default function AdminSettingsPage() {
         </div>
       ) : (
         <Tabs defaultValue="about" className="w-full">
-          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3">
+          <TabsList className="grid w-full grid-cols-1 md:grid-cols-3">
             <TabsTrigger value="about">Sobre a Loja</TabsTrigger>
             <TabsTrigger value="size-charts">Tabelas de Medidas</TabsTrigger>
             <TabsTrigger value="policies">Políticas</TabsTrigger>
@@ -157,14 +157,14 @@ export default function AdminSettingsPage() {
           <TabsContent value="size-charts" className="mt-6">
             <Card>
               <CardHeader>
-                <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
                   <div>
                     <CardTitle>Tabelas de Medidas</CardTitle>
                     <CardDescription className="pt-1.5">Gerencie as tabelas de medidas dos produtos.</CardDescription>
                   </div>
                   <Dialog open={isSizeChartDialogOpen} onOpenChange={setIsSizeChartDialogOpen}>
                     <DialogTrigger asChild>
-                      <Button onClick={handleAddNewSizeChart} size="sm" className="w-full flex-shrink-0 sm:w-auto">
+                      <Button onClick={handleAddNewSizeChart} size="sm" className="w-full flex-shrink-0 md:w-auto">
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Adicionar Tabela
                       </Button>
@@ -225,14 +225,14 @@ export default function AdminSettingsPage() {
           <TabsContent value="policies" className="mt-6">
             <Card>
               <CardHeader>
-                <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
                   <div>
                     <CardTitle>Políticas do Site</CardTitle>
                     <CardDescription className="pt-1.5">Gerencie as políticas de privacidade, troca, etc.</CardDescription>
                   </div>
                   <Dialog open={isPolicyDialogOpen} onOpenChange={setIsPolicyDialogOpen}>
                     <DialogTrigger asChild>
-                      <Button onClick={handleAddNewPolicy} size="sm" className="w-full flex-shrink-0 sm:w-auto">
+                      <Button onClick={handleAddNewPolicy} size="sm" className="w-full flex-shrink-0 md:w-auto">
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Adicionar Política
                       </Button>
@@ -253,9 +253,9 @@ export default function AdminSettingsPage() {
                 {policies?.map((policy) => (
                   <Card key={policy.id} className="flex flex-col">
                     <CardHeader>
-                      <CardTitle className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between text-lg">
+                      <CardTitle className="flex flex-col items-start gap-2 md:flex-row md:items-center md:justify-between text-lg">
                         <span className="break-words pr-2">{policy.title}</span>
-                        <div className="flex items-center self-end sm:self-center flex-shrink-0">
+                        <div className="flex items-center self-end md:self-center flex-shrink-0">
                           <Button variant="ghost" size="icon" onClick={() => handleEditPolicy(policy)}>
                             <Edit className="h-4 w-4" />
                           </Button>
