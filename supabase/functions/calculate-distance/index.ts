@@ -59,14 +59,23 @@ serve(async (req) => {
       .single();
 
     if (cepError || !cepSetting || !cepSetting.value) {
-      throw new Error("CEP de origem da loja não está configurado no painel de administração.");
+      throw new Error("CEP de origem da loja não está configurado. Por favor, adicione-o no painel de Configurar Frete.");
     }
     const originCep = cepSetting.value;
 
-    const [originCoords, destinationCoords] = await Promise.all([
-      getCoordsFromCep(originCep),
-      getCoordsFromCep(destinationCep),
-    ]);
+    let originCoords, destinationCoords;
+
+    try {
+      originCoords = await getCoordsFromCep(originCep);
+    } catch (e) {
+      throw new Error(`Falha ao processar o CEP de origem da loja (${originCep}): ${e.message}`);
+    }
+
+    try {
+      destinationCoords = await getCoordsFromCep(destinationCep);
+    } catch (e) {
+      throw new Error(`Falha ao processar o CEP de destino (${destinationCep}): ${e.message}`);
+    }
 
     const distance = haversineDistance(
       originCoords.lat,
