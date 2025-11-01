@@ -20,7 +20,12 @@ async function getCoordsFromCep(cep: string) {
 
   // Usando Nominatim (OpenStreetMap) para geocodificação
   const query = `${viaCepData.logradouro}, ${viaCepData.bairro}, ${viaCepData.localidade}, ${viaCepData.uf}, Brasil`;
-  const geoResponse = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`);
+  const geoResponse = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`, {
+    headers: {
+      // O User-Agent é obrigatório pela política de uso do Nominatim
+      'User-Agent': 'GYMSTORE-App/1.0 (Supabase Edge Function for Shipping Calculation)',
+    }
+  });
   
   if (!geoResponse.ok) throw new Error(`Falha ao geolocalizar o CEP ${cep} no OpenStreetMap.`);
   const geoData = await geoResponse.json();
