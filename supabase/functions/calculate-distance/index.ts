@@ -12,15 +12,19 @@ const supabaseAdmin = createClient(
 )
 
 async function getCoordsFromCep(cep: string) {
-  const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-  if (!response.ok) throw new Error(`Falha ao buscar o CEP ${cep}`);
-  const data = await response.json();
-  if (data.erro) throw new Error(`CEP ${cep} não encontrado.`);
+  // Usando a API do ViaCEP primeiro para validar e obter informações básicas
+  const viaCepResponse = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+  if (!viaCepResponse.ok) throw new Error(`Falha ao buscar o CEP ${cep} no ViaCEP.`);
+  const viaCepData = await viaCepResponse.json();
+  if (viaCepData.erro) throw new Error(`CEP ${cep} não encontrado.`);
+
+  // Usando Nominatim (OpenStreetMap) para geocodificação
+  const query = `${viaCepData.logradouro}, ${viaCepData.bairro}, ${viaCepData.localidade}, ${viaCepData.uf}, Brasil`;
+  const geoResponse = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`);
   
-  const geoResponse = await fetch(`https://nominatim.openstreetmap.org/search?postalcode=${cep}&country=brasil&format=json&limit=1`);
-  if (!geoResponse.ok) throw new Error(`Falha ao geolocalizar o CEP ${cep}`);
+  if (!geoResponse.ok) throw new Error(`Falha ao geolocalizar o CEP ${cep} no OpenStreetMap.`);
   const geoData = await geoResponse.json();
-  if (geoData.length === 0) throw new Error(`Não foi possível encontrar coordenadas para o CEP ${cep}`);
+  if (geoData.length === 0) throw new Error(`Não foi possível encontrar coordenadas para o CEP ${cep}. Verifique o endereço.`);
 
   return {
     lat: parseFloat(geoData[0].lat),
@@ -51,7 +55,6 @@ serve(async (req) => {
       throw new Error("CEP de destino é obrigatório.");
     }
 
-    // Fetch origin CEP from the database
     const { data: cepSetting, error: cepError } = await supabaseAdmin
       .from('settings')
       .select('value')

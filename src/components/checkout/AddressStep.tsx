@@ -76,10 +76,9 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
       setShippingError(null);
 
       try {
-        // 1. Calculate distance using Google Maps
-        const { data: distanceData, error: distanceError } = await supabase.functions.invoke('calculate-google-maps-distance', {
+        // 1. Calculate distance using the free OpenStreetMap function
+        const { data: distanceData, error: distanceError } = await supabase.functions.invoke('calculate-distance', {
           body: {
-            originCep: storeCep.replace(/\D/g, ''),
             destinationCep: selectedAddress.zip_code.replace(/\D/g, ''),
           },
         });
