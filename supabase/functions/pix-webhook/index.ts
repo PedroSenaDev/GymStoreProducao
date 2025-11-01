@@ -78,13 +78,13 @@ serve(async (req) => {
     const receivedSecret = url.searchParams.get('secret');
 
     if (!WEBHOOK_SECRET) {
-      console.error("ABACATE_WEBHOOK_SECRET not set.");
-      return new Response("Webhook internal configuration incomplete.", { status: 500 });
+      console.error("ABACATE_WEBHOOK_SECRET não está configurado.");
+      return new Response("Configuração interna do webhook incompleta.", { status: 500 });
     }
 
     if (receivedSecret !== WEBHOOK_SECRET) {
-      console.warn("Webhook access attempt with invalid secret.");
-      return new Response("Unauthorized access.", { status: 401 });
+      console.warn("Tentativa de acesso ao webhook com chave inválida.");
+      return new Response("Acesso não autorizado.", { status: 401 });
     }
 
     const payload = await req.json()
@@ -94,12 +94,10 @@ serve(async (req) => {
     const paymentStatus = payload?.data?.pixQrCode?.status;
 
     if (!pixChargeId || !paymentStatus) {
-      throw new Error("Invalid webhook payload: 'id' or 'status' not found.");
+      throw new Error("Payload inválido do webhook: 'id' ou 'status' não encontrados.");
     }
 
     if (paymentStatus === 'PAID' || paymentStatus === 'CONFIRMED') {
-      console.log(`Processing paid status for pix_charge_id: ${pixChargeId}`);
-
       const { data: order, error: findError } = await supabaseAdmin
         .from('orders')
         .select('*, profiles(full_name, email), order_items(*, products(name))')
@@ -107,50 +105,44 @@ serve(async (req) => {
         .single();
 
       if (findError) {
-        console.warn(`Order with pix_charge_id ${pixChargeId} not found.`);
-        return new Response(JSON.stringify({ message: "Order not found." }), {
+        console.warn(`Pedido com pix_charge_id ${pixChargeId} não encontrado.`);
+        return new Response(JSON.stringify({ message: "Pedido não encontrado." }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
       if (order.status === 'pending') {
-        const { data: updatedOrder, error: updateError } = await supabaseAdmin
+        const { error: updateError } = await supabaseAdmin
           .from('orders')
           .update({ status: 'processing' })
-          .eq('id', order.id)
-          .select()
-          .single();
+          .eq('id', order.id);
 
         if (updateError) {
-          throw new Error(`Error updating order ${order.id}: ${updateError.message}`);
+          throw new Error(`Erro ao atualizar o pedido ${order.id}: ${updateError.message}`);
         }
+        console.log(`Pedido ${order.id} atualizado para 'processing'.`);
 
-        if (updatedOrder) {
-            console.log(`Order ${order.id} successfully updated to 'processing'.`);
-
-            if (!order.profiles?.email) {
-                console.error(`Order ${order.id}: User profile or email not found. Cannot send confirmation email.`);
-            } else {
-                const emailHtml = generatePaymentApprovedEmail(order);
-                const { error: emailError } = await supabaseAdmin.functions.invoke('send-email', {
-                  body: {
-                    to: order.profiles.email,
-                    subject: `Pagamento Aprovado - Pedido #${order.id.substring(0, 8)}`,
-                    htmlContent: emailHtml,
-                  },
-                });
-        
-                if (emailError) {
-                  console.error(`Failed to send email for order ${order.id}:`, emailError);
-                } else {
-                  console.log(`Payment approved email sent successfully to ${order.profiles.email}`);
-                }
-            }
+        // Enviar e-mail de confirmação
+        if (!order.profiles) {
+            console.error(`Pedido ${order.id}: Perfil do usuário não encontrado. Não é possível enviar e-mail.`);
+        } else if (!order.profiles.email) {
+            console.error(`Pedido ${order.id}: E-mail não encontrado no perfil do usuário. Não é possível enviar e-mail.`);
         } else {
-            console.error(`Failed to confirm update for order ${order.id}. Email not sent.`);
+            const emailHtml = generatePaymentApprovedEmail(order);
+            const { error: emailError } = await supabaseAdmin.functions.invoke('send-email', {
+              body: {
+                to: order.profiles.email,
+                subject: `Pagamento Aprovado - Pedido #${order.id.substring(0, 8)}`,
+                htmlContent: emailHtml,
+              },
+            });
+    
+            if (emailError) {
+              console.error(`Falha ao enviar e-mail para o pedido ${order.id}:`, emailError);
+            } else {
+              console.log(`E-mail de pagamento aprovado enviado para ${order.profiles.email}`);
+            }
         }
-      } else {
-        console.log(`Order ${order.id} was already processed (status: ${order.status}). No action taken.`);
       }
     }
 
@@ -159,7 +151,7 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error("Error in webhook:", error);
+    console.error("Erro no webhook:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
