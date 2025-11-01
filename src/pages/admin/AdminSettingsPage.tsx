@@ -128,7 +128,7 @@ export default function AdminSettingsPage() {
         </div>
       ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="md:hidden mb-4">
+          <div className="mb-4">
             <Select value={activeTab} onValueChange={setActiveTab}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione uma seção" />
@@ -140,11 +140,6 @@ export default function AdminSettingsPage() {
               </SelectContent>
             </Select>
           </div>
-          <TabsList className="hidden md:grid w-full grid-cols-3">
-            <TabsTrigger value="about">Sobre a Loja</TabsTrigger>
-            <TabsTrigger value="size-charts">Tabelas de Medidas</TabsTrigger>
-            <TabsTrigger value="policies">Políticas</TabsTrigger>
-          </TabsList>
 
           <TabsContent value="about" className="mt-6">
             <Card>
