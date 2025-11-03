@@ -38,6 +38,9 @@ import AdminShippingPage from "./pages/admin/AdminShippingPage";
 import AdminReportsPage from "./pages/admin/AdminReportsPage";
 import AdminStockPage from "./pages/admin/AdminStockPage";
 
+// Components
+import { StripeWrapper } from "./components/StripeWrapper";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -70,7 +73,7 @@ const App = () => (
             {/* Auth & Payment Status Routes (no layout) */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/update-password" element={<UpdatePasswordPage />} />
-            <Route path="/payment-status" element={<PaymentStatusPage />} />
+            <Route path="/payment-status" element={<StripeWrapper><PaymentStatusPage /></StripeWrapper>} />
 
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminDashboardLayout />}>
