@@ -23,9 +23,9 @@ serve(async (req) => {
   }
 
   try {
-    const { items, shippingAddressId, userId, shippingCost, shippingDistance, shippingZoneId } = await req.json();
+    const { items, shippingCost } = await req.json();
 
-    if (!items || items.length === 0 || !shippingAddressId || !userId) {
+    if (!items || items.length === 0) {
       throw new Error("Informações do pedido incompletas.");
     }
 
@@ -45,58 +45,50 @@ serve(async (req) => {
 
     const totalAmount = subtotal + shippingCost;
 
-    // 2. Criar um pedido 'pending' no banco de dados
-    const { data: orderData, error: orderError } = await supabaseAdmin
-      .from('orders')
-      .insert({
+    // 2. Criar o PaymentIntent no Stripe
+    // NOTA: O metadata deve conter todos os dados necessários para recriar o pedido no webhook.
+    const metadata = {
+        user_id: items[0].user_id, // Adicionando user_id (assumindo que todos os itens são do mesmo usuário)
+        shipping_address_id: items[0].shipping_address_id, // Adicionando address_id
+        shipping_cost: shippingCost.toString(),
+        shipping_distance: items[0].shipping_distance.toString(),
+        shipping_zone_id: items[0].shipping_zone_id,
+        items_json: JSON.stringify(items.map((item: any) => ({
+            product_id: item.id,
+            quantity: item.quantity,
+            price: productPriceMap.get(item.id) || item.price,
+            selected_size: item.selectedSize,
+            selected_color: item.selectedColor,
+        }))),
+    };
+
+    // O Stripe tem um limite de 500 caracteres para metadata. Vamos garantir que o JSON dos itens caiba.
+    // Se o JSON for muito grande, teremos que buscar os itens do carrinho no webhook, mas por enquanto, vamos tentar passar o máximo de dados.
+    
+    // Para simplificar e evitar o limite de 500 caracteres do metadata do Stripe,
+    // vamos passar apenas os IDs e buscar os detalhes no webhook.
+    // No entanto, como o carrinho é limpo após o sucesso, precisamos de uma forma de persistir os dados.
+    // A melhor abordagem é passar os dados essenciais e recriar o pedido no webhook.
+
+    // Vamos simplificar o metadata para o essencial e confiar que o webhook pode recriar o pedido.
+    // Para evitar o erro de "shippingAddressId is not defined" no webhook, vamos passar os dados essenciais.
+    
+    const essentialMetadata = {
         user_id: userId,
-        total_amount: totalAmount,
-        status: 'pending',
         shipping_address_id: shippingAddressId,
-        payment_method: 'credit_card',
-        shipping_cost: shippingCost,
-        shipping_distance: shippingDistance,
+        shipping_cost: shippingCost.toString(),
+        shipping_distance: shippingDistance.toString(),
         shipping_zone_id: shippingZoneId,
-      })
-      .select('id')
-      .single();
-    if (orderError) throw orderError;
-    const orderId = orderData.id;
+        // Passamos o total para o Stripe, mas o webhook deve recalcular.
+    };
 
-    // 3. Salvar os itens do pedido
-    const orderItems = items.map((item: any) => ({
-        order_id: orderId, 
-        product_id: item.id, 
-        quantity: item.quantity,
-        price: productPriceMap.get(item.id) || item.price, // Usar o preço do DB para segurança
-        selected_size: item.selectedSize, 
-        selected_color: item.selectedColor,
-    }));
-
-    const { error: itemsError } = await supabaseAdmin.from('order_items').insert(orderItems);
-    if (itemsError) {
-        // Se falhar ao salvar os itens, deleta o pedido principal
-        await supabaseAdmin.from('orders').delete().eq('id', orderId);
-        throw itemsError;
-    }
-
-    // 4. Criar o PaymentIntent no Stripe
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(totalAmount * 100), // em centavos
       currency: 'brl',
-      metadata: {
-        order_id: orderId,
-      },
+      metadata: essentialMetadata,
     });
 
-    // 5. Atualizar nosso pedido com o ID do PaymentIntent
-    const { error: updateError } = await supabaseAdmin
-      .from('orders')
-      .update({ stripe_payment_intent_id: paymentIntent.id })
-      .eq('id', orderId);
-    if (updateError) throw updateError;
-
-    // 6. Retornar o client_secret para o frontend
+    // 3. Retornar o client_secret para o frontend
     return new Response(JSON.stringify({ clientSecret: paymentIntent.client_secret }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

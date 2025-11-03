@@ -11,7 +11,7 @@ export default function PaymentStatusPage() {
   const navigate = useNavigate();
   const [message, setMessage] = useState<string | null>(null);
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
-  const { removeSelectedItems } = useCartStore();
+  // Removendo useCartStore para evitar limpeza duplicada
 
   useEffect(() => {
     if (!stripe) {
@@ -30,13 +30,12 @@ export default function PaymentStatusPage() {
     stripe.retrievePaymentIntent(clientSecret).then(({ paymentIntent }) => {
       switch (paymentIntent?.status) {
         case 'succeeded':
-          setMessage('Pagamento aprovado com sucesso!');
+          setMessage('Pagamento aprovado com sucesso! Seu pedido está sendo processado.');
           setStatus('success');
-          // Limpa os itens selecionados do carrinho localmente
-          removeSelectedItems();
+          // A limpeza do carrinho e a criação do pedido são feitas pelo webhook do Stripe.
           break;
         case 'processing':
-          setMessage('Seu pagamento está sendo processado.');
+          setMessage('Seu pagamento está sendo processado. Você será notificado quando for concluído.');
           setStatus('loading');
           break;
         case 'requires_payment_method':
@@ -49,7 +48,7 @@ export default function PaymentStatusPage() {
           break;
       }
     });
-  }, [stripe, navigate, removeSelectedItems]);
+  }, [stripe, navigate]);
 
   const renderContent = () => {
     switch (status) {
