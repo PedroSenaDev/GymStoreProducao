@@ -25,8 +25,13 @@ serve(async (req) => {
   try {
     const { items, shippingCost, userId, shippingAddressId, shippingDistance, shippingZoneId, customerData } = await req.json();
 
-    if (!items || items.length === 0 || !userId || !shippingAddressId || !customerData || !customerData.cpf) {
-      throw new Error("Informações essenciais do pedido ou do cliente incompletas.");
+    // Limpeza e validação dos dados do cliente
+    const cleanedCpf = (customerData.cpf || '').replace(/\D/g, '');
+    const customerName = customerData.name || 'Cliente Sem Nome';
+    const customerEmail = customerData.email;
+
+    if (!items || items.length === 0 || !userId || !shippingAddressId || !customerEmail || cleanedCpf.length < 11) {
+      throw new Error("Informações essenciais do pedido (itens, endereço) ou do cliente (email, CPF) incompletas ou inválidas.");
     }
 
     // 1. Recalcular o subtotal dos produtos por segurança
@@ -46,10 +51,9 @@ serve(async (req) => {
     const totalAmount = subtotal + shippingCost;
 
     // 2. Criar ou buscar o Customer no Stripe
-    // Usamos o userId do Supabase como external_id para evitar duplicidade
     let customer;
     const searchCustomers = await stripe.customers.list({
-        email: customerData.email,
+        email: customerEmail,
         limit: 1,
     });
 
@@ -57,8 +61,8 @@ serve(async (req) => {
         customer = searchCustomers.data[0];
     } else {
         customer = await stripe.customers.create({
-            email: customerData.email,
-            name: customerData.name,
+            email: customerEmail,
+            name: customerName,
             metadata: {
                 supabase_user_id: userId,
             },
@@ -89,7 +93,7 @@ serve(async (req) => {
             },
             tax_id: {
               type: 'br_cpf',
-              value: customerData.cpf.replace(/\D/g, ''),
+              value: cleanedCpf,
             },
           },
         },
