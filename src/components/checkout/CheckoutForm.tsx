@@ -35,7 +35,28 @@ export default function CheckoutForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <PaymentElement />
+      <PaymentElement 
+        options={{
+          layout: 'tabs',
+          billingDetails: {
+            name: 'never', // O nome é preenchido pelo PI, mas o Stripe pode solicitar o endereço
+            email: 'never',
+            phone: 'never',
+            address: {
+              country: 'never',
+              postalCode: 'never',
+            },
+          },
+          fields: {
+            billingDetails: {
+              address: {
+                country: 'never',
+                postalCode: 'never',
+              },
+            },
+          },
+        }}
+      />
       <Button disabled={isProcessing || !stripe || !elements} className="w-full" type="submit">
         {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : `Pagar`}
       </Button>
