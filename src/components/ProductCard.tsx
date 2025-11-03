@@ -4,6 +4,7 @@ import { Product } from '@/types/product';
 import { Badge } from '@/components/ui/badge';
 import { ArrowRight } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
 
 interface ProductCardProps {
   // The product object has a nested categories object from the query
@@ -28,8 +29,16 @@ export const ProductCard = ({ product }: ProductCardProps) => {
             <img
               src={product.image_urls?.[0] || '/placeholder.svg'}
               alt={product.name}
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+              className={cn(
+                "h-full w-full object-cover transition-transform duration-300 group-hover:scale-105",
+                product.stock <= 0 && "grayscale"
+              )}
             />
+            {product.stock <= 0 && (
+              <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                <span className="text-white font-bold text-lg tracking-wider">ESGOTADO</span>
+              </div>
+            )}
             {/* @ts-ignore */}
             {product.categories?.name && (
               // @ts-ignore
