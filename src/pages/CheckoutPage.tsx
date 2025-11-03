@@ -24,7 +24,7 @@ const stripePromise = loadStripe(stripePublishableKey);
 
 export default function CheckoutPage() {
   const session = useSessionStore((state) => state.session);
-  const { items } = useCartStore();
+  const { items, clearNonSelectedItems } = useCartStore();
   const { data: profile, isLoading: isLoadingProfile } = useProfile();
   
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
@@ -47,7 +47,12 @@ export default function CheckoutPage() {
     const createPaymentIntent = async () => {
       if (paymentMethod === 'credit_card' && total > 0 && selectedAddressId && session?.user.id) {
         setIsLoadingClientSecret(true);
+        setClientSecret(null); // Clear previous secret
+
         try {
+          // CRITICAL STEP: Ensure only selected items are in the DB cart before creating PI
+          await clearNonSelectedItems();
+
           const { data, error } = await supabase.functions.invoke('create-payment-intent', {
             body: {
               items: selectedItems,
@@ -71,7 +76,7 @@ export default function CheckoutPage() {
       }
     };
     createPaymentIntent();
-  }, [paymentMethod, total, selectedAddressId, session?.user.id, selectedItems, shippingCost, shippingDistance, shippingZoneId]);
+  }, [paymentMethod, total, selectedAddressId, session?.user.id, selectedItems, shippingCost, shippingDistance, shippingZoneId, clearNonSelectedItems]);
 
   const handleFinalizeOrder = () => {
     if (isCheckoutDisabled) return;

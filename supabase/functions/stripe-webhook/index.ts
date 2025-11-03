@@ -40,9 +40,8 @@ serve(async (req) => {
         return new Response("Metadados ausentes.", { status: 400 });
       }
 
-      // 1. Buscar os itens do carrinho do usuário (que foram selecionados no checkout)
-      // Nota: O carrinho armazena o código da cor (string), mas o order_items armazena o objeto (jsonb).
-      // Precisamos buscar os dados do carrinho e os preços dos produtos.
+      // 1. Buscar os itens do carrinho do usuário E os detalhes do produto
+      // Como o CheckoutPage agora garante que apenas itens selecionados estão no DB, buscamos todos.
       const { data: cartItems, error: cartError } = await supabaseAdmin
         .from('cart_items')
         .select('id, product_id, quantity, selected_size, selected_color, products(price, colors)')
@@ -112,7 +111,7 @@ serve(async (req) => {
       // Executa todas as atualizações de estoque
       await Promise.all(stockUpdates);
 
-      // 5. Limpar o carrinho do usuário (só após a criação bem-sucedida do pedido e itens)
+      // 5. Limpar o carrinho do usuário (todos os itens, pois o checkout só permite itens selecionados)
       const { error: cartClearError } = await supabaseAdmin
           .from('cart_items')
           .delete()

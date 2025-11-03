@@ -15,6 +15,7 @@ interface CartState {
   toggleItemSelection: (cartItemId: string) => void;
   toggleSelectAll: (select: boolean) => void;
   removeSelectedItems: () => Promise<void>;
+  clearNonSelectedItems: () => Promise<void>; // NEW FUNCTION
   clearCart: () => void;
 }
 
@@ -146,6 +147,31 @@ export const useCartStore = create<CartState>()(
               showError("Ocorreu um erro ao remover os itens. Tente novamente.");
             }
           }
+        }
+      },
+      // NEW: Remove items from DB that are NOT selected locally
+      clearNonSelectedItems: async () => {
+        const session = useSessionStore.getState().session;
+        if (!session) return;
+
+        const nonSelectedLocalItems = get().items.filter(item => !item.selected);
+        const dbIdsToDelete = nonSelectedLocalItems
+            .map(item => item.dbCartItemId)
+            .filter((id): id is string => !!id);
+
+        if (dbIdsToDelete.length > 0) {
+            const { error } = await supabase
+                .from('cart_items')
+                .delete()
+                .in('id', dbIdsToDelete);
+            
+            if (error) {
+                console.error("Failed to clear non-selected items from DB:", error);
+                throw new Error("Falha ao limpar itens não selecionados do carrinho.");
+            }
+            
+            // Update local state to reflect only selected items (which should already be the case, but ensures consistency)
+            set({ items: get().items.filter(item => item.selected) });
         }
       },
       clearCart: () => {
