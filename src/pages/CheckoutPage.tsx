@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useSessionStore } from '@/store/sessionStore';
 import { useCartStore } from '@/store/cartStore';
@@ -8,8 +8,15 @@ import { PaymentStep } from '@/components/checkout/PaymentStep';
 import { OrderSummary } from '@/components/checkout/OrderSummary';
 import { PixInformationDialog } from '@/components/checkout/PixInformationDialog';
 import { useProfile } from '@/hooks/useProfile';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
+import CheckoutForm from '@/components/checkout/CheckoutForm';
+import { supabase } from '@/integrations/supabase/client';
+import { showError } from '@/utils/toast';
+
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 export default function CheckoutPage() {
   const session = useSessionStore((state) => state.session);
@@ -22,6 +29,8 @@ export default function CheckoutPage() {
   const [shippingCost, setShippingCost] = useState(0);
   const [shippingDistance, setShippingDistance] = useState(0);
   const [shippingZoneId, setShippingZoneId] = useState<string | null>(null);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [isLoadingClientSecret, setIsLoadingClientSecret] = useState(false);
 
   const selectedItems = useMemo(() => items.filter(item => item.selected), [items]);
   const subtotal = useMemo(() => selectedItems.reduce((acc, item) => acc + item.price * item.quantity, 0), [selectedItems]);
@@ -30,11 +39,42 @@ export default function CheckoutPage() {
   const isProfileIncomplete = !profile?.full_name || !profile?.cpf;
   const isCheckoutDisabled = !selectedAddressId || !paymentMethod || isProfileIncomplete || isLoadingProfile || shippingCost <= 0;
 
+  useEffect(() => {
+    const createPaymentIntent = async () => {
+      if (paymentMethod === 'credit_card' && total > 0 && selectedAddressId && session?.user.id) {
+        setIsLoadingClientSecret(true);
+        try {
+          const { data, error } = await supabase.functions.invoke('create-payment-intent', {
+            body: {
+              items: selectedItems,
+              shippingAddressId,
+              userId: session.user.id,
+              shippingCost,
+              shippingDistance,
+              shippingZoneId,
+            },
+          });
+          if (error || data.error) throw new Error(error?.message || data.error);
+          setClientSecret(data.clientSecret);
+        } catch (err: any) {
+          showError(`Erro ao iniciar pagamento: ${err.message}`);
+          setPaymentMethod(null); // Reseta o método de pagamento em caso de erro
+        } finally {
+          setIsLoadingClientSecret(false);
+        }
+      } else {
+        setClientSecret(null);
+      }
+    };
+    createPaymentIntent();
+  }, [paymentMethod, total, selectedAddressId, session?.user.id]);
+
   const handleFinalizeOrder = () => {
     if (isCheckoutDisabled) return;
     if (paymentMethod === 'pix') {
       setIsPixDialogOpen(true);
     }
+    // Para cartão, o botão de pagamento está dentro do CheckoutForm
   };
 
   const handleShippingChange = (cost: number, distance: number, zoneId: string | null) => {
@@ -69,6 +109,16 @@ export default function CheckoutPage() {
             <div className="space-y-4">
               <h2 className="text-xl font-semibold">2. Método de Pagamento</h2>
               <PaymentStep selectedPaymentMethod={paymentMethod} onPaymentMethodSelect={setPaymentMethod} />
+              {isLoadingClientSecret && (
+                <div className="flex items-center justify-center p-8">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+              )}
+              {paymentMethod === 'credit_card' && clientSecret && (
+                <Elements stripe={stripePromise} options={{ clientSecret }}>
+                  <CheckoutForm />
+                </Elements>
+              )}
             </div>
           </div>
 
@@ -86,14 +136,16 @@ export default function CheckoutPage() {
                   </AlertDescription>
                 </Alert>
               )}
-              <Button
-                size="lg"
-                className="w-full"
-                onClick={handleFinalizeOrder}
-                disabled={isCheckoutDisabled}
-              >
-                Finalizar Pedido
-              </Button>
+              {paymentMethod !== 'credit_card' && (
+                <Button
+                  size="lg"
+                  className="w-full"
+                  onClick={handleFinalizeOrder}
+                  disabled={isCheckoutDisabled}
+                >
+                  Finalizar Pedido
+                </Button>
+              )}
             </div>
           </div>
         </div>

@@ -20,6 +20,7 @@ import ContactPage from "./pages/Contact";
 import PolicyPage from "./pages/PolicyPage";
 import UpdatePasswordPage from "./pages/UpdatePassword";
 import CheckoutPage from "./pages/CheckoutPage";
+import PaymentStatusPage from "./pages/PaymentStatusPage";
 import NotFound from "./pages/NotFound";
 
 // Profile Pages
@@ -66,9 +67,10 @@ const App = () => (
               </Route>
             </Route>
 
-            {/* Auth Routes (no layout) */}
+            {/* Auth & Payment Status Routes (no layout) */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/update-password" element={<UpdatePasswordPage />} />
+            <Route path="/payment-status" element={<PaymentStatusPage />} />
 
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminDashboardLayout />}>
