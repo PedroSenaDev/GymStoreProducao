@@ -1,11 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Product } from "@/types/product";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Search, Minus, Plus } from "lucide-react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Loader2, Search, Save, XCircle } from "lucide-react";
 import { showError, showSuccess } from "@/utils/toast";
 
 async function fetchProductsForStock(): Promise<Product[]> {
@@ -18,49 +18,56 @@ async function fetchProductsForStock(): Promise<Product[]> {
 }
 
 const StockControl = ({ product }: { product: Product }) => {
-  const [quantity, setQuantity] = useState(1);
+  const [currentStock, setCurrentStock] = useState(product.stock);
   const queryClient = useQueryClient();
 
+  useEffect(() => {
+    setCurrentStock(product.stock);
+  }, [product.stock]);
+
   const { mutate, isPending } = useMutation({
-    mutationFn: async ({ change }: { change: number }) => {
+    mutationFn: async (newStockValue: number) => {
       const { error } = await supabase.rpc('update_product_stock', {
         p_product_id: product.id,
-        p_quantity_change: change,
+        p_new_stock: newStockValue,
       });
       if (error) throw error;
     },
-    onSuccess: (_, { change }) => {
+    onSuccess: () => {
       showSuccess(`Estoque de "${product.name}" atualizado.`);
       queryClient.invalidateQueries({ queryKey: ["productsForStock"] });
-      setQuantity(1); // Reset input after update
     },
     onError: (error: any) => {
       showError(error.message);
     },
   });
 
-  const handleUpdate = (type: 'add' | 'remove') => {
-    const change = type === 'add' ? quantity : -quantity;
-    mutate({ change });
+  const handleSave = () => {
+    mutate(currentStock);
+  };
+
+  const handleSetOutOfStock = () => {
+    setCurrentStock(0);
+    mutate(0);
   };
 
   return (
-    <div className="flex items-center gap-2 mt-2">
+    <div className="flex flex-wrap items-center gap-2 mt-2">
       <Input
         type="number"
-        min="1"
-        value={quantity}
-        onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
-        className="h-9 w-20 text-center"
+        min="0"
+        value={currentStock}
+        onChange={(e) => setCurrentStock(Math.max(0, parseInt(e.target.value, 10) || 0))}
+        className="h-9 w-24 text-center"
         disabled={isPending}
       />
-      <Button size="sm" onClick={() => handleUpdate('add')} disabled={isPending}>
-        {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-        <span className="ml-2 hidden sm:inline">Adicionar</span>
+      <Button size="sm" onClick={handleSave} disabled={isPending || currentStock === product.stock}>
+        {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+        <span className="ml-2 hidden sm:inline">Salvar</span>
       </Button>
-      <Button size="sm" variant="outline" onClick={() => handleUpdate('remove')} disabled={isPending}>
-        {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Minus className="h-4 w-4" />}
-        <span className="ml-2 hidden sm:inline">Remover</span>
+      <Button size="sm" variant="outline" onClick={handleSetOutOfStock} disabled={isPending || product.stock === 0}>
+        <XCircle className="h-4 w-4 text-destructive" />
+        <span className="ml-2 hidden sm:inline">Esgotar</span>
       </Button>
     </div>
   );
