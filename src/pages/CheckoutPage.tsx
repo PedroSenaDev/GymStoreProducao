@@ -16,7 +16,11 @@ import CheckoutForm from '@/components/checkout/CheckoutForm';
 import { supabase } from '@/integrations/supabase/client';
 import { showError } from '@/utils/toast';
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+if (!stripePublishableKey) {
+  throw new Error("VITE_STRIPE_PUBLISHABLE_KEY não está definida no arquivo .env");
+}
+const stripePromise = loadStripe(stripePublishableKey);
 
 export default function CheckoutPage() {
   const session = useSessionStore((state) => state.session);
