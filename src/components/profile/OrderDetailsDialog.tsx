@@ -32,6 +32,14 @@ const translateStatus = (status: string): string => {
     }
 };
 
+const translatePaymentMethod = (method: string | undefined): string => {
+    switch (method) {
+        case 'pix': return 'Pix';
+        case 'credit_card': return 'Cartão';
+        default: return 'N/A';
+    }
+};
+
 const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
       case 'pending': return 'secondary';
@@ -113,7 +121,7 @@ export default function OrderDetailsDialog({ order, open, onOpenChange }: OrderD
               <div className="space-y-2">
                 <h4 className="font-semibold flex items-center"><CreditCard className="mr-2 h-4 w-4" /> Pagamento</h4>
                 <p className="text-muted-foreground">
-                  Método: {order.payment_method === 'pix' ? 'Pix' : order.payment_method === 'credit_card' ? 'Cartão de Crédito' : 'N/A'}
+                  Método: {translatePaymentMethod(order.payment_method)}
                 </p>
                 <div className="flex items-center gap-2">
                   <h4 className="font-semibold">Status:</h4>

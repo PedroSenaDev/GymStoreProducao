@@ -41,7 +41,8 @@ export default function CheckoutPage() {
   const total = subtotal + shippingCost;
 
   const isProfileIncomplete = !profile?.full_name || !profile?.cpf;
-  const isCheckoutDisabled = !selectedAddressId || !paymentMethod || isProfileIncomplete || isLoadingProfile || shippingCost <= 0;
+  const isShippingCalculated = selectedAddressId && shippingCost > 0;
+  const isCheckoutDisabled = !isShippingCalculated || !paymentMethod || isProfileIncomplete || isLoadingProfile;
 
   useEffect(() => {
     const createPaymentIntent = async () => {
@@ -117,7 +118,17 @@ export default function CheckoutPage() {
             </div>
             <div className="space-y-4">
               <h2 className="text-xl font-semibold">2. Método de Pagamento</h2>
-              <PaymentStep selectedPaymentMethod={paymentMethod} onPaymentMethodSelect={setPaymentMethod} />
+              {!isShippingCalculated && (
+                <Alert variant="default">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Selecione um endereço válido e aguarde o cálculo do frete para escolher o método de pagamento.
+                  </AlertDescription>
+                </Alert>
+              )}
+              <div className={!isShippingCalculated ? 'pointer-events-none opacity-50' : ''}>
+                <PaymentStep selectedPaymentMethod={paymentMethod} onPaymentMethodSelect={setPaymentMethod} />
+              </div>
               {isLoadingClientSecret && (
                 <div className="flex items-center justify-center p-8">
                   <Loader2 className="h-8 w-8 animate-spin" />
