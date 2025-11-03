@@ -17,7 +17,8 @@ serve(async (req) => {
   const body = await req.text();
   
   try {
-    const event = await stripe.webhooks.constructEvent(
+    // CORREÇÃO: Usar constructEventAsync para evitar o erro de contexto síncrono no Deno
+    const event = await stripe.webhooks.constructEventAsync(
       body,
       signature!,
       Deno.env.get("STRIPE_WEBHOOK_SECRET")!
@@ -40,8 +41,7 @@ serve(async (req) => {
         return new Response("Metadados ausentes.", { status: 400 });
       }
 
-      // 1. Buscar os itens do carrinho do usuário E os detalhes do produto
-      // Como o CheckoutPage agora garante que apenas itens selecionados estão no DB, buscamos todos.
+      // 1. Buscar os itens do carrinho do usuário (que foram selecionados no checkout)
       const { data: cartItems, error: cartError } = await supabaseAdmin
         .from('cart_items')
         .select('id, product_id, quantity, selected_size, selected_color, products(price, colors)')
