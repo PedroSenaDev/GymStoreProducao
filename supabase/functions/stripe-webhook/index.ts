@@ -69,7 +69,10 @@ serve(async (req) => {
         .select('id')
         .single();
       
-      if (orderError) throw new Error(`Erro ao criar pedido: ${orderError.message}`);
+      if (orderError) {
+        console.error(`ERRO CRÍTICO AO CRIAR PEDIDO (Stripe Webhook): ${orderError.message}`, { userId, paymentIntentId });
+        throw new Error(`Erro ao criar pedido: ${orderError.message}`);
+      }
       const orderId = orderData.id;
 
       // 3. Salvar os itens do pedido e dar baixa no estoque
@@ -86,6 +89,7 @@ serve(async (req) => {
       if (itemsError) {
         // Se falhar ao salvar os itens, deleta o pedido principal
         await supabaseAdmin.from('orders').delete().eq('id', orderId);
+        console.error(`ERRO CRÍTICO AO SALVAR ITENS (Stripe Webhook): ${itemsError.message}`, { orderId });
         throw new Error(`Erro ao salvar itens do pedido: ${itemsError.message}`);
       }
 
