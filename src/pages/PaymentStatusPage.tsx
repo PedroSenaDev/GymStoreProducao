@@ -4,12 +4,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useCartStore } from '@/store/cartStore';
 
 export default function PaymentStatusPage() {
   const stripe = useStripe();
   const navigate = useNavigate();
   const [message, setMessage] = useState<string | null>(null);
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const { removeSelectedItems } = useCartStore();
 
   useEffect(() => {
     if (!stripe) {
@@ -30,6 +32,8 @@ export default function PaymentStatusPage() {
         case 'succeeded':
           setMessage('Pagamento aprovado com sucesso!');
           setStatus('success');
+          // Limpa os itens selecionados do carrinho localmente
+          removeSelectedItems();
           break;
         case 'processing':
           setMessage('Seu pagamento está sendo processado.');
@@ -45,7 +49,7 @@ export default function PaymentStatusPage() {
           break;
       }
     });
-  }, [stripe, navigate]);
+  }, [stripe, navigate, removeSelectedItems]);
 
   const renderContent = () => {
     switch (status) {

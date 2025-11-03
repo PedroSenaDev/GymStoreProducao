@@ -63,7 +63,24 @@ serve(async (req) => {
     if (orderError) throw orderError;
     const orderId = orderData.id;
 
-    // 3. Criar o PaymentIntent no Stripe
+    // 3. Salvar os itens do pedido
+    const orderItems = items.map((item: any) => ({
+        order_id: orderId, 
+        product_id: item.id, 
+        quantity: item.quantity,
+        price: productPriceMap.get(item.id) || item.price, // Usar o preço do DB para segurança
+        selected_size: item.selectedSize, 
+        selected_color: item.selectedColor,
+    }));
+
+    const { error: itemsError } = await supabaseAdmin.from('order_items').insert(orderItems);
+    if (itemsError) {
+        // Se falhar ao salvar os itens, deleta o pedido principal
+        await supabaseAdmin.from('orders').delete().eq('id', orderId);
+        throw itemsError;
+    }
+
+    // 4. Criar o PaymentIntent no Stripe
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(totalAmount * 100), // em centavos
       currency: 'brl',
@@ -72,14 +89,14 @@ serve(async (req) => {
       },
     });
 
-    // 4. Atualizar nosso pedido com o ID do PaymentIntent
+    // 5. Atualizar nosso pedido com o ID do PaymentIntent
     const { error: updateError } = await supabaseAdmin
       .from('orders')
       .update({ stripe_payment_intent_id: paymentIntent.id })
       .eq('id', orderId);
     if (updateError) throw updateError;
 
-    // 5. Retornar o client_secret para o frontend
+    // 6. Retornar o client_secret para o frontend
     return new Response(JSON.stringify({ clientSecret: paymentIntent.client_secret }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

@@ -30,7 +30,7 @@ serve(async (req) => {
       // Encontra o pedido correspondente
       const { data: order, error: findError } = await supabaseAdmin
         .from('orders')
-        .select('id, status, order_items(product_id, quantity)')
+        .select('id, user_id, status, order_items(product_id, quantity)')
         .eq('stripe_payment_intent_id', paymentIntentId)
         .single();
 
@@ -41,6 +41,18 @@ serve(async (req) => {
 
       // Atualiza o status do pedido para 'processing' se ainda estiver 'pending'
       if (order.status === 'pending') {
+        // 1. Dar baixa no estoque
+        const stockUpdates = order.order_items.map(item => 
+          supabaseAdmin.rpc('decrement_product_stock', {
+            p_product_id: item.product_id,
+            p_quantity: item.quantity
+          })
+        );
+        
+        // Executa todas as atualizações de estoque
+        await Promise.all(stockUpdates);
+
+        // 2. Atualiza o status do pedido
         const { error: updateError } = await supabaseAdmin
           .from('orders')
           .update({ status: 'processing' })
@@ -48,14 +60,15 @@ serve(async (req) => {
 
         if (updateError) throw new Error(`Erro ao atualizar pedido ${order.id}: ${updateError.message}`);
 
-        // Lógica para dar baixa no estoque
-        const stockUpdates = order.order_items.map(item => 
-          supabaseAdmin.rpc('update_product_stock', {
-            p_product_id: item.product_id,
-            p_new_stock: -item.quantity // A função precisa ser ajustada para aceitar valores negativos para decremento
-          })
-        );
-        await Promise.all(stockUpdates);
+        // 3. Limpa o carrinho do usuário (itens selecionados)
+        const { error: cartClearError } = await supabaseAdmin
+            .from('cart_items')
+            .delete()
+            .eq('user_id', order.user_id);
+        
+        if (cartClearError) {
+            console.error(`Falha ao limpar o carrinho do usuário ${order.user_id}:`, cartClearError);
+        }
       }
     }
 
