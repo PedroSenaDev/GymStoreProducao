@@ -29,7 +29,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Loader2, PlusCircle, MoreHorizontal } from "lucide-react";
+import { Loader2, PlusCircle, MoreHorizontal, ArrowLeft } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,6 +39,7 @@ import {
 import { showError, showSuccess } from "@/utils/toast";
 import CategoryForm from "./CategoryForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Link } from "react-router-dom";
 
 async function fetchCategories(): Promise<Category[]> {
   const { data, error } = await supabase.from("categories").select("*").order('created_at', { ascending: false });
@@ -82,25 +83,33 @@ export default function AdminCategoriesPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">Categorias</h1>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={handleAddNew}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Adicionar Categoria
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{selectedCategory ? "Editar" : "Adicionar"} Categoria</DialogTitle>
-            </DialogHeader>
-            <CategoryForm
-              category={selectedCategory}
-              onFinished={() => setIsDialogOpen(false)}
-            />
-          </DialogContent>
-        </Dialog>
+      <div className="mb-6">
+        <Button asChild variant="link" className="-ml-4 mb-4">
+            <Link to="/admin/products">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Voltar para Produtos
+            </Link>
+        </Button>
+        <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-bold">Categorias</h1>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+                <Button onClick={handleAddNew}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Adicionar Categoria
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                <DialogTitle>{selectedCategory ? "Editar" : "Adicionar"} Categoria</DialogTitle>
+                </DialogHeader>
+                <CategoryForm
+                category={selectedCategory}
+                onFinished={() => setIsDialogOpen(false)}
+                />
+            </DialogContent>
+            </Dialog>
+        </div>
       </div>
 
       {isLoading ? (
