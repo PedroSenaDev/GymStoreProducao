@@ -44,13 +44,6 @@ export default function CheckoutPage() {
   const isShippingCalculated = selectedAddressId && shippingCost > 0;
   const isCheckoutDisabled = !isShippingCalculated || !paymentMethod || isProfileIncomplete || isLoadingProfile;
 
-  // Função para garantir que apenas itens selecionados permaneçam no DB antes de qualquer pagamento
-  const ensureOnlySelectedItems = async () => {
-    if (session?.user.id) {
-      await clearNonSelectedItems();
-    }
-  };
-
   useEffect(() => {
     const createPaymentIntent = async () => {
       if (paymentMethod === 'credit_card' && total > 0 && selectedAddressId && session?.user.id) {
@@ -59,7 +52,7 @@ export default function CheckoutPage() {
 
         try {
           // CRITICAL STEP: Ensure only selected items are in the DB cart before creating PI
-          await ensureOnlySelectedItems();
+          await clearNonSelectedItems();
 
           const { data, error } = await supabase.functions.invoke('create-payment-intent', {
             body: {
@@ -86,12 +79,8 @@ export default function CheckoutPage() {
     createPaymentIntent();
   }, [paymentMethod, total, selectedAddressId, session?.user.id, selectedItems, shippingCost, shippingDistance, shippingZoneId, clearNonSelectedItems]);
 
-  const handleFinalizeOrder = async () => {
+  const handleFinalizeOrder = () => {
     if (isCheckoutDisabled) return;
-    
-    // Step 1: Ensure only selected items are in the DB cart for Pix order creation
-    await ensureOnlySelectedItems();
-
     if (paymentMethod === 'pix') {
       setIsPixDialogOpen(true);
     }
