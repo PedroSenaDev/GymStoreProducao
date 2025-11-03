@@ -22,9 +22,7 @@ const links = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
   { to: '/admin/orders', label: 'Pedidos', icon: <ShoppingCart size={20} /> },
   { to: '/admin/products', label: 'Produtos', icon: <Package size={20} /> },
-  { to: '/admin/categories', label: 'Categorias', icon: <Tags size={20} /> },
   { to: '/admin/stock', label: 'Gerenciar Estoque', icon: <Boxes size={20} /> },
-  { to: '/admin/shipping', label: 'Configurar Frete', icon: <Truck size={20} /> },
   { to: '/admin/settings', label: 'Configurações', icon: <Settings size={20} /> },
 ];
 

@@ -29,7 +29,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Loader2, PlusCircle, MoreHorizontal, Search } from "lucide-react";
+import { Loader2, PlusCircle, MoreHorizontal, Search, Tags } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +41,7 @@ import { Badge } from "@/components/ui/badge";
 import { showError, showSuccess } from "@/utils/toast";
 import ProductForm from "./ProductForm";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Link } from "react-router-dom";
 
 async function fetchProducts(): Promise<Product[]> {
   const { data, error } = await supabase.from("products").select("*, categories(name)").order('created_at', { ascending: false });
@@ -127,6 +128,12 @@ export default function AdminProductsPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          <Button asChild variant="outline" className="w-full sm:w-auto">
+            <Link to="/admin/products/categories">
+              <Tags className="mr-2 h-4 w-4" />
+              Gerenciar Categorias
+            </Link>
+          </Button>
           <Button onClick={handleAddNew} className="w-full sm:w-auto">
             <PlusCircle className="mr-2 h-4 w-4" />
             Adicionar Produto

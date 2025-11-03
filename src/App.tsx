@@ -80,11 +80,17 @@ const App = () => (
                <Route index element={<Navigate to="dashboard" replace />} />
                <Route path="dashboard" element={<DashboardHomePage />} />
                <Route path="orders" element={<AdminOrdersPage />} />
+               
+               {/* Produtos e Categorias aninhadas */}
                <Route path="products" element={<AdminProductsPage />} />
-               <Route path="categories" element={<AdminCategoriesPage />} />
+               <Route path="products/categories" element={<AdminCategoriesPage />} />
+
                <Route path="stock" element={<AdminStockPage />} />
-               <Route path="shipping" element={<AdminShippingPage />} />
+               
+               {/* Configurações e Frete aninhados */}
                <Route path="settings" element={<AdminSettingsPage />} />
+               <Route path="settings/shipping" element={<AdminShippingPage />} />
+               
                <Route path="reports" element={<AdminReportsPage />} />
             </Route>
 

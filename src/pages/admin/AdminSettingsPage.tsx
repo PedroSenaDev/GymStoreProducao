@@ -30,7 +30,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
   } from "@/components/ui/alert-dialog";
-import { Loader2, PlusCircle, Edit, Trash2 } from "lucide-react";
+import { Loader2, PlusCircle, Edit, Trash2, Truck } from "lucide-react";
 import PolicyForm from "./PolicyForm";
 import AboutUsForm from "./AboutUsForm";
 import SizeChartForm from "./SizeChartForm";
@@ -43,6 +43,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Link } from "react-router-dom";
 
 async function fetchPolicies(): Promise<Policy[]> {
   const { data, error } = await supabase.from("policies").select("*").not('display_area', 'eq', 'about_us').order('created_at', { ascending: false });
@@ -135,6 +136,7 @@ export default function AdminSettingsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="about">Sobre a Loja</SelectItem>
+                <SelectItem value="shipping">Frete</SelectItem>
                 <SelectItem value="size-charts">Tabelas de Medidas</SelectItem>
                 <SelectItem value="policies">Políticas</SelectItem>
               </SelectContent>
@@ -165,6 +167,23 @@ export default function AdminSettingsPage() {
                           />
                       </DialogContent>
                   </Dialog>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="shipping" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Configuração de Frete</CardTitle>
+                <CardDescription>Gerencie o CEP de origem e as faixas de preço por distância.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button asChild>
+                  <Link to="/admin/settings/shipping">
+                    <Truck className="mr-2 h-4 w-4" />
+                    Configurar Faixas de Frete
+                  </Link>
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
