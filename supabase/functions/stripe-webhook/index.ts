@@ -41,9 +41,11 @@ serve(async (req) => {
       }
 
       // 1. Buscar os itens do carrinho do usuário (que foram selecionados no checkout)
+      // Nota: O carrinho armazena o código da cor (string), mas o order_items armazena o objeto (jsonb).
+      // Precisamos buscar os dados do carrinho e os preços dos produtos.
       const { data: cartItems, error: cartError } = await supabaseAdmin
         .from('cart_items')
-        .select('id, product_id, quantity, selected_size, selected_color, products(price)')
+        .select('id, product_id, quantity, selected_size, selected_color, products(price, colors)')
         .eq('user_id', userId);
 
       if (cartError) throw new Error(`Erro ao buscar itens do carrinho: ${cartError.message}`);
@@ -75,15 +77,21 @@ serve(async (req) => {
       }
       const orderId = orderData.id;
 
-      // 3. Salvar os itens do pedido e dar baixa no estoque
-      const orderItemsPayload = cartItems.map((item: any) => ({
-        order_id: orderId,
-        product_id: item.product_id,
-        quantity: item.quantity,
-        price: item.products.price, // Usar o preço do DB
-        selected_size: item.selected_size,
-        selected_color: item.selected_color,
-      }));
+      // 3. Salvar os itens do pedido
+      const orderItemsPayload = cartItems.map((item: any) => {
+        // Encontrar o objeto de cor completo a partir do código armazenado no carrinho
+        const productColors = item.products?.colors || [];
+        const selectedColorObject = productColors.find((c: any) => c.code === item.selected_color);
+
+        return {
+          order_id: orderId,
+          product_id: item.product_id,
+          quantity: item.quantity,
+          price: item.products.price, // Usar o preço do DB
+          selected_size: item.selected_size,
+          selected_color: selectedColorObject, // Salvar o objeto completo (JSONB)
+        };
+      });
 
       const { error: itemsError } = await supabaseAdmin.from('order_items').insert(orderItemsPayload);
       if (itemsError) {
@@ -93,7 +101,7 @@ serve(async (req) => {
         throw new Error(`Erro ao salvar itens do pedido: ${itemsError.message}`);
       }
 
-      // 4. Dar baixa no estoque
+      // 4. Dar baixa no estoque (só após a criação bem-sucedida do pedido e itens)
       const stockUpdates = cartItems.map(item => 
         supabaseAdmin.rpc('decrement_product_stock', {
           p_product_id: item.product_id,
@@ -104,7 +112,7 @@ serve(async (req) => {
       // Executa todas as atualizações de estoque
       await Promise.all(stockUpdates);
 
-      // 5. Limpar o carrinho do usuário (todos os itens, pois o checkout só permite itens selecionados)
+      // 5. Limpar o carrinho do usuário (só após a criação bem-sucedida do pedido e itens)
       const { error: cartClearError } = await supabaseAdmin
           .from('cart_items')
           .delete()
