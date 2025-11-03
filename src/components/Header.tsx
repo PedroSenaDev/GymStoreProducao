@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Logo } from './Logo';
 import { Button } from './ui/button';
 import { ShoppingCart, Menu } from 'lucide-react';
@@ -14,9 +14,10 @@ import { useCartStore } from '@/store/cartStore';
 import { CartSheet } from './CartSheet';
 import { Badge } from './ui/badge';
 
-const NavLink = ({ to, children }: { to: string; children: React.ReactNode }) => (
+const NavLink = ({ to, children, onClick }: { to: string; children: React.ReactNode; onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void }) => (
   <Link
     to={to}
+    onClick={onClick}
     className="relative z-10 text-sm font-medium text-zinc-900 transition-colors duration-300 ease-out group px-3 py-2 rounded-md hover:text-white"
   >
     {children}
@@ -27,6 +28,16 @@ const NavLink = ({ to, children }: { to: string; children: React.ReactNode }) =>
 export const Header = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const cartItems = useCartStore(state => state.items);
+  const location = useLocation();
+  const isHomePage = location.pathname === '/';
+
+  const handleHomeClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (isHomePage) {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   const navItems = [
     { to: '/', label: 'Início' },
     { to: '/products', label: 'Produtos' },
@@ -43,7 +54,15 @@ export const Header = () => {
 
         {/* Center: Desktop Nav */}
         <nav className="hidden md:flex justify-center items-center space-x-10 text-sm font-medium">
-          {navItems.map(item => <NavLink key={item.to} to={item.to}>{item.label}</NavLink>)}
+          {navItems.map(item => (
+            <NavLink 
+              key={item.to} 
+              to={item.to} 
+              onClick={item.to === '/' ? handleHomeClick : undefined}
+            >
+              {item.label}
+            </NavLink>
+          ))}
         </nav>
         
         {/* Right: Icons & Mobile Nav */}
@@ -76,7 +95,11 @@ export const Header = () => {
                             <nav className="flex flex-col space-y-4">
                                 {navItems.map(item => (
                                     <SheetClose asChild key={item.to}>
-                                        <Link to={item.to} className="block py-3 text-lg font-medium text-zinc-800 transition-colors hover:text-black">
+                                        <Link 
+                                          to={item.to} 
+                                          onClick={item.to === '/' ? handleHomeClick : undefined}
+                                          className="block py-3 text-lg font-medium text-zinc-800 transition-colors hover:text-black"
+                                        >
                                             {item.label}
                                         </Link>
                                     </SheetClose>
