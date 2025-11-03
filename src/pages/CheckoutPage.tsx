@@ -51,7 +51,7 @@ export default function CheckoutPage() {
           const { data, error } = await supabase.functions.invoke('create-payment-intent', {
             body: {
               items: selectedItems,
-              shippingAddressId,
+              shippingAddressId: selectedAddressId, // CORRIGIDO AQUI
               userId: session.user.id,
               shippingCost,
               shippingDistance,
@@ -71,7 +71,7 @@ export default function CheckoutPage() {
       }
     };
     createPaymentIntent();
-  }, [paymentMethod, total, selectedAddressId, session?.user.id]);
+  }, [paymentMethod, total, selectedAddressId, session?.user.id, selectedItems, shippingCost, shippingDistance, shippingZoneId]);
 
   const handleFinalizeOrder = () => {
     if (isCheckoutDisabled) return;
