@@ -14,12 +14,10 @@ const supabaseAdmin = createClient(
 
 serve(async (req) => {
   const signature = req.headers.get("Stripe-Signature");
-  
-  // O corpo da requisição deve ser lido como texto ANTES de ser usado pelo constructEventAsync
   const body = await req.text();
   
   try {
-    // 1. Verificar a assinatura do webhook de forma assíncrona
+    // CORREÇÃO: Usar constructEventAsync para evitar o erro de contexto síncrono no Deno
     const event = await stripe.webhooks.constructEventAsync(
       body,
       signature!,
@@ -128,7 +126,6 @@ serve(async (req) => {
 
   } catch (err) {
     console.error("Erro no webhook do Stripe:", err);
-    // Retorna 400 para o Stripe para que ele saiba que a entrega falhou
     return new Response(`Webhook Error: ${err.message}`, { status: 400 });
   }
 });

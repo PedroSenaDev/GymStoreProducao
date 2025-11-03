@@ -44,13 +44,6 @@ export default function CheckoutPage() {
   const isShippingCalculated = selectedAddressId && shippingCost > 0;
   const isCheckoutDisabled = !isShippingCalculated || !paymentMethod || isProfileIncomplete || isLoadingProfile;
 
-  // Dados do cliente para Stripe/Pix
-  const customerData = useMemo(() => ({
-    name: profile?.full_name,
-    email: session?.user.email,
-    cpf: profile?.cpf,
-  }), [profile, session]);
-
   // Função para garantir que apenas itens selecionados permaneçam no DB antes de qualquer pagamento
   const ensureOnlySelectedItems = async () => {
     if (session?.user.id) {
@@ -60,7 +53,7 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     const createPaymentIntent = async () => {
-      if (paymentMethod === 'credit_card' && total > 0 && selectedAddressId && session?.user.id && customerData.cpf) {
+      if (paymentMethod === 'credit_card' && total > 0 && selectedAddressId && session?.user.id) {
         setIsLoadingClientSecret(true);
         setClientSecret(null); // Clear previous secret
 
@@ -76,7 +69,6 @@ export default function CheckoutPage() {
               shippingCost,
               shippingDistance,
               shippingZoneId,
-              customerData, // Passando os dados do cliente
             },
           });
           if (error || data.error) throw new Error(error?.message || data.error);
@@ -92,7 +84,7 @@ export default function CheckoutPage() {
       }
     };
     createPaymentIntent();
-  }, [paymentMethod, total, selectedAddressId, session?.user.id, selectedItems, shippingCost, shippingDistance, shippingZoneId, clearNonSelectedItems, customerData]);
+  }, [paymentMethod, total, selectedAddressId, session?.user.id, selectedItems, shippingCost, shippingDistance, shippingZoneId, clearNonSelectedItems]);
 
   const handleFinalizeOrder = async () => {
     if (isCheckoutDisabled) return;
@@ -154,7 +146,7 @@ export default function CheckoutPage() {
                 </div>
               )}
               {paymentMethod === 'credit_card' && clientSecret && (
-                <Elements stripe={stripePromise} options={{ clientSecret, locale: 'pt-BR' }}>
+                <Elements stripe={stripePromise} options={{ clientSecret }}>
                   <CheckoutForm />
                 </Elements>
               )}

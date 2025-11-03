@@ -23,15 +23,10 @@ serve(async (req) => {
   }
 
   try {
-    const { items, shippingCost, userId, shippingAddressId, shippingDistance, shippingZoneId, customerData } = await req.json();
+    const { items, shippingCost, userId, shippingAddressId, shippingDistance, shippingZoneId } = await req.json();
 
-    // Limpeza e validação dos dados do cliente
-    const cleanedCpf = (customerData.cpf || '').replace(/\D/g, '');
-    const customerName = customerData.name || 'Cliente Sem Nome';
-    const customerEmail = customerData.email;
-
-    if (!items || items.length === 0 || !userId || !shippingAddressId || !customerEmail || cleanedCpf.length < 11) {
-      throw new Error("Informações essenciais do pedido (itens, endereço) ou do cliente (email, CPF) incompletas ou inválidas.");
+    if (!items || items.length === 0 || !userId || !shippingAddressId) {
+      throw new Error("Informações essenciais do pedido incompletas.");
     }
 
     // 1. Recalcular o subtotal dos produtos por segurança
@@ -50,26 +45,8 @@ serve(async (req) => {
 
     const totalAmount = subtotal + shippingCost;
 
-    // 2. Criar ou buscar o Customer no Stripe
-    let customer;
-    const searchCustomers = await stripe.customers.list({
-        email: customerEmail,
-        limit: 1,
-    });
-
-    if (searchCustomers.data.length > 0) {
-        customer = searchCustomers.data[0];
-    } else {
-        customer = await stripe.customers.create({
-            email: customerEmail,
-            name: customerName,
-            metadata: {
-                supabase_user_id: userId,
-            },
-        });
-    }
-
-    // 3. Criar o PaymentIntent no Stripe
+    // 2. Criar o PaymentIntent no Stripe
+    // Passando os dados essenciais para o metadata, que será lido pelo webhook.
     const essentialMetadata = {
         user_id: userId,
         shipping_address_id: shippingAddressId,
@@ -81,26 +58,10 @@ serve(async (req) => {
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(totalAmount * 100), // em centavos
       currency: 'brl',
-      customer: customer.id,
       metadata: essentialMetadata,
-      payment_method_options: {
-        card: {
-          // Configura o Stripe para solicitar o CPF/CNPJ (tax_id)
-          setup_future_usage: 'off_session',
-          billing_details: {
-            address: {
-              country: 'BR',
-            },
-            tax_id: {
-              type: 'br_cpf',
-              value: cleanedCpf,
-            },
-          },
-        },
-      },
     });
 
-    // 4. Retornar o client_secret para o frontend
+    // 3. Retornar o client_secret para o frontend
     return new Response(JSON.stringify({ clientSecret: paymentIntent.client_secret }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
