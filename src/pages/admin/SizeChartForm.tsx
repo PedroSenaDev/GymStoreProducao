@@ -178,7 +178,7 @@ export default function SizeChartForm({ sizeChart, onFinished }: SizeChartFormPr
           render={({ field }) => (
             <FormItem>
               <FormLabel>Imagem da Tabela</FormLabel>
-              <FormControl><SingleImageUpload value={field.value} onChange={field.onChange} /></FormControl>
+              <FormControl><SingleImageUpload value={field.value} onChange={field.onChange} folder="size_charts" /></FormControl>
               <FormMessage />
             </FormItem>
           )}

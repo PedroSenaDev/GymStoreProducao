@@ -8,9 +8,10 @@ import { showError } from "@/utils/toast";
 interface SingleImageUploadProps {
   value: string | null;
   onChange: (value: string | null) => void;
+  folder?: string;
 }
 
-export default function SingleImageUpload({ value, onChange }: SingleImageUploadProps) {
+export default function SingleImageUpload({ value, onChange, folder = 'public' }: SingleImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
 
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -23,7 +24,7 @@ export default function SingleImageUpload({ value, onChange }: SingleImageUpload
       const file = event.target.files[0];
       const fileExt = file.name.split(".").pop();
       const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `size_charts/${fileName}`;
+      const filePath = `${folder}/${fileName}`;
       
       const { error: uploadError } = await supabase.storage
         .from("products") // Using the same bucket as product images
@@ -55,7 +56,7 @@ export default function SingleImageUpload({ value, onChange }: SingleImageUpload
         <div className="relative w-full h-48 border rounded-md">
           <img
             src={value}
-            alt="Pré-visualização da tabela de medidas"
+            alt="Pré-visualização da imagem"
             className="w-full h-full object-contain rounded-md"
           />
           <Button

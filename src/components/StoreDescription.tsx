@@ -7,7 +7,7 @@ import { Skeleton } from './ui/skeleton';
 async function fetchAboutUsPolicy(): Promise<Policy | null> {
   const { data, error } = await supabase
     .from("policies")
-    .select("title, content")
+    .select("title, content, image_url")
     .eq('display_area', 'about_us')
     .maybeSingle();
   
@@ -29,7 +29,7 @@ export const StoreDescription = () => {
       <section className="container py-16 md:py-24">
         <div className="mx-auto max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-12 items-center">
           <div className="flex justify-center md:justify-start">
-            <Skeleton className="h-24 w-24 rounded-full" />
+            <Skeleton className="h-40 w-40 rounded-full" />
           </div>
           <div className="md:col-span-2 space-y-4">
             <Skeleton className="h-8 w-1/2" />
@@ -51,11 +51,19 @@ export const StoreDescription = () => {
     <section className="container py-16 md:py-24">
       <div className="mx-auto max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-12 items-center">
         <div className="flex justify-center md:justify-start">
-            <Dumbbell className="h-20 w-20 md:h-24 md:w-24 text-primary" />
+            {policy.image_url ? (
+                <img 
+                    src={policy.image_url} 
+                    alt={policy.title} 
+                    className="h-40 w-40 rounded-full object-cover shadow-lg" 
+                />
+            ) : (
+                <Dumbbell className="h-20 w-20 md:h-24 md:w-24 text-primary" />
+            )}
         </div>
         <div className="md:col-span-2 text-center md:text-left">
           <h2 className="text-3xl font-bold tracking-tight">{policy.title}</h2>
-          <p className="mt-4 text-lg text-muted-foreground break-all">
+          <p className="mt-4 text-lg text-muted-foreground break-words">
             {policy.content}
           </p>
         </div>

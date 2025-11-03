@@ -17,10 +17,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { showError, showSuccess } from "@/utils/toast";
 import { Policy } from "@/types/policy";
 import { Loader2 } from "lucide-react";
+import SingleImageUpload from "@/components/admin/SingleImageUpload";
 
 const formSchema = z.object({
   title: z.string().min(3),
   content: z.string().min(10),
+  image_url: z.string().url().nullable().optional(),
 });
 
 interface AboutUsFormProps {
@@ -35,6 +37,7 @@ export default function AboutUsForm({ policy, onFinished }: AboutUsFormProps) {
     defaultValues: {
       title: policy?.title || "Sobre Nossa Loja",
       content: policy?.content || "",
+      image_url: policy?.image_url || null,
     },
   });
 
@@ -87,6 +90,23 @@ export default function AboutUsForm({ policy, onFinished }: AboutUsFormProps) {
               <FormLabel>Conteúdo</FormLabel>
               <FormControl>
                 <Textarea placeholder="Descreva a sua loja..." {...field} rows={10} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="image_url"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Imagem da Seção</FormLabel>
+              <FormControl>
+                <SingleImageUpload
+                  value={field.value}
+                  onChange={field.onChange}
+                  folder="about_us"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

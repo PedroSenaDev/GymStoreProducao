@@ -4,4 +4,5 @@ export interface Policy {
   content: string;
   created_at: string;
   display_area: 'product' | 'footer' | 'both' | 'about_us';
+  image_url?: string | null;
 }
