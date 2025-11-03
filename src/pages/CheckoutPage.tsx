@@ -51,7 +51,7 @@ export default function CheckoutPage() {
           const { data, error } = await supabase.functions.invoke('create-payment-intent', {
             body: {
               items: selectedItems,
-              shippingAddressId: selectedAddressId, // CORRIGIDO AQUI
+              shippingAddressId: selectedAddressId,
               userId: session.user.id,
               shippingCost,
               shippingDistance,
