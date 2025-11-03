@@ -34,6 +34,7 @@ import AdminCategoriesPage from "./pages/admin/AdminCategoriesPage";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 import AdminOrdersPage from "./pages/admin/AdminOrdersPage";
 import AdminShippingPage from "./pages/admin/AdminShippingPage";
+import AdminReportsPage from "./pages/admin/AdminReportsPage";
 
 const queryClient = new QueryClient();
 
@@ -77,6 +78,7 @@ const App = () => (
                <Route path="categories" element={<AdminCategoriesPage />} />
                <Route path="shipping" element={<AdminShippingPage />} />
                <Route path="settings" element={<AdminSettingsPage />} />
+               <Route path="reports" element={<AdminReportsPage />} />
             </Route>
 
             {/* Catch-all */}

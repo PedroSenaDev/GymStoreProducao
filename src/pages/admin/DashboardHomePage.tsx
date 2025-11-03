@@ -1,10 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Loader2, DollarSign, ShoppingCart, Package, Users } from 'lucide-react';
+import { Loader2, DollarSign, ShoppingCart, Package, Users, ArrowRight } from 'lucide-react';
 import { SalesChart } from '@/components/admin/SalesChart';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { subDays, format, eachDayOfInterval, startOfDay, endOfDay } from "date-fns";
+import { subDays, format, eachDayOfInterval, startOfDay } from "date-fns";
+import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
 
 async function fetchDashboardStats() {
   const sevenDaysAgo = startOfDay(subDays(new Date(), 6));
@@ -138,7 +140,20 @@ export default function DashboardHomePage() {
       </div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-7">
         <div className="lg:col-span-4">
-          <SalesChart data={data?.chartData ?? []} />
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Visão Geral da Receita (Últimos 7 dias)</CardTitle>
+              <Button asChild variant="outline" size="sm">
+                <Link to="/admin/reports">
+                  Ver Relatório
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </CardHeader>
+            <CardContent className="pl-2">
+              <SalesChart data={data?.chartData ?? []} />
+            </CardContent>
+          </Card>
         </div>
         <div className="lg:col-span-3">
           <Card>
