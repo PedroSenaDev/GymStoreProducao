@@ -2,7 +2,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { CreditCard, QrCode } from "lucide-react";
-import { Input } from "../ui/input";
 
 interface PaymentStepProps {
   selectedPaymentMethod: string | null;
@@ -47,18 +46,7 @@ export function PaymentStep({ selectedPaymentMethod, onPaymentMethodSelect }: Pa
                 <CreditCard className="h-6 w-6" />
                 <span className="font-semibold">Cartão de Crédito</span>
               </div>
-              {selectedPaymentMethod === 'credit_card' && (
-                <div className="mt-4 space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                        Funcionalidade de pagamento com cartão em desenvolvimento.
-                    </p>
-                    <Input placeholder="Número do Cartão" disabled />
-                    <div className="grid grid-cols-2 gap-4">
-                        <Input placeholder="Validade (MM/AA)" disabled />
-                        <Input placeholder="CVC" disabled />
-                    </div>
-                </div>
-              )}
+              {/* O formulário real do cartão será renderizado pelo Stripe PaymentElement no CheckoutPage */}
             </div>
           </Label>
         </RadioGroup>
