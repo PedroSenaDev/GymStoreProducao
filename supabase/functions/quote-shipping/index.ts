@@ -24,7 +24,7 @@ serve(async (req) => {
   }
 
   if (!MELHOR_ENVIO_ACCESS_TOKEN) {
-    return new Response(JSON.stringify({ error: "Chave de acesso do Melhor Envio não configurada." }), {
+    return new Response(JSON.stringify({ error: "Chave de acesso do Melhor Envio não configurada. Por favor, configure MELHOR_ENVIO_ACCESS_TOKEN nos segredos do Supabase." }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -107,7 +107,10 @@ serve(async (req) => {
       }));
 
     if (validShippingOptions.length === 0) {
-        throw new Error("Nenhuma opção de frete válida encontrada para este CEP e produtos.");
+        throw new Response(JSON.stringify({ error: "Nenhuma opção de frete válida encontrada para este CEP e produtos." }), {
+            status: 404,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
     }
 
     return new Response(JSON.stringify(validShippingOptions), {
