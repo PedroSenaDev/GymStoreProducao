@@ -90,21 +90,20 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
           },
         });
         
-        // --- CORREÇÃO DE TRATAMENTO DE ERRO ---
         if (distanceError) {
-            // Se for um erro de rede ou de invocação, use a mensagem padrão
+            // Se houver um erro de invocação (rede, 500 genérico), use a mensagem padrão
             throw new Error(distanceError.message);
         }
+        
+        // Se a função retornou 400 com um corpo de erro (o que aconteceu no log)
         if (distanceData.error) {
-            // Se a função retornou 400 com um corpo de erro (o que aconteceu)
             throw new Error(distanceData.error);
         }
-        // --------------------------------------
 
         const distance = parseFloat(distanceData.distance);
 
         // DEBUG: Exibir a distância calculada
-        showSuccess(`Distância calculada: ${distance.toFixed(2)} km`);
+        // showSuccess(`Distância calculada: ${distance.toFixed(2)} km`);
 
         const { data: feeData, error: feeError } = await supabase.rpc('get_shipping_fee', { distance });
         if (feeError || !feeData || feeData.length === 0) {
@@ -117,7 +116,7 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
         lastCalculatedAddressId.current = selectedAddressId;
 
       } catch (err: any) {
-        // Agora, err.message deve conter a mensagem detalhada da Edge Function
+        // Captura a mensagem de erro detalhada (se for um erro de Edge Function) ou a mensagem genérica
         const errorMessage = err.message || "Erro desconhecido ao calcular o frete.";
         showError(errorMessage);
         setShippingError(errorMessage);

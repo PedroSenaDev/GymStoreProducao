@@ -21,7 +21,7 @@ async function getCoordsFromCep(cep: string) {
   
   if (!response.ok) {
     if (response.status === 404) {
-      throw new Error(`CEP ${cep} não encontrado.`);
+      throw new Error(`CEP ${cep} não encontrado na base de dados de geolocalização.`);
     }
     throw new Error(`Falha ao buscar informações para o CEP ${cep}.`);
   }
@@ -30,7 +30,7 @@ async function getCoordsFromCep(cep: string) {
 
   if (!data.location || !data.location.coordinates) {
     console.error(`API de CEP retornou dados sem coordenadas para ${cep}:`, data);
-    throw new Error(`Não foi possível obter as coordenadas para o CEP ${cep}.`);
+    throw new Error(`Não foi possível obter as coordenadas para o CEP ${cep}. Este CEP pode não ter geolocalização cadastrada.`);
   }
 
   const lat = parseFloat(data.location.coordinates.latitude);
@@ -108,6 +108,7 @@ serve(async (req) => {
     });
 
   } catch (error) {
+    // Garante que o erro seja retornado com status 400 e a mensagem no corpo
     console.error("Erro na função calculate-distance:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 400,
