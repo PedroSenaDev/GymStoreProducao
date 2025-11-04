@@ -92,6 +92,9 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
         if (distanceError || distanceData.error) throw new Error(distanceError?.message || distanceData.error);
         const distance = parseFloat(distanceData.distance);
 
+        // DEBUG: Exibir a distância calculada
+        showSuccess(`Distância calculada: ${distance.toFixed(2)} km`);
+
         const { data: feeData, error: feeError } = await supabase.rpc('get_shipping_fee', { distance });
         if (feeError || !feeData || feeData.length === 0) {
           throw new Error("Não foi possível encontrar uma taxa de frete para este endereço. Pode estar fora da nossa área de entrega.");
