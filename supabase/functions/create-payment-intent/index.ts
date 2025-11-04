@@ -58,8 +58,7 @@ serve(async (req) => {
     const name = customerDetails.name || 'N/A';
     const email = customerDetails.email || 'N/A';
     const phone = customerDetails.phone || '';
-    const cpf = customerDetails.cpf || '';
-
+    const cpf = (customerDetails.cpf || '').replace(/\D/g, ''); // Limpa o CPF
 
     if (existingCustomers.data.length > 0) {
         stripeCustomerId = existingCustomers.data[0].id;
@@ -68,10 +67,11 @@ serve(async (req) => {
         const newCustomer = await stripe.customers.create({
             email: email,
             name: name,
-            phone: phone,
+            // Não passamos o 'phone' aqui para evitar erros de validação de formato E.164
             metadata: {
                 supabase_user_id: userId,
                 cpf: cpf,
+                phone: phone, // Armazenamos o telefone nos metadados
             },
         });
         stripeCustomerId = newCustomer.id;
@@ -100,6 +100,7 @@ serve(async (req) => {
 
   } catch (error) {
     console.error("Erro ao criar Payment Intent:", error);
+    // Retorna a mensagem de erro para o frontend para melhor depuração
     return new Response(JSON.stringify({ error: error.message }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
