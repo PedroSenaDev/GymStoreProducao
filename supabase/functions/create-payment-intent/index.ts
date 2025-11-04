@@ -61,15 +61,24 @@ serve(async (req) => {
     if (existingCustomers.data.length > 0) {
         stripeCustomerId = existingCustomers.data[0].id;
     } else {
-        const newCustomer = await stripe.customers.create({
+        const customerPayload: Stripe.CustomerCreateParams = {
             email: email,
             name: name,
             metadata: {
                 supabase_user_id: userId,
-                cpf: cpf,
                 phone: phone,
             },
-        });
+        };
+
+        // Adiciona o CPF no formato correto que o Stripe espera para o Brasil
+        if (cpf && cpf.length === 11) {
+            customerPayload.tax_id_data = [{ type: 'br_cpf', value: cpf }];
+        } else {
+            // Se o CPF for inválido, é melhor falhar aqui do que na API do Stripe
+            throw new Error("CPF inválido fornecido para a criação do cliente Stripe.");
+        }
+
+        const newCustomer = await stripe.customers.create(customerPayload);
         stripeCustomerId = newCustomer.id;
     }
 
