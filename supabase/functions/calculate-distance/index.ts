@@ -12,28 +12,29 @@ const supabaseAdmin = createClient(
 )
 
 async function getCoordsFromCep(cep: string) {
-  // Usando a API do ViaCEP primeiro para validar e obter informações básicas
-  const viaCepResponse = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-  if (!viaCepResponse.ok) throw new Error(`Falha ao buscar o CEP ${cep} no ViaCEP.`);
-  const viaCepData = await viaCepResponse.json();
-  if (viaCepData.erro) throw new Error(`CEP ${cep} não encontrado.`);
+  const cleanedCep = cep.replace(/\D/g, "");
+  if (cleanedCep.length !== 8) {
+    throw new Error(`Formato de CEP inválido: ${cep}`);
+  }
 
-  // Usando Nominatim (OpenStreetMap) para geocodificação
-  const query = `${viaCepData.logradouro}, ${viaCepData.bairro}, ${viaCepData.localidade}, ${viaCepData.uf}, Brasil`;
-  const geoResponse = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`, {
-    headers: {
-      // O User-Agent é obrigatório pela política de uso do Nominatim
-      'User-Agent': 'GYMSTORE-App/1.0 (Supabase Edge Function for Shipping Calculation)',
-    }
-  });
+  const response = await fetch(`https://brasilapi.com.br/api/cep/v2/${cleanedCep}`);
   
-  if (!geoResponse.ok) throw new Error(`Falha ao geolocalizar o CEP ${cep} no OpenStreetMap.`);
-  const geoData = await geoResponse.json();
-  if (geoData.length === 0) throw new Error(`Não foi possível localizar o endereço. Verifique se a rua e o número estão corretos e tente novamente.`);
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error(`CEP ${cep} não encontrado.`);
+    }
+    throw new Error(`Falha ao buscar informações para o CEP ${cep}.`);
+  }
+
+  const data = await response.json();
+
+  if (!data.location || !data.location.coordinates) {
+    throw new Error(`Não foi possível obter as coordenadas para o CEP ${cep}.`);
+  }
 
   return {
-    lat: parseFloat(geoData[0].lat),
-    lon: parseFloat(geoData[0].lon),
+    lat: data.location.coordinates.latitude,
+    lon: data.location.coordinates.longitude,
   };
 }
 
