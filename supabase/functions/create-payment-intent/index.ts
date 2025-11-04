@@ -54,17 +54,24 @@ serve(async (req) => {
         limit: 1,
     });
 
+    // Garante que os detalhes do cliente são strings, usando fallback para evitar erros de tipo
+    const name = customerDetails.name || 'N/A';
+    const email = customerDetails.email || 'N/A';
+    const phone = customerDetails.phone || '';
+    const cpf = customerDetails.cpf || '';
+
+
     if (existingCustomers.data.length > 0) {
         stripeCustomerId = existingCustomers.data[0].id;
     } else {
         // Cria um novo cliente Stripe
         const newCustomer = await stripe.customers.create({
-            email: customerDetails.email,
-            name: customerDetails.name,
-            phone: customerDetails.phone,
+            email: email,
+            name: name,
+            phone: phone,
             metadata: {
                 supabase_user_id: userId,
-                cpf: customerDetails.cpf,
+                cpf: cpf,
             },
         });
         stripeCustomerId = newCustomer.id;

@@ -46,7 +46,16 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     const createPaymentIntent = async () => {
-      if (paymentMethod === 'credit_card' && total > 0 && selectedAddressId && session?.user.id && profile) {
+      // Nova verificação rigorosa para garantir que todos os dados necessários estejam presentes
+      if (
+        paymentMethod === 'credit_card' && 
+        total > 0 && 
+        selectedAddressId && 
+        session?.user.id && 
+        profile?.full_name && 
+        profile?.cpf && 
+        session.user.email
+      ) {
         setIsLoadingClientSecret(true);
         setClientSecret(null); // Clear previous secret
 
@@ -66,7 +75,7 @@ export default function CheckoutPage() {
               customerDetails: {
                 name: profile.full_name,
                 email: session.user.email,
-                phone: profile.phone,
+                phone: profile.phone || '', // Garante que é uma string
                 cpf: profile.cpf,
               }
             },
