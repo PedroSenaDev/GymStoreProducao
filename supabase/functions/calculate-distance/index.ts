@@ -11,44 +11,42 @@ const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 )
 
-const GOOGLE_MAPS_API_KEY = Deno.env.get("GOOGLE_MAPS_API_KEY");
-
 interface Coords {
   lat: number;
   lon: number;
 }
 
 async function getCoordsFromCep(cep: string): Promise<Coords> {
-  if (!GOOGLE_MAPS_API_KEY) {
-    throw new Error("Chave GOOGLE_MAPS_API_KEY não configurada.");
-  }
-  
   const cleanedCep = cep.replace(/\D/g, "");
   if (cleanedCep.length !== 8) {
     throw new Error(`Formato de CEP inválido: ${cep}`);
   }
 
-  // Usando o CEP e o país (BR) para geocodificação
-  const address = `${cleanedCep}, Brazil`;
-  const apiUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GOOGLE_MAPS_API_KEY}`;
+  const response = await fetch(`https://brasilapi.com.br/api/cep/v2/${cleanedCep}`);
+  
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error(`CEP ${cep} não encontrado na base de dados de geolocalização.`);
+    }
+    throw new Error(`Falha ao buscar informações para o CEP ${cep}.`);
+  }
 
-  const response = await fetch(apiUrl);
   const data = await response.json();
 
-  if (data.status !== 'OK' || data.results.length === 0) {
-    console.error(`Google Maps Geocoding Error for CEP ${cep}:`, data);
-    throw new Error(`Não foi possível obter as coordenadas para o CEP ${cep}. Status: ${data.status}.`);
+  if (!data.location || !data.location.coordinates) {
+    console.error(`API de CEP retornou dados sem coordenadas para ${cep}:`, data);
+    throw new Error(`Não foi possível obter as coordenadas para o CEP ${cep}. Este CEP pode não ter geolocalização cadastrada.`);
   }
 
-  const location = data.results[0].geometry.location;
-  const lat = location.lat;
-  const lon = location.lng;
+  const lat = parseFloat(data.location.coordinates.latitude);
+  const lon = parseFloat(data.location.coordinates.longitude);
 
-  if (typeof lat !== 'number' || typeof lon !== 'number') {
-    throw new Error(`Coordenadas inválidas retornadas pelo Google Maps para o CEP ${cep}.`);
+  if (isNaN(lat) || isNaN(lon)) {
+    console.error(`Coordenadas inválidas (NaN) para o CEP ${cep}. Dados brutos:`, data.location.coordinates);
+    throw new Error(`Coordenadas inválidas para o CEP ${cep}.`);
   }
   
-  console.log(`Coordenadas Google Maps para ${cep}: Lat=${lat}, Lon=${lon}`);
+  console.log(`Coordenadas para ${cep}: Lat=${lat}, Lon=${lon}`);
 
   return { lat, lon };
 }
@@ -92,14 +90,14 @@ serve(async (req) => {
     try {
       originCoords = await getCoordsFromCep(originCep);
     } catch (e) {
-      console.error(`ERRO AO BUSCAR COORDENADAS DE ORIGEM: ${e.message}`);
+      // Captura o erro específico da função getCoordsFromCep
       throw new Error(`Falha ao processar o CEP de origem da loja (${originCep}): ${e.message}`);
     }
 
     try {
       destinationCoords = await getCoordsFromCep(destinationCep);
     } catch (e) {
-      console.error(`ERRO AO BUSCAR COORDENADAS DE DESTINO: ${e.message}`);
+      // Captura o erro específico da função getCoordsFromCep
       throw new Error(`Falha ao processar o CEP de destino (${destinationCep}): ${e.message}`);
     }
 
@@ -117,6 +115,7 @@ serve(async (req) => {
     });
 
   } catch (error) {
+    // Garante que o erro seja retornado com status 400 e a mensagem no corpo
     console.error("Erro final na função calculate-distance:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 400,
