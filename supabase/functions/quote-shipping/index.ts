@@ -11,7 +11,6 @@ const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 )
 
-// Usaremos apenas o Access Token para a cotação
 const MELHOR_ENVIO_ACCESS_TOKEN = Deno.env.get("MELHOR_ENVIO_ACCESS_TOKEN")
 
 // URL da API do Melhor Envio (usando sandbox para desenvolvimento, mude para produção se necessário)
@@ -54,6 +53,11 @@ serve(async (req) => {
     const meItems = items.map((item: any) => {
       const details = productDetailsMap.get(item.id);
       if (!details) throw new Error(`Detalhes de dimensão ausentes para o produto ID: ${item.id}`);
+      
+      // Validação básica para garantir que os valores são positivos, conforme exigido pelo ME
+      if (details.weight_kg <= 0 || details.length_cm <= 0 || details.height_cm <= 0 || details.width_cm <= 0) {
+          throw new Error(`Produto "${item.id}" possui dimensões ou peso inválidos (devem ser > 0).`);
+      }
 
       return {
         id: item.id,
@@ -69,8 +73,6 @@ serve(async (req) => {
       from: { postal_code: storeCep.replace(/\D/g, '') },
       to: { postal_code: destinationCep.replace(/\D/g, '') },
       products: meItems,
-      // Adiciona o tipo de serviço que você deseja cotar (ex: Correios, Jadlog)
-      // services: ['1', '2', '3', '17', '18'], 
     };
 
     // 3. Chamar a API do Melhor Envio
@@ -80,7 +82,7 @@ serve(async (req) => {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${MELHOR_ENVIO_ACCESS_TOKEN}`,
-        'User-Agent': 'GYMSTORE (gymstoreemoc@gmail.com)', // Substitua pelo seu e-mail
+        'User-Agent': 'GYMSTORE (gymstoreemoc@gmail.com)',
       },
       body: JSON.stringify(mePayload),
     });
@@ -89,7 +91,6 @@ serve(async (req) => {
 
     if (!response.ok || responseData.error) {
       console.error("Melhor Envio API Error:", responseData);
-      // Tenta extrair a mensagem de erro mais útil
       const errorMessage = responseData.error?.message || responseData.message || "Falha ao cotar o frete com o Melhor Envio.";
       throw new Error(errorMessage);
     }
@@ -98,10 +99,10 @@ serve(async (req) => {
     const validShippingOptions = responseData
       .filter((option: any) => option.error === undefined && option.price > 0)
       .map((option: any) => ({
-        id: option.id.toString(), // ID do serviço (ex: 1 para PAC)
-        name: option.name, // Nome da transportadora/serviço
+        id: option.id.toString(),
+        name: option.name,
         price: parseFloat(option.price),
-        delivery_time: option.delivery_time, // Prazo em dias úteis
+        delivery_time: option.delivery_time,
       }));
 
     if (validShippingOptions.length === 0) {

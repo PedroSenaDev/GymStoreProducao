@@ -35,9 +35,11 @@ async function fetchAddresses(userId: string): Promise<Address[]> {
 
 async function fetchStoreCep(): Promise<string> {
     const { data, error } = await supabase.from('settings').select('value').eq('key', 'store_cep').single();
-    if (error && error.code !== 'PGRST116') throw error;
+    // PGRST116 = linha não encontrada (CEP não configurado)
+    if (error && error.code !== 'PGRST116') throw error; 
     if (!data?.value) {
-        throw new Error("CEP de origem da loja não configurado. Contate o administrador.");
+        // Lançar um erro específico para ser capturado no useQuery
+        throw new Error("CEP_NOT_CONFIGURED"); 
     }
     return data.value;
 }
@@ -71,14 +73,22 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
     enabled: !!userId,
   });
 
-  const { data: storeCep, isError: isStoreCepError } = useQuery({
+  const { data: storeCep, isLoading: isLoadingStoreCep, isError: isStoreCepError, error: storeCepQueryError } = useQuery({
     queryKey: ["storeCep"],
     queryFn: fetchStoreCep,
+    retry: false, // Não tentar novamente se o CEP não estiver configurado
   });
 
   // Efeito para calcular o frete quando o endereço ou o CEP da loja mudar
   useEffect(() => {
     const quoteShipping = async () => {
+      if (storeCepQueryError?.message === "CEP_NOT_CONFIGURED") {
+        setShippingError("O CEP de origem da loja não está configurado. Contate o administrador.");
+        setShippingOptions([]);
+        onShippingChange(0, null, null);
+        return;
+      }
+
       if (!selectedAddressId || !addresses || !storeCep || selectedCartItems.length === 0) {
         setShippingOptions([]);
         setSelectedShippingOption(null);
@@ -149,7 +159,7 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
     };
 
     quoteShipping();
-  }, [selectedAddressId, addresses, storeCep, selectedCartItems, onShippingChange]);
+  }, [selectedAddressId, addresses, storeCep, selectedCartItems, onShippingChange, storeCepQueryError]);
 
   // Efeito para atualizar o custo de frete quando a opção de frete for alterada
   useEffect(() => {
@@ -162,7 +172,7 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
   }, [selectedShippingOption, shippingOptions, onShippingChange]);
 
 
-  if (isLoadingAddresses) {
+  if (isLoadingAddresses || isLoadingStoreCep) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-24 w-full" />
@@ -220,11 +230,11 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
         <div className={cn("space-y-4 pt-4", !selectedAddressId && "opacity-50 pointer-events-none")}>
             <h3 className="font-semibold text-base flex items-center gap-2"><Truck className="h-4 w-4" /> Opções de Frete</h3>
             
-            {isStoreCepError && (
+            {isStoreCepError && storeCepQueryError?.message === "CEP_NOT_CONFIGURED" && (
                 <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                        Erro de configuração: {shippingError || "O CEP de origem da loja não está configurado corretamente."}
+                        Erro de configuração: O CEP de origem da loja não está configurado. Por favor, configure-o no Painel Admin &gt; Configurações &gt; Frete.
                     </AlertDescription>
                 </Alert>
             )}

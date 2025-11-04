@@ -15,12 +15,20 @@ import { Elements } from '@stripe/react-stripe-js';
 import CheckoutForm from '@/components/checkout/CheckoutForm';
 import { supabase } from '@/integrations/supabase/client';
 import { showError } from '@/utils/toast';
+import { useQuery } from '@tanstack/react-query';
 
 const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
 if (!stripePublishableKey) {
   throw new Error("VITE_STRIPE_PUBLISHABLE_KEY não está definida no arquivo .env");
 }
 const stripePromise = loadStripe(stripePublishableKey);
+
+// Função duplicada de AddressStep para verificar o erro de configuração do CEP da loja
+async function fetchStoreCepStatus(): Promise<boolean> {
+    const { data, error } = await supabase.from('settings').select('value').eq('key', 'store_cep').single();
+    if (error && error.code !== 'PGRST116') throw error;
+    return !!data?.value;
+}
 
 export default function CheckoutPage() {
   const session = useSessionStore((state) => state.session);
@@ -31,7 +39,6 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
   const [isPixDialogOpen, setIsPixDialogOpen] = useState(false);
   
-  // Novos estados para o Melhor Envio
   const [shippingCost, setShippingCost] = useState(0);
   const [shippingServiceId, setShippingServiceId] = useState<string | null>(null);
   const [shippingServiceName, setShippingServiceName] = useState<string | null>(null);
@@ -39,18 +46,23 @@ export default function CheckoutPage() {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [isLoadingClientSecret, setIsLoadingClientSecret] = useState(false);
 
+  const { data: isStoreCepConfigured, isLoading: isLoadingCepStatus } = useQuery({
+    queryKey: ["storeCepStatus"],
+    queryFn: fetchStoreCepStatus,
+  });
+
   const selectedItems = useMemo(() => items.filter(item => item.selected), [items]);
   const subtotal = useMemo(() => selectedItems.reduce((acc, item) => acc + item.price * item.quantity, 0), [selectedItems]);
   const total = subtotal + shippingCost;
 
   const isProfileIncomplete = !profile?.full_name || !profile?.cpf;
-  // A verificação de frete agora é se temos um custo > 0 E um serviço selecionado
   const isShippingCalculated = selectedAddressId && shippingCost > 0 && shippingServiceId;
-  const isCheckoutDisabled = !isShippingCalculated || !paymentMethod || isProfileIncomplete || isLoadingProfile;
+  
+  // Adicionando verificação de configuração do CEP da loja
+  const isCheckoutDisabled = !isShippingCalculated || !paymentMethod || isProfileIncomplete || isLoadingProfile || !isStoreCepConfigured;
 
   useEffect(() => {
     const createPaymentIntent = async () => {
-      // Nova verificação rigorosa para garantir que todos os dados necessários estejam presentes
       if (
         paymentMethod === 'credit_card' && 
         total > 0 && 
@@ -59,13 +71,12 @@ export default function CheckoutPage() {
         profile?.full_name && 
         profile?.cpf && 
         session.user.email &&
-        shippingServiceId // Requer o ID do serviço de frete
+        shippingServiceId 
       ) {
         setIsLoadingClientSecret(true);
-        setClientSecret(null); // Clear previous secret
+        setClientSecret(null); 
 
         try {
-          // CRITICAL STEP: Ensure only selected items are in the DB cart before creating PI
           await clearNonSelectedItems();
 
           const { data, error } = await supabase.functions.invoke('create-payment-intent', {
@@ -74,14 +85,12 @@ export default function CheckoutPage() {
               shippingAddressId: selectedAddressId,
               userId: session.user.id,
               shippingCost,
-              // Passando o ID do serviço de frete (Melhor Envio ID)
               shippingServiceId: shippingServiceId, 
               shippingServiceName: shippingServiceName,
-              // Adicionando informações do cliente para o Stripe
               customerDetails: {
                 name: profile.full_name,
                 email: session.user.email,
-                phone: profile.phone || '', // Garante que é uma string
+                phone: profile.phone || '', 
                 cpf: profile.cpf,
               }
             },
@@ -90,7 +99,7 @@ export default function CheckoutPage() {
           setClientSecret(data.clientSecret);
         } catch (err: any) {
           showError(`Erro ao iniciar pagamento: ${err.message}`);
-          setPaymentMethod(null); // Reseta o método de pagamento em caso de erro
+          setPaymentMethod(null); 
         } finally {
           setIsLoadingClientSecret(false);
         }
@@ -106,10 +115,8 @@ export default function CheckoutPage() {
     if (paymentMethod === 'pix') {
       setIsPixDialogOpen(true);
     }
-    // Para cartão, o botão de pagamento está dentro do CheckoutForm
   };
 
-  // Atualiza o estado do frete com o ID e nome do serviço
   const handleShippingChange = (cost: number, serviceId: string | null, serviceName: string | null) => {
     setShippingCost(cost);
     setShippingServiceId(serviceId);
@@ -122,6 +129,14 @@ export default function CheckoutPage() {
 
   if (selectedItems.length === 0 && !isPixDialogOpen) {
     return <Navigate to="/products" replace />;
+  }
+  
+  if (isLoadingProfile || isLoadingCepStatus) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
   }
 
   return (
@@ -171,11 +186,19 @@ export default function CheckoutPage() {
                 <h2 className="text-xl font-semibold">Resumo do Pedido</h2>
                 <OrderSummary items={selectedItems} shippingCost={shippingCost} />
               </div>
-              {isProfileIncomplete && !isLoadingProfile && (
+              {isProfileIncomplete && (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
                     Por favor, <a href="/profile/details" className="font-semibold underline">complete seu perfil</a> (nome e CPF) para continuar.
+                  </AlertDescription>
+                </Alert>
+              )}
+              {!isStoreCepConfigured && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    O frete não pode ser calculado. O CEP de origem da loja não está configurado.
                   </AlertDescription>
                 </Alert>
               )}
@@ -201,7 +224,6 @@ export default function CheckoutPage() {
         selectedAddressId={selectedAddressId}
         paymentMethod={paymentMethod}
         shippingCost={shippingCost}
-        // Passando o ID do serviço de frete e o nome
         shippingServiceId={shippingServiceId}
         shippingServiceName={shippingServiceName}
       />
