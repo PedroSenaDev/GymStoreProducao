@@ -116,13 +116,17 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
             id: item.id,
             quantity: item.quantity,
         }));
-
-        const { data: optionsData, error: quoteError } = await supabase.functions.invoke('quote-shipping', {
-          body: {
+        
+        const payload = {
             destinationCep: selectedAddress.zip_code.replace(/\D/g, ''),
             storeCep: storeCep,
             items: itemsPayload,
-          },
+        };
+
+        console.log("Payload enviado para quote-shipping:", payload); // DEBUG LOG
+
+        const { data: optionsData, error: quoteError } = await supabase.functions.invoke('quote-shipping', {
+          body: payload,
         });
         
         if (quoteError) {
