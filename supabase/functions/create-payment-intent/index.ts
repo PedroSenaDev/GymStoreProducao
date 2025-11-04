@@ -23,9 +23,9 @@ serve(async (req) => {
   }
 
   try {
-    const { items, shippingCost, userId, shippingAddressId, shippingServiceId, shippingServiceName, customerDetails } = await req.json();
+    const { items, shippingCost, userId, shippingAddressId, shippingDistance, shippingZoneId } = await req.json();
 
-    if (!items || items.length === 0 || !userId || !shippingAddressId || !customerDetails || !shippingServiceId) {
+    if (!items || items.length === 0 || !userId || !shippingAddressId) {
       throw new Error("Informações essenciais do pedido incompletas.");
     }
 
@@ -45,60 +45,23 @@ serve(async (req) => {
 
     const totalAmount = subtotal + shippingCost;
 
-    // 2. Gerenciar o Cliente Stripe
-    let stripeCustomerId: string;
-
-    const existingCustomers = await stripe.customers.list({
-        metadata: { supabase_user_id: userId },
-        limit: 1,
-    });
-
-    const name = customerDetails.name || 'N/A';
-    const email = customerDetails.email || 'N/A';
-    const phone = customerDetails.phone || '';
-    const cpf = (customerDetails.cpf || '').replace(/\D/g, '');
-
-    if (existingCustomers.data.length > 0) {
-        stripeCustomerId = existingCustomers.data[0].id;
-    } else {
-        const customerPayload: Stripe.CustomerCreateParams = {
-            email: email,
-            name: name,
-            metadata: {
-                supabase_user_id: userId,
-                phone: phone,
-            },
-        };
-
-        // Adiciona o CPF no formato correto que o Stripe espera para o Brasil
-        if (cpf && cpf.length === 11) {
-            customerPayload.tax_id_data = [{ type: 'br_cpf', value: cpf }];
-        } else {
-            // Se o CPF for inválido, é melhor falhar aqui do que na API do Stripe
-            throw new Error("CPF inválido fornecido para a criação do cliente Stripe.");
-        }
-
-        const newCustomer = await stripe.customers.create(customerPayload);
-        stripeCustomerId = newCustomer.id;
-    }
-
-    // 3. Criar o PaymentIntent no Stripe com metadados seguros
-    const essentialMetadata: { [key: string]: string } = {
+    // 2. Criar o PaymentIntent no Stripe
+    // Passando os dados essenciais para o metadata, que será lido pelo webhook.
+    const essentialMetadata = {
         user_id: userId,
         shipping_address_id: shippingAddressId,
         shipping_cost: shippingCost.toString(),
-        shipping_service_id: shippingServiceId,
-        shipping_service_name: shippingServiceName || 'N/A',
+        shipping_distance: shippingDistance.toString(),
+        shipping_zone_id: shippingZoneId,
     };
 
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(totalAmount * 100),
+      amount: Math.round(totalAmount * 100), // em centavos
       currency: 'brl',
-      customer: stripeCustomerId,
       metadata: essentialMetadata,
     });
 
-    // 4. Retornar o client_secret para o frontend
+    // 3. Retornar o client_secret para o frontend
     return new Response(JSON.stringify({ clientSecret: paymentIntent.client_secret }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

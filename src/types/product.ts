@@ -11,9 +11,4 @@ export interface Product {
   colors: { code: string; name: string }[];
   is_featured: boolean;
   created_at: string;
-  // Campos do Melhor Envio
-  weight_kg: number;
-  length_cm: number;
-  height_cm: number;
-  width_cm: number;
 }

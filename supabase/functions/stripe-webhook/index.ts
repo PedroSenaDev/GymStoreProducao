@@ -33,11 +33,11 @@ serve(async (req) => {
       const userId = metadata.user_id;
       const shippingAddressId = metadata.shipping_address_id;
       const shippingCost = parseFloat(metadata.shipping_cost || '0');
-      const shippingServiceId = metadata.shipping_service_id;
-      const shippingServiceName = metadata.shipping_service_name;
+      const shippingDistance = parseFloat(metadata.shipping_distance || '0');
+      const shippingZoneId = metadata.shipping_zone_id;
 
-      if (!userId || !shippingAddressId || !shippingServiceId) {
-        console.error("Webhook: Metadados essenciais ausentes (user_id, shipping_address_id ou shipping_service_id).");
+      if (!userId || !shippingAddressId) {
+        console.error("Webhook: Metadados essenciais ausentes (user_id ou shipping_address_id).");
         return new Response("Metadados ausentes.", { status: 400 });
       }
 
@@ -63,9 +63,9 @@ serve(async (req) => {
           shipping_address_id: shippingAddressId,
           payment_method: 'credit_card',
           shipping_cost: shippingCost,
+          shipping_distance: shippingDistance,
+          shipping_zone_id: shippingZoneId,
           stripe_payment_intent_id: paymentIntentId,
-          shipping_service_id: shippingServiceId,
-          shipping_service_name: shippingServiceName,
         })
         .select('id')
         .single();

@@ -40,11 +40,6 @@ const formSchema = z.object({
     code: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Código de cor inválido."),
     name: z.string().min(1, "O nome da cor é obrigatório."),
   })).optional().default([]),
-  // Novos campos para Melhor Envio
-  weight_kg: z.coerce.number({ invalid_type_error: "O peso deve ser um número." }).min(0.01, { message: "O peso mínimo é 0.01 kg." }),
-  length_cm: z.coerce.number({ invalid_type_error: "O comprimento deve ser um número." }).min(1, { message: "O comprimento mínimo é 1 cm." }),
-  height_cm: z.coerce.number({ invalid_type_error: "A altura deve ser um número." }).min(1, { message: "A altura mínima é 1 cm." }),
-  width_cm: z.coerce.number({ invalid_type_error: "A largura deve ser um número." }).min(1, { message: "A largura mínima é 1 cm." }),
 });
 
 interface ProductFormProps {
@@ -65,11 +60,6 @@ export default function ProductForm({ product, onFinished }: ProductFormProps) {
       image_urls: product?.image_urls || [],
       sizes: product?.sizes?.join(", ") || "",
       colors: product?.colors || [],
-      // Valores padrão para novos campos
-      weight_kg: product?.weight_kg || 0.1,
-      length_cm: product?.length_cm || 10,
-      height_cm: product?.height_cm || 10,
-      width_cm: product?.width_cm || 10,
     },
   });
 
@@ -179,55 +169,6 @@ export default function ProductForm({ product, onFinished }: ProductFormProps) {
                 </FormItem>
             )}
         />
-        <div className="space-y-4 rounded-lg border p-4">
-            <h3 className="font-semibold">Dimensões e Peso (Melhor Envio)</h3>
-            <div className="grid grid-cols-2 gap-4">
-                <FormField
-                    control={form.control}
-                    name="weight_kg"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Peso (kg)</FormLabel>
-                        <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="length_cm"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Comprimento (cm)</FormLabel>
-                        <FormControl><Input type="number" step="1" {...field} /></FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="height_cm"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Altura (cm)</FormLabel>
-                        <FormControl><Input type="number" step="1" {...field} /></FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="width_cm"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Largura (cm)</FormLabel>
-                        <FormControl><Input type="number" step="1" {...field} /></FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-            </div>
-        </div>
         <FormField
             control={form.control}
             name="sizes"

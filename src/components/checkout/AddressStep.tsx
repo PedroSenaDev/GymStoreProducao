@@ -5,7 +5,7 @@ import { Address } from "@/types/address";
 import { useSessionStore } from "@/store/sessionStore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, PlusCircle, MapPin, AlertCircle, Truck } from "lucide-react";
+import { Loader2, PlusCircle, MapPin, AlertCircle } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -19,9 +19,6 @@ import {
 import AddressForm from "@/pages/profile/AddressForm";
 import { Skeleton } from "../ui/skeleton";
 import { showError, showSuccess } from "@/utils/toast";
-import { ShippingOption } from "@/types/shipping";
-import { useCartStore } from "@/store/cartStore";
-import { cn } from "@/lib/utils";
 
 async function fetchAddresses(userId: string): Promise<Address[]> {
   const { data, error } = await supabase
@@ -35,11 +32,8 @@ async function fetchAddresses(userId: string): Promise<Address[]> {
 
 async function fetchStoreCep(): Promise<string> {
     const { data, error } = await supabase.from('settings').select('value').eq('key', 'store_cep').single();
-    // PGRST116 = linha não encontrada (CEP não configurado)
-    if (error && error.code !== 'PGRST116') throw error; 
-    if (!data?.value) {
-        // Lançar um erro específico para ser capturado no useQuery
-        throw new Error("CEP_NOT_CONFIGURED"); 
+    if (error || !data?.value) {
+        throw new Error("CEP de origem da loja não configurado.");
     }
     return data.value;
 }
@@ -49,21 +43,14 @@ const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style
 interface AddressStepProps {
   selectedAddressId: string | null;
   onAddressSelect: (id: string | null) => void;
-  // Nova função de callback para frete: retorna o custo, o ID do serviço e o prazo
-  onShippingChange: (cost: number, serviceId: string | null, serviceName: string | null) => void;
+  onShippingChange: (cost: number, distance: number, zoneId: string | null) => void;
 }
 
 export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChange }: AddressStepProps) {
   const [isFormOpen, setFormOpen] = useState(false);
   const [isCalculating, setIsCalculating] = useState(false);
   const [shippingError, setShippingError] = useState<string | null>(null);
-  const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
-  const [selectedShippingOption, setSelectedShippingOption] = useState<string | null>(null);
-  
   const session = useSessionStore((state) => state.session);
-  const { items: cartItems } = useCartStore();
-  const selectedCartItems = cartItems.filter(item => item.selected);
-  
   const userId = session?.user.id;
   const lastCalculatedAddressId = useRef<string | null>(null);
 
@@ -73,110 +60,62 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
     enabled: !!userId,
   });
 
-  const { data: storeCep, isLoading: isLoadingStoreCep, isError: isStoreCepError, error: storeCepQueryError } = useQuery({
+  const { data: storeCep } = useQuery({
     queryKey: ["storeCep"],
     queryFn: fetchStoreCep,
-    retry: false, // Não tentar novamente se o CEP não estiver configurado
   });
 
-  // Efeito para calcular o frete quando o endereço ou o CEP da loja mudar
   useEffect(() => {
-    const quoteShipping = async () => {
-      if (storeCepQueryError?.message === "CEP_NOT_CONFIGURED") {
-        setShippingError("O CEP de origem da loja não está configurado. Contate o administrador.");
-        setShippingOptions([]);
-        onShippingChange(0, null, null);
+    const calculateShipping = async () => {
+      if (!selectedAddressId || !addresses || !storeCep) {
+        onShippingChange(0, 0, null);
+        lastCalculatedAddressId.current = null;
         return;
       }
 
-      if (!selectedAddressId || !addresses || !storeCep || selectedCartItems.length === 0) {
-        setShippingOptions([]);
-        setSelectedShippingOption(null);
-        onShippingChange(0, null, null);
-        lastCalculatedAddressId.current = null;
+      if (selectedAddressId === lastCalculatedAddressId.current) {
         return;
       }
 
       const selectedAddress = addresses.find(addr => addr.id === selectedAddressId);
       if (!selectedAddress) return;
 
-      // Se o endereço for o mesmo e já tivermos opções, não recalculamos
-      if (selectedAddressId === lastCalculatedAddressId.current && shippingOptions.length > 0) {
-        return;
-      }
-
       setIsCalculating(true);
       setShippingError(null);
-      setShippingOptions([]);
-      setSelectedShippingOption(null);
-      onShippingChange(0, null, null);
 
       try {
-        const itemsPayload = selectedCartItems.map(item => ({
-            id: item.id,
-            quantity: item.quantity,
-        }));
-        
-        const payload = {
+        const { data: distanceData, error: distanceError } = await supabase.functions.invoke('calculate-distance', {
+          body: {
             destinationCep: selectedAddress.zip_code.replace(/\D/g, ''),
-            storeCep: storeCep,
-            items: itemsPayload,
-        };
-
-        console.log("Payload enviado para quote-shipping:", payload); // DEBUG LOG
-
-        const { data: optionsData, error: quoteError } = await supabase.functions.invoke('quote-shipping', {
-          body: payload,
+          },
         });
-        
-        if (quoteError) {
-            throw new Error(quoteError.message);
-        }
-        
-        if (optionsData.error) {
-            throw new Error(optionsData.error);
-        }
+        if (distanceError || distanceData.error) throw new Error(distanceError?.message || distanceData.error);
+        const distance = parseFloat(distanceData.distance);
 
-        setShippingOptions(optionsData as ShippingOption[]);
+        const { data: feeData, error: feeError } = await supabase.rpc('get_shipping_fee', { distance });
+        if (feeError || !feeData || feeData.length === 0) {
+          throw new Error("Não foi possível encontrar uma taxa de frete para este endereço. Pode estar fora da nossa área de entrega.");
+        }
+        
+        const shippingCost = feeData[0].price;
+        onShippingChange(shippingCost, distance, feeData[0].zone_id);
+        showSuccess(`Frete calculado: ${formatCurrency(shippingCost)}`);
         lastCalculatedAddressId.current = selectedAddressId;
 
-        // Seleciona a opção mais barata por padrão
-        if (optionsData.length > 0) {
-            const cheapestOption = optionsData.reduce((prev: ShippingOption, current: ShippingOption) => 
-                (prev.price < current.price ? prev : current)
-            );
-            setSelectedShippingOption(cheapestOption.id);
-            onShippingChange(cheapestOption.price, cheapestOption.id, cheapestOption.name);
-        } else {
-            setShippingError("Nenhuma opção de frete encontrada para este endereço.");
-        }
-
       } catch (err: any) {
-        const errorMessage = err.message || "Erro desconhecido ao cotar o frete.";
-        showError(errorMessage);
-        setShippingError(errorMessage);
-        onShippingChange(0, null, null);
+        showError(err.message);
+        setShippingError(err.message);
+        onShippingChange(0, 0, null);
         lastCalculatedAddressId.current = null;
       } finally {
         setIsCalculating(false);
       }
     };
 
-    quoteShipping();
-  }, [selectedAddressId, addresses, storeCep, selectedCartItems, onShippingChange, storeCepQueryError]);
+    calculateShipping();
+  }, [selectedAddressId, addresses, storeCep, onShippingChange]);
 
-  // Efeito para atualizar o custo de frete quando a opção de frete for alterada
-  useEffect(() => {
-    if (selectedShippingOption && shippingOptions.length > 0) {
-        const option = shippingOptions.find(opt => opt.id === selectedShippingOption);
-        if (option) {
-            onShippingChange(option.price, option.id, option.name);
-        }
-    }
-  }, [selectedShippingOption, shippingOptions, onShippingChange]);
-
-
-  if (isLoadingAddresses || isLoadingStoreCep) {
+  if (isLoadingAddresses) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-24 w-full" />
@@ -188,8 +127,6 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
   return (
     <Card>
       <CardContent className="pt-6 space-y-6">
-        {/* Seleção de Endereço */}
-        <h3 className="font-semibold text-base">Selecione o Endereço de Entrega</h3>
         <RadioGroup
           value={selectedAddressId || ""}
           onValueChange={onAddressSelect}
@@ -230,59 +167,19 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
           </DialogContent>
         </Dialog>
 
-        {/* Opções de Frete */}
-        <div className={cn("space-y-4 pt-4", !selectedAddressId && "opacity-50 pointer-events-none")}>
-            <h3 className="font-semibold text-base flex items-center gap-2"><Truck className="h-4 w-4" /> Opções de Frete</h3>
-            
-            {isStoreCepError && storeCepQueryError?.message === "CEP_NOT_CONFIGURED" && (
-                <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                        Erro de configuração: O CEP de origem da loja não está configurado. Por favor, configure-o no Painel Admin &gt; Configurações &gt; Frete.
-                    </AlertDescription>
-                </Alert>
-            )}
+        {isCalculating && (
+          <div className="flex items-center justify-center gap-2 text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>Calculando frete...</span>
+          </div>
+        )}
 
-            {isCalculating ? (
-                <div className="flex items-center justify-center gap-2 text-muted-foreground p-4 border rounded-lg">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Cotando frete com transportadoras...</span>
-                </div>
-            ) : shippingOptions.length > 0 ? (
-                <RadioGroup
-                    value={selectedShippingOption || ""}
-                    onValueChange={setSelectedShippingOption}
-                    className="space-y-3"
-                >
-                    {shippingOptions.map((option) => (
-                        <Label
-                            key={option.id}
-                            htmlFor={`shipping-${option.id}`}
-                            className="flex cursor-pointer rounded-lg border p-4 transition-colors has-[:checked]:border-primary"
-                        >
-                            <RadioGroupItem value={option.id} id={`shipping-${option.id}`} className="mr-4 mt-1" />
-                            <div className="flex-1 text-sm">
-                                <p className="font-semibold">{option.name}</p>
-                                <p className="text-muted-foreground">Prazo: {option.delivery_time} dia(s) útil(eis)</p>
-                            </div>
-                            <p className="font-bold text-right">{formatCurrency(option.price)}</p>
-                        </Label>
-                    ))}
-                </RadioGroup>
-            ) : shippingError ? (
-                <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{shippingError}</AlertDescription>
-                </Alert>
-            ) : (
-                <Alert variant="default">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                        Selecione um endereço para cotar as opções de frete.
-                    </AlertDescription>
-                </Alert>
-            )}
-        </div>
+        {shippingError && (
+          <Alert variant="destructive" className="mt-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{shippingError}</AlertDescription>
+          </Alert>
+        )}
 
         {!isLoadingAddresses && addresses?.length === 0 && (
             <div className="text-center py-10">
