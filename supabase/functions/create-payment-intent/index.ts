@@ -23,9 +23,9 @@ serve(async (req) => {
   }
 
   try {
-    const { items, shippingCost, userId, shippingAddressId, shippingDistance, shippingZoneId } = await req.json();
+    const { items, shippingCost, userId, shippingAddressId, shippingDistance, shippingZoneId, customerDetails } = await req.json();
 
-    if (!items || items.length === 0 || !userId || !shippingAddressId) {
+    if (!items || items.length === 0 || !userId || !shippingAddressId || !customerDetails) {
       throw new Error("Informações essenciais do pedido incompletas.");
     }
 
@@ -45,8 +45,32 @@ serve(async (req) => {
 
     const totalAmount = subtotal + shippingCost;
 
-    // 2. Criar o PaymentIntent no Stripe
-    // Passando os dados essenciais para o metadata, que será lido pelo webhook.
+    // 2. Gerenciar o Cliente Stripe
+    let stripeCustomerId: string;
+
+    // Tenta encontrar um cliente Stripe existente usando o userId do Supabase
+    const existingCustomers = await stripe.customers.list({
+        metadata: { supabase_user_id: userId },
+        limit: 1,
+    });
+
+    if (existingCustomers.data.length > 0) {
+        stripeCustomerId = existingCustomers.data[0].id;
+    } else {
+        // Cria um novo cliente Stripe
+        const newCustomer = await stripe.customers.create({
+            email: customerDetails.email,
+            name: customerDetails.name,
+            phone: customerDetails.phone,
+            metadata: {
+                supabase_user_id: userId,
+                cpf: customerDetails.cpf,
+            },
+        });
+        stripeCustomerId = newCustomer.id;
+    }
+
+    // 3. Criar o PaymentIntent no Stripe
     const essentialMetadata = {
         user_id: userId,
         shipping_address_id: shippingAddressId,
@@ -58,10 +82,11 @@ serve(async (req) => {
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(totalAmount * 100), // em centavos
       currency: 'brl',
+      customer: stripeCustomerId, // Vincula o PI ao cliente Stripe
       metadata: essentialMetadata,
     });
 
-    // 3. Retornar o client_secret para o frontend
+    // 4. Retornar o client_secret para o frontend
     return new Response(JSON.stringify({ clientSecret: paymentIntent.client_secret }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

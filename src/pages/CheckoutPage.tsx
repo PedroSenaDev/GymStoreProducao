@@ -46,7 +46,7 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     const createPaymentIntent = async () => {
-      if (paymentMethod === 'credit_card' && total > 0 && selectedAddressId && session?.user.id) {
+      if (paymentMethod === 'credit_card' && total > 0 && selectedAddressId && session?.user.id && profile) {
         setIsLoadingClientSecret(true);
         setClientSecret(null); // Clear previous secret
 
@@ -62,6 +62,13 @@ export default function CheckoutPage() {
               shippingCost,
               shippingDistance,
               shippingZoneId,
+              // Adicionando informações do cliente para o Stripe
+              customerDetails: {
+                name: profile.full_name,
+                email: session.user.email,
+                phone: profile.phone,
+                cpf: profile.cpf,
+              }
             },
           });
           if (error || data.error) throw new Error(error?.message || data.error);
@@ -77,7 +84,7 @@ export default function CheckoutPage() {
       }
     };
     createPaymentIntent();
-  }, [paymentMethod, total, selectedAddressId, session?.user.id, selectedItems, shippingCost, shippingDistance, shippingZoneId, clearNonSelectedItems]);
+  }, [paymentMethod, total, selectedAddressId, session?.user.id, selectedItems, shippingCost, shippingDistance, shippingZoneId, clearNonSelectedItems, profile]);
 
   const handleFinalizeOrder = () => {
     if (isCheckoutDisabled) return;
