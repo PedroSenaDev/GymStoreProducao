@@ -30,9 +30,12 @@ export default function CheckoutPage() {
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
   const [isPixDialogOpen, setIsPixDialogOpen] = useState(false);
+  
+  // Novos estados para o Melhor Envio
   const [shippingCost, setShippingCost] = useState(0);
-  const [shippingDistance, setShippingDistance] = useState(0);
-  const [shippingZoneId, setShippingZoneId] = useState<string | null>(null);
+  const [shippingServiceId, setShippingServiceId] = useState<string | null>(null);
+  const [shippingServiceName, setShippingServiceName] = useState<string | null>(null);
+  
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [isLoadingClientSecret, setIsLoadingClientSecret] = useState(false);
 
@@ -41,7 +44,8 @@ export default function CheckoutPage() {
   const total = subtotal + shippingCost;
 
   const isProfileIncomplete = !profile?.full_name || !profile?.cpf;
-  const isShippingCalculated = selectedAddressId && shippingCost > 0;
+  // A verificação de frete agora é se temos um custo > 0 E um serviço selecionado
+  const isShippingCalculated = selectedAddressId && shippingCost > 0 && shippingServiceId;
   const isCheckoutDisabled = !isShippingCalculated || !paymentMethod || isProfileIncomplete || isLoadingProfile;
 
   useEffect(() => {
@@ -54,7 +58,8 @@ export default function CheckoutPage() {
         session?.user.id && 
         profile?.full_name && 
         profile?.cpf && 
-        session.user.email
+        session.user.email &&
+        shippingServiceId // Requer o ID do serviço de frete
       ) {
         setIsLoadingClientSecret(true);
         setClientSecret(null); // Clear previous secret
@@ -69,8 +74,9 @@ export default function CheckoutPage() {
               shippingAddressId: selectedAddressId,
               userId: session.user.id,
               shippingCost,
-              shippingDistance,
-              shippingZoneId,
+              // Passando o ID do serviço de frete (Melhor Envio ID)
+              shippingServiceId: shippingServiceId, 
+              shippingServiceName: shippingServiceName,
               // Adicionando informações do cliente para o Stripe
               customerDetails: {
                 name: profile.full_name,
@@ -93,7 +99,7 @@ export default function CheckoutPage() {
       }
     };
     createPaymentIntent();
-  }, [paymentMethod, total, selectedAddressId, session?.user.id, selectedItems, shippingCost, shippingDistance, shippingZoneId, clearNonSelectedItems, profile]);
+  }, [paymentMethod, total, selectedAddressId, session?.user.id, selectedItems, shippingCost, shippingServiceId, shippingServiceName, clearNonSelectedItems, profile]);
 
   const handleFinalizeOrder = () => {
     if (isCheckoutDisabled) return;
@@ -103,10 +109,11 @@ export default function CheckoutPage() {
     // Para cartão, o botão de pagamento está dentro do CheckoutForm
   };
 
-  const handleShippingChange = (cost: number, distance: number, zoneId: string | null) => {
+  // Atualiza o estado do frete com o ID e nome do serviço
+  const handleShippingChange = (cost: number, serviceId: string | null, serviceName: string | null) => {
     setShippingCost(cost);
-    setShippingDistance(distance);
-    setShippingZoneId(zoneId);
+    setShippingServiceId(serviceId);
+    setShippingServiceName(serviceName);
   };
 
   if (!session) {
@@ -138,7 +145,7 @@ export default function CheckoutPage() {
                 <Alert variant="default">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    Selecione um endereço válido e aguarde o cálculo do frete para escolher o método de pagamento.
+                    Selecione um endereço e uma opção de frete para escolher o método de pagamento.
                   </AlertDescription>
                 </Alert>
               )}
@@ -194,8 +201,9 @@ export default function CheckoutPage() {
         selectedAddressId={selectedAddressId}
         paymentMethod={paymentMethod}
         shippingCost={shippingCost}
-        shippingDistance={shippingDistance}
-        shippingZoneId={shippingZoneId}
+        // Passando o ID do serviço de frete e o nome
+        shippingServiceId={shippingServiceId}
+        shippingServiceName={shippingServiceName}
       />
     </div>
   );
