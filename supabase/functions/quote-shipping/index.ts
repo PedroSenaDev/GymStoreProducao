@@ -42,7 +42,7 @@ serve(async (req) => {
     const productIds = items.map((item: any) => item.id);
     const { data: productsData, error: productsError } = await supabaseAdmin
       .from('products')
-      .select('id, weight_kg, length_cm, height_cm, width_cm')
+      .select('id, name, weight_kg, length_cm, height_cm, width_cm') // Adicionando 'name' para melhor erro
       .in('id', productIds);
 
     if (productsError) throw new Error(`Erro ao buscar dimensões dos produtos: ${productsError.message}`);
@@ -52,20 +52,28 @@ serve(async (req) => {
     // 2. Montar o payload para o Melhor Envio
     const meItems = items.map((item: any) => {
       const details = productDetailsMap.get(item.id);
-      if (!details) throw new Error(`Detalhes de dimensão ausentes para o produto ID: ${item.id}`);
       
-      // Validação básica para garantir que os valores são positivos, conforme exigido pelo ME
-      if (details.weight_kg <= 0 || details.length_cm <= 0 || details.height_cm <= 0 || details.width_cm <= 0) {
-          throw new Error(`Produto "${item.id}" possui dimensões ou peso inválidos (devem ser > 0).`);
+      if (!details) {
+        throw new Error(`Detalhes de dimensão ausentes para o produto ID: ${item.id}. Produto não encontrado no DB.`);
+      }
+      
+      // Garantir que os valores são números e positivos
+      const weight = details.weight_kg ? parseFloat(details.weight_kg.toString()) : 0;
+      const length = details.length_cm ? parseFloat(details.length_cm.toString()) : 0;
+      const height = details.height_cm ? parseFloat(details.height_cm.toString()) : 0;
+      const width = details.width_cm ? parseFloat(details.width_cm.toString()) : 0;
+
+      if (weight <= 0 || length <= 0 || height <= 0 || width <= 0) {
+          throw new Error(`Produto "${details.name}" possui dimensões ou peso inválidos (devem ser > 0). Por favor, edite o produto no painel admin.`);
       }
 
       return {
         id: item.id,
         quantity: item.quantity,
-        weight: details.weight_kg,
-        width: details.width_cm,
-        height: details.height_cm,
-        length: details.length_cm,
+        weight: weight,
+        width: width,
+        height: height,
+        length: length,
       };
     });
 
@@ -106,7 +114,9 @@ serve(async (req) => {
       }));
 
     if (validShippingOptions.length === 0) {
-        throw new Error("Nenhuma opção de frete válida encontrada para este CEP e produtos.");
+        // Se houver erros específicos da transportadora, exibe o primeiro erro
+        const firstError = responseData.find((item: any) => item.error)?.error;
+        throw new Error(firstError || "Nenhuma opção de frete válida encontrada para este CEP e produtos.");
     }
 
     return new Response(JSON.stringify(validShippingOptions), {
