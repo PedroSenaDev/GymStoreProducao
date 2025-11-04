@@ -48,48 +48,47 @@ serve(async (req) => {
     // 2. Gerenciar o Cliente Stripe
     let stripeCustomerId: string;
 
-    // Tenta encontrar um cliente Stripe existente usando o userId do Supabase
     const existingCustomers = await stripe.customers.list({
         metadata: { supabase_user_id: userId },
         limit: 1,
     });
 
-    // Garante que os detalhes do cliente são strings, usando fallback para evitar erros de tipo
     const name = customerDetails.name || 'N/A';
     const email = customerDetails.email || 'N/A';
     const phone = customerDetails.phone || '';
-    const cpf = (customerDetails.cpf || '').replace(/\D/g, ''); // Limpa o CPF
+    const cpf = (customerDetails.cpf || '').replace(/\D/g, '');
 
     if (existingCustomers.data.length > 0) {
         stripeCustomerId = existingCustomers.data[0].id;
     } else {
-        // Cria um novo cliente Stripe
         const newCustomer = await stripe.customers.create({
             email: email,
             name: name,
-            // Não passamos o 'phone' aqui para evitar erros de validação de formato E.164
             metadata: {
                 supabase_user_id: userId,
                 cpf: cpf,
-                phone: phone, // Armazenamos o telefone nos metadados
+                phone: phone,
             },
         });
         stripeCustomerId = newCustomer.id;
     }
 
-    // 3. Criar o PaymentIntent no Stripe
-    const essentialMetadata = {
+    // 3. Criar o PaymentIntent no Stripe com metadados seguros
+    const essentialMetadata: { [key: string]: string } = {
         user_id: userId,
         shipping_address_id: shippingAddressId,
         shipping_cost: shippingCost.toString(),
         shipping_distance: shippingDistance.toString(),
-        shipping_zone_id: shippingZoneId,
     };
 
+    if (shippingZoneId) {
+        essentialMetadata.shipping_zone_id = shippingZoneId;
+    }
+
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(totalAmount * 100), // em centavos
+      amount: Math.round(totalAmount * 100),
       currency: 'brl',
-      customer: stripeCustomerId, // Vincula o PI ao cliente Stripe
+      customer: stripeCustomerId,
       metadata: essentialMetadata,
     });
 
@@ -100,7 +99,6 @@ serve(async (req) => {
 
   } catch (error) {
     console.error("Erro ao criar Payment Intent:", error);
-    // Retorna a mensagem de erro para o frontend para melhor depuração
     return new Response(JSON.stringify({ error: error.message }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
