@@ -32,10 +32,14 @@ async function getCoordsFromCep(cep: string) {
     throw new Error(`Não foi possível obter as coordenadas para o CEP ${cep}.`);
   }
 
-  return {
-    lat: data.location.coordinates.latitude,
-    lon: data.location.coordinates.longitude,
-  };
+  const lat = parseFloat(data.location.coordinates.latitude);
+  const lon = parseFloat(data.location.coordinates.longitude);
+
+  if (isNaN(lat) || isNaN(lon)) {
+    throw new Error(`Coordenadas inválidas (NaN) para o CEP ${cep}.`);
+  }
+
+  return { lat, lon };
 }
 
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
