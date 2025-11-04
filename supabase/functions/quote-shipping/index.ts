@@ -11,9 +11,8 @@ const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 )
 
+// Usaremos apenas o Access Token para a cotação
 const MELHOR_ENVIO_ACCESS_TOKEN = Deno.env.get("MELHOR_ENVIO_ACCESS_TOKEN")
-const MELHOR_ENVIO_CLIENT_ID = Deno.env.get("MELHOR_ENVIO_CLIENT_ID")
-const MELHOR_ENVIO_SECRET = Deno.env.get("MELHOR_ENVIO_SECRET")
 
 // URL da API do Melhor Envio (usando sandbox para desenvolvimento, mude para produção se necessário)
 const ME_API_URL = 'https://sandbox.melhorenvio.com.br/api/v2/me/shipment/calculate';
@@ -71,7 +70,6 @@ serve(async (req) => {
       to: { postal_code: destinationCep.replace(/\D/g, '') },
       products: meItems,
       // Adiciona o tipo de serviço que você deseja cotar (ex: Correios, Jadlog)
-      // Se omitido, cota todos os disponíveis.
       // services: ['1', '2', '3', '17', '18'], 
     };
 
@@ -107,10 +105,7 @@ serve(async (req) => {
       }));
 
     if (validShippingOptions.length === 0) {
-        throw new Response(JSON.stringify({ error: "Nenhuma opção de frete válida encontrada para este CEP e produtos." }), {
-            status: 404,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        throw new Error("Nenhuma opção de frete válida encontrada para este CEP e produtos.");
     }
 
     return new Response(JSON.stringify(validShippingOptions), {
