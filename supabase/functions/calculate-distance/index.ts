@@ -29,6 +29,7 @@ async function getCoordsFromCep(cep: string) {
   const data = await response.json();
 
   if (!data.location || !data.location.coordinates) {
+    console.error(`API de CEP retornou dados sem coordenadas para ${cep}:`, data);
     throw new Error(`Não foi possível obter as coordenadas para o CEP ${cep}.`);
   }
 
@@ -36,8 +37,11 @@ async function getCoordsFromCep(cep: string) {
   const lon = parseFloat(data.location.coordinates.longitude);
 
   if (isNaN(lat) || isNaN(lon)) {
-    throw new Error(`Coordenadas inválidas (NaN) para o CEP ${cep}.`);
+    console.error(`Coordenadas inválidas (NaN) para o CEP ${cep}. Dados brutos:`, data.location.coordinates);
+    throw new Error(`Coordenadas inválidas para o CEP ${cep}.`);
   }
+  
+  console.log(`Coordenadas para ${cep}: Lat=${lat}, Lon=${lon}`);
 
   return { lat, lon };
 }
@@ -96,6 +100,8 @@ serve(async (req) => {
       destinationCoords.lat,
       destinationCoords.lon
     );
+    
+    console.log(`Distância final calculada: ${distance.toFixed(2)} km`);
 
     return new Response(JSON.stringify({ distance: distance.toFixed(2) }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
