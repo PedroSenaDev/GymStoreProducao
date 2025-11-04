@@ -85,12 +85,14 @@ serve(async (req) => {
     try {
       originCoords = await getCoordsFromCep(originCep);
     } catch (e) {
+      console.error(`ERRO AO BUSCAR COORDENADAS DE ORIGEM: ${e.message}`);
       throw new Error(`Falha ao processar o CEP de origem da loja (${originCep}): ${e.message}`);
     }
 
     try {
       destinationCoords = await getCoordsFromCep(destinationCep);
     } catch (e) {
+      console.error(`ERRO AO BUSCAR COORDENADAS DE DESTINO: ${e.message}`);
       throw new Error(`Falha ao processar o CEP de destino (${destinationCep}): ${e.message}`);
     }
 
@@ -109,7 +111,7 @@ serve(async (req) => {
 
   } catch (error) {
     // Garante que o erro seja retornado com status 400 e a mensagem no corpo
-    console.error("Erro na função calculate-distance:", error);
+    console.error("Erro final na função calculate-distance:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
