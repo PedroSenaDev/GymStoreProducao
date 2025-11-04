@@ -89,7 +89,18 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
             destinationCep: selectedAddress.zip_code.replace(/\D/g, ''),
           },
         });
-        if (distanceError || distanceData.error) throw new Error(distanceError?.message || distanceData.error);
+        
+        // --- CORREÇÃO DE TRATAMENTO DE ERRO ---
+        if (distanceError) {
+            // Se for um erro de rede ou de invocação, use a mensagem padrão
+            throw new Error(distanceError.message);
+        }
+        if (distanceData.error) {
+            // Se a função retornou 400 com um corpo de erro (o que aconteceu)
+            throw new Error(distanceData.error);
+        }
+        // --------------------------------------
+
         const distance = parseFloat(distanceData.distance);
 
         // DEBUG: Exibir a distância calculada
@@ -106,8 +117,10 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
         lastCalculatedAddressId.current = selectedAddressId;
 
       } catch (err: any) {
-        showError(err.message);
-        setShippingError(err.message);
+        // Agora, err.message deve conter a mensagem detalhada da Edge Function
+        const errorMessage = err.message || "Erro desconhecido ao calcular o frete.";
+        showError(errorMessage);
+        setShippingError(errorMessage);
         onShippingChange(0, 0, null);
         lastCalculatedAddressId.current = null;
       } finally {
