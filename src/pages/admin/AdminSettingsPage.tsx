@@ -174,14 +174,14 @@ export default function AdminSettingsPage() {
           <TabsContent value="shipping" className="mt-6">
             <Card>
               <CardHeader>
-                <CardTitle>Configuração de Frete</CardTitle>
-                <CardDescription>Gerencie o CEP de origem e as faixas de preço por distância.</CardDescription>
+                <CardTitle>Configuração de Frete Fixo</CardTitle>
+                <CardDescription>Gerencie as taxas de frete fixas baseadas no valor do pedido.</CardDescription>
               </CardHeader>
               <CardContent>
                 <Button asChild>
                   <Link to="/admin/settings/shipping">
                     <Truck className="mr-2 h-4 w-4" />
-                    Configurar Faixas de Frete
+                    Configurar Taxas Fixas
                   </Link>
                 </Button>
               </CardContent>

@@ -33,8 +33,7 @@ serve(async (req) => {
       const userId = metadata.user_id;
       const shippingAddressId = metadata.shipping_address_id;
       const shippingCost = parseFloat(metadata.shipping_cost || '0');
-      const shippingDistance = parseFloat(metadata.shipping_distance || '0');
-      const shippingZoneId = metadata.shipping_zone_id;
+      const shippingRateId = metadata.shipping_rate_id; // Novo campo
 
       if (!userId || !shippingAddressId) {
         console.error("Webhook: Metadados essenciais ausentes (user_id ou shipping_address_id).");
@@ -63,9 +62,9 @@ serve(async (req) => {
           shipping_address_id: shippingAddressId,
           payment_method: 'credit_card',
           shipping_cost: shippingCost,
-          shipping_distance: shippingDistance,
-          shipping_zone_id: shippingZoneId,
           stripe_payment_intent_id: paymentIntentId,
+          // Não incluímos shippingRateId no orders, pois não criamos a coluna.
+          // Se for necessário rastrear a taxa, a coluna deve ser adicionada à tabela orders.
         })
         .select('id')
         .single();

@@ -28,11 +28,12 @@ export default function CheckoutPage() {
   const { data: profile, isLoading: isLoadingProfile } = useProfile();
   
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [selectedRateId, setSelectedRateId] = useState<string | null>(null); // Novo estado para a taxa fixa
   const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
   const [isPixDialogOpen, setIsPixDialogOpen] = useState(false);
   const [shippingCost, setShippingCost] = useState(0);
-  const [shippingDistance, setShippingDistance] = useState(0);
-  const [shippingZoneId, setShippingZoneId] = useState<string | null>(null);
+  
+  // Removendo shippingDistance e shippingZoneId
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [isLoadingClientSecret, setIsLoadingClientSecret] = useState(false);
 
@@ -41,12 +42,12 @@ export default function CheckoutPage() {
   const total = subtotal + shippingCost;
 
   const isProfileIncomplete = !profile?.full_name || !profile?.cpf;
-  const isShippingCalculated = selectedAddressId && shippingCost > 0;
+  const isShippingCalculated = selectedAddressId && selectedRateId !== null; // Verifica se a taxa foi selecionada
   const isCheckoutDisabled = !isShippingCalculated || !paymentMethod || isProfileIncomplete || isLoadingProfile;
 
   useEffect(() => {
     const createPaymentIntent = async () => {
-      if (paymentMethod === 'credit_card' && total > 0 && selectedAddressId && session?.user.id) {
+      if (paymentMethod === 'credit_card' && total > 0 && selectedAddressId && selectedRateId && session?.user.id) {
         setIsLoadingClientSecret(true);
         setClientSecret(null); // Clear previous secret
 
@@ -60,8 +61,7 @@ export default function CheckoutPage() {
               shippingAddressId: selectedAddressId,
               userId: session.user.id,
               shippingCost,
-              shippingDistance,
-              shippingZoneId,
+              shippingRateId: selectedRateId, // Passando o ID da taxa fixa
             },
           });
           if (error || data.error) throw new Error(error?.message || data.error);
@@ -77,7 +77,7 @@ export default function CheckoutPage() {
       }
     };
     createPaymentIntent();
-  }, [paymentMethod, total, selectedAddressId, session?.user.id, selectedItems, shippingCost, shippingDistance, shippingZoneId, clearNonSelectedItems]);
+  }, [paymentMethod, total, selectedAddressId, selectedRateId, session?.user.id, selectedItems, shippingCost, clearNonSelectedItems]);
 
   const handleFinalizeOrder = () => {
     if (isCheckoutDisabled) return;
@@ -87,10 +87,10 @@ export default function CheckoutPage() {
     // Para cartão, o botão de pagamento está dentro do CheckoutForm
   };
 
-  const handleShippingChange = (cost: number, distance: number, zoneId: string | null) => {
+  // Atualiza o custo do frete e o ID da taxa selecionada
+  const handleShippingChange = (cost: number, rateId: string | null) => {
     setShippingCost(cost);
-    setShippingDistance(distance);
-    setShippingZoneId(zoneId);
+    setSelectedRateId(rateId);
   };
 
   if (!session) {
@@ -113,6 +113,8 @@ export default function CheckoutPage() {
               <AddressStep 
                 selectedAddressId={selectedAddressId} 
                 onAddressSelect={setSelectedAddressId}
+                selectedRateId={selectedRateId}
+                onRateSelect={setSelectedRateId}
                 onShippingChange={handleShippingChange}
               />
             </div>
@@ -122,7 +124,7 @@ export default function CheckoutPage() {
                 <Alert variant="default">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    Selecione um endereço válido e aguarde o cálculo do frete para escolher o método de pagamento.
+                    Selecione um endereço e uma opção de frete para continuar.
                   </AlertDescription>
                 </Alert>
               )}
@@ -178,8 +180,7 @@ export default function CheckoutPage() {
         selectedAddressId={selectedAddressId}
         paymentMethod={paymentMethod}
         shippingCost={shippingCost}
-        shippingDistance={shippingDistance}
-        shippingZoneId={shippingZoneId}
+        // Removendo props de frete dinâmico
       />
     </div>
   );

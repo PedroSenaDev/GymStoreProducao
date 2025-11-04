@@ -1,5 +1,5 @@
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { zodResolver } from "@/lib/resolvers";
 import { z } from "@/lib/zod-pt";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,49 +13,47 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { showError, showSuccess } from "@/utils/toast";
-import { ShippingZone } from "@/types/shipping";
+import { FixedShippingRate } from "@/types/fixedShippingRate";
 import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
-  label: z.string().optional(),
-  min_km: z.coerce.number().min(0, "Distância não pode ser negativa."),
-  max_km: z.coerce.number().min(0, "Distância não pode ser negativa."),
-  price: z.coerce.number().min(0, "Preço não pode ser negativo."),
-}).refine(data => data.max_km > data.min_km, {
-  message: "A distância máxima deve ser maior que a mínima.",
-  path: ["max_km"],
+  label: z.string().min(1, "O nome da taxa é obrigatório."),
+  min_order_value: z.coerce.number().min(0, "Valor mínimo não pode ser negativo."),
+  price: z.coerce.number().min(0, "O preço do frete não pode ser negativo."),
+  is_active: z.boolean().default(true),
 });
 
-interface ShippingZoneFormProps {
-  zone?: ShippingZone;
+interface FixedShippingRateFormProps {
+  rate?: FixedShippingRate;
   onFinished: () => void;
 }
 
-export default function ShippingZoneForm({ zone, onFinished }: ShippingZoneFormProps) {
+export default function FixedShippingRateForm({ rate, onFinished }: FixedShippingRateFormProps) {
   const queryClient = useQueryClient();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      label: zone?.label || "",
-      min_km: zone?.min_km || 0,
-      max_km: zone?.max_km || 0,
-      price: zone?.price || 0,
+      label: rate?.label || "",
+      min_order_value: rate?.min_order_value || 0,
+      price: rate?.price || 0,
+      is_active: rate?.is_active ?? true,
     },
   });
 
   const { mutate, isPending } = useMutation({
     mutationFn: async (values: z.infer<typeof formSchema>) => {
-      const { data, error } = await (zone?.id
-        ? supabase.from("shipping_zones").update(values).eq("id", zone.id)
-        : supabase.from("shipping_zones").insert([values]));
+      const { data, error } = await (rate?.id
+        ? supabase.from("fixed_shipping_rates").update(values).eq("id", rate.id)
+        : supabase.from("fixed_shipping_rates").insert([values]));
 
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      showSuccess(`Faixa de frete ${zone?.id ? 'atualizada' : 'criada'} com sucesso!`);
-      queryClient.invalidateQueries({ queryKey: ["shippingZones"] });
+      showSuccess(`Taxa de frete ${rate?.id ? 'atualizada' : 'criada'} com sucesso!`);
+      queryClient.invalidateQueries({ queryKey: ["fixedShippingRates"] });
       onFinished();
     },
     onError: (error: any) => {
@@ -71,8 +69,8 @@ export default function ShippingZoneForm({ zone, onFinished }: ShippingZoneFormP
           name="label"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Nome da Faixa (Opcional)</FormLabel>
-              <FormControl><Input placeholder="Ex: Zona Norte" {...field} /></FormControl>
+              <FormLabel>Nome da Taxa</FormLabel>
+              <FormControl><Input placeholder="Ex: Frete Padrão" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -80,22 +78,22 @@ export default function ShippingZoneForm({ zone, onFinished }: ShippingZoneFormP
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="min_km"
+            name="min_order_value"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>De (KM)</FormLabel>
-                <FormControl><Input type="number" step="0.1" {...field} /></FormControl>
+                <FormLabel>Valor Mínimo do Pedido (R$)</FormLabel>
+                <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
           <FormField
             control={form.control}
-            name="max_km"
+            name="price"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Até (KM)</FormLabel>
-                <FormControl><Input type="number" step="0.1" {...field} /></FormControl>
+                <FormLabel>Valor do Frete (R$)</FormLabel>
+                <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -103,18 +101,22 @@ export default function ShippingZoneForm({ zone, onFinished }: ShippingZoneFormP
         </div>
         <FormField
           control={form.control}
-          name="price"
+          name="is_active"
           render={({ field }) => (
-            <FormItem>
-              <FormLabel>Valor do Frete (R$)</FormLabel>
-              <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
-              <FormMessage />
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+              <FormControl>
+                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+              </FormControl>
+              <div className="space-y-1 leading-none">
+                <FormLabel>Taxa Ativa</FormLabel>
+                <p className="text-sm text-muted-foreground">Se desmarcado, não aparecerá no checkout.</p>
+              </div>
             </FormItem>
           )}
         />
         <Button type="submit" disabled={isPending} className="w-full">
           {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Salvar Faixa de Frete
+          Salvar Taxa
         </Button>
       </form>
     </Form>
