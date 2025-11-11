@@ -72,7 +72,6 @@ serve(async (req) => {
     let totalHeight = 0;
 
     const productsPayload = order.order_items.map((item: any) => {
-      // VERIFICAÇÃO CRÍTICA: Garante que o produto associado ao item do pedido ainda existe.
       if (!item.products) {
         throw new Error(`O produto com ID ${item.product_id} neste pedido não foi encontrado. Ele pode ter sido excluído.`);
       }
@@ -98,9 +97,9 @@ serve(async (req) => {
 
     const recipientPayload = {
         name: order.profiles.full_name,
-        phone: (order.profiles.phone || '').replace(/\D/g, ''),
+        phone: String(order.profiles.phone || '').replace(/\D/g, ''),
         email: order.profiles.email,
-        document: (order.profiles.cpf || '').replace(/\D/g, ''),
+        document: String(order.profiles.cpf || '').replace(/\D/g, ''),
         address: order.shipping_address.street,
         complement: order.shipping_address.complement,
         number: order.shipping_address.number,
@@ -108,7 +107,7 @@ serve(async (req) => {
         city: order.shipping_address.city,
         state_abbr: order.shipping_address.state,
         country_id: "BR",
-        postal_code: (order.shipping_address.zip_code || '').replace(/\D/g, ''),
+        postal_code: String(order.shipping_address.zip_code || '').replace(/\D/g, ''),
     };
 
     if (!recipientPayload.name || !recipientPayload.document || !recipientPayload.postal_code || !recipientPayload.address) {
