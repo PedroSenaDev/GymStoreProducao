@@ -6,13 +6,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// As chaves são lidas dos 'Secrets' do seu projeto Supabase
 const MELHOR_ENVIO_API_KEY = Deno.env.get("MELHOR_ENVIO_API_KEY")
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')
 
-// Endereço de origem (remetente). Idealmente, viria das configurações do site.
-// Por enquanto, usaremos um valor fixo de Montes Claros.
 const SENDER_ZIP_CODE = "39400-001"; 
 
 serve(async (req) => {
@@ -35,7 +32,7 @@ serve(async (req) => {
 
     const shippingOptions = [];
 
-    // --- 1. Calcular o pacote consolidado ---
+    // --- 1. Calcular o pacote consolidado e subtotal ---
     let totalWeight = 0;
     let maxLength = 0;
     let maxWidth = 0;
@@ -51,7 +48,6 @@ serve(async (req) => {
       subtotal += item.price * quantity;
     });
 
-    // Dimensões mínimas exigidas pela API
     const finalPackage = {
       weight: totalWeight,
       width: Math.max(maxWidth, 11),
@@ -59,9 +55,16 @@ serve(async (req) => {
       length: Math.max(maxLength, 16),
     };
 
-    // --- 2. Verificar Fretes Fixos ---
-    const { data: cepData } = await fetch(`https://viacep.com.br/ws/${cleanedZipCode}/json/`).then(res => res.json());
-    if (cepData && !cepData.erro) {
+    // --- 2. Determinar Localização e Aplicar Lógica de Frete ---
+    const cepResponse = await fetch(`https://viacep.com.br/ws/${cleanedZipCode}/json/`);
+    if (!cepResponse.ok) throw new Error("Falha ao consultar o CEP.");
+    const cepData = await cepResponse.json();
+    if (cepData.erro) throw new Error("CEP não encontrado.");
+
+    const isLocalDelivery = cepData.localidade === 'Montes Claros' && cepData.uf === 'MG';
+
+    if (isLocalDelivery) {
+      // --- Lógica para Frete Fixo (Local) ---
       const { data: fixedRates, error: fixedRatesError } = await supabase
         .from('fixed_shipping_rates')
         .select('*')
@@ -76,45 +79,45 @@ serve(async (req) => {
             id: rate.id,
             name: rate.label,
             price: rate.price,
-            delivery_time: "N/A", // Frete fixo não tem estimativa de tempo
+            delivery_time: "N/A",
             type: 'fixed'
           });
         });
       }
-    }
-
-    // --- 3. Cotar com Melhor Envio (se a chave estiver configurada) ---
-    if (MELHOR_ENVIO_API_KEY) {
-      const meResponse = await fetch('https://www.melhorenvio.com.br/api/v2/me/shipment/calculate', {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${MELHOR_ENVIO_API_KEY}`,
-          'User-Agent': 'GYMSTORE (contato@gymstore.com)'
-        },
-        body: JSON.stringify({
-          from: { postal_code: SENDER_ZIP_CODE },
-          to: { postal_code: cleanedZipCode },
-          package: finalPackage,
-        })
-      });
-
-      if (meResponse.ok) {
-        const meRates = await meResponse.json();
-        meRates.forEach((rate: any) => {
-          if (!rate.error) {
-            shippingOptions.push({
-              id: rate.id,
-              name: rate.name,
-              price: parseFloat(rate.price),
-              delivery_time: rate.delivery_time,
-              type: 'gateway'
-            });
-          }
+    } else {
+      // --- Lógica para Melhor Envio (Nacional) ---
+      if (MELHOR_ENVIO_API_KEY) {
+        const meResponse = await fetch('https://www.melhorenvio.com.br/api/v2/me/shipment/calculate', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${MELHOR_ENVIO_API_KEY}`,
+            'User-Agent': 'GYMSTORE (contato@gymstore.com)'
+          },
+          body: JSON.stringify({
+            from: { postal_code: SENDER_ZIP_CODE },
+            to: { postal_code: cleanedZipCode },
+            package: finalPackage,
+          })
         });
-      } else {
-        console.error("Melhor Envio API error:", await meResponse.text());
+
+        if (meResponse.ok) {
+          const meRates = await meResponse.json();
+          meRates.forEach((rate: any) => {
+            if (!rate.error) {
+              shippingOptions.push({
+                id: rate.id,
+                name: rate.name,
+                price: parseFloat(rate.price),
+                delivery_time: rate.delivery_time,
+                type: 'gateway'
+              });
+            }
+          });
+        } else {
+          console.error("Melhor Envio API error:", await meResponse.text());
+        }
       }
     }
 

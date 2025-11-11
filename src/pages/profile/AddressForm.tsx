@@ -77,15 +77,6 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
             return;
           }
 
-          if (data.localidade !== "Montes Claros" || data.uf !== "MG") {
-            showError("Desculpe, no momento só aceitamos endereços de Montes Claros, MG.");
-            setValue("street", "", options);
-            setValue("neighborhood", "", options);
-            setValue("city", "", options);
-            setValue("state", "", options);
-            return;
-          }
-
           setValue("street", data.logradouro, options);
           setValue("neighborhood", data.bairro, options);
           setValue("city", data.localidade, options);
