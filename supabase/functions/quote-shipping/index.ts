@@ -45,14 +45,17 @@ serve(async (req) => {
       subtotal += item.price * quantity;
     });
 
+    // Calcula a dimensão de um cubo com o volume total (raiz cúbica)
     const cubicSide = Math.cbrt(totalVolume);
 
+    // Garante que as dimensões atendam aos mínimos dos Correios
     const finalPackage = {
       weight: totalWeight,
-      width: Math.max(cubicSide, 11),
-      height: Math.max(cubicSide, 2),
-      length: Math.max(cubicSide, 16),
+      width: Math.max(cubicSide, 11),  // Largura mínima
+      height: Math.max(cubicSide, 2),   // Altura mínima
+      length: Math.max(cubicSide, 16), // Comprimento mínimo
     };
+
 
     // --- 2. Determinar Localização e Aplicar Lógica de Frete ---
     const cepResponse = await fetch(`https://viacep.com.br/ws/${cleanedZipCode}/json/`);
@@ -63,6 +66,7 @@ serve(async (req) => {
     const isLocalDelivery = cepData.localidade === 'Montes Claros' && cepData.uf === 'MG';
 
     if (isLocalDelivery) {
+      // --- Lógica para Frete Fixo (Local) ---
       const { data: fixedRates, error: fixedRatesError } = await supabase
         .from('fixed_shipping_rates')
         .select('*')
@@ -84,19 +88,16 @@ serve(async (req) => {
         });
       }
     } else {
+      // --- Lógica para Melhor Envio (Nacional) ---
       if (MELHOR_ENVIO_API_KEY) {
         const requestBody = {
           from: { postal_code: SENDER_ZIP_CODE },
           to: { postal_code: cleanedZipCode },
           package: finalPackage,
-          services: "1,2,3,4", // 1: PAC, 2: SEDEX, 3: Jadlog .Package, 4: Jadlog .Com
-          options: {
-            insurance_value: subtotal,
-            receipt: false, // Desativa o Aviso de Recebimento
-            own_hand: false, // Desativa a Mão Própria
-            collect: false,
-          }
+          services: "1,2,3" // 1: PAC, 2: SEDEX, 3: Jadlog .Package
         };
+
+        console.log("Enviando para Melhor Envio:", JSON.stringify(requestBody, null, 2));
 
         const meResponse = await fetch('https://sandbox.melhorenvio.com.br/api/v2/me/shipment/calculate', {
           method: 'POST',
@@ -109,8 +110,11 @@ serve(async (req) => {
           body: JSON.stringify(requestBody)
         });
 
+        const responseText = await meResponse.text();
+        console.log("Resposta da API Melhor Envio:", responseText);
+
         if (meResponse.ok) {
-          const meRates = await meResponse.json();
+          const meRates = JSON.parse(responseText);
           meRates.forEach((rate: any) => {
             if (!rate.error && rate.company) {
               shippingOptions.push({
@@ -127,8 +131,7 @@ serve(async (req) => {
             }
           });
         } else {
-          const errorText = await meResponse.text();
-          console.error("Erro na API Melhor Envio. Status:", meResponse.status, "Body:", errorText);
+          console.error("Erro na API Melhor Envio. Status:", meResponse.status);
         }
       }
     }
