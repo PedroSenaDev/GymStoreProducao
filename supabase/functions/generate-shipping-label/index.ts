@@ -102,7 +102,7 @@ serve(async (req) => {
         document: String(order.profiles.cpf || '').replace(/\D/g, ''),
         address: order.shipping_address.street,
         complement: order.shipping_address.complement,
-        number: order.shipping_address.number,
+        number: order.shipping_address.number || 'S/N', // CORREÇÃO: Garante que o número seja "S/N" se estiver vazio
         district: order.shipping_address.neighborhood,
         city: order.shipping_address.city,
         state_abbr: order.shipping_address.state,
