@@ -34,26 +34,28 @@ serve(async (req) => {
 
     // --- 1. Calcular o pacote consolidado e subtotal ---
     let totalWeight = 0;
-    let maxLength = 0;
-    let maxWidth = 0;
-    let totalHeight = 0;
+    let totalVolume = 0;
     let subtotal = 0;
 
     cartItems.forEach((item: any) => {
       const quantity = item.quantity || 1;
+      const itemVolume = (item.length_cm || 1) * (item.width_cm || 1) * (item.height_cm || 1);
+      totalVolume += itemVolume * quantity;
       totalWeight += (item.weight_kg || 0.1) * quantity;
-      maxLength = Math.max(maxLength, item.length_cm || 1);
-      maxWidth = Math.max(maxWidth, item.width_cm || 1);
-      totalHeight += (item.height_cm || 1) * quantity;
       subtotal += item.price * quantity;
     });
 
+    // Calcula a dimensão de um cubo com o volume total (raiz cúbica)
+    const cubicSide = Math.cbrt(totalVolume);
+
+    // Garante que as dimensões atendam aos mínimos dos Correios
     const finalPackage = {
       weight: totalWeight,
-      width: Math.max(maxWidth, 11),
-      height: Math.max(totalHeight, 2),
-      length: Math.max(maxLength, 16),
+      width: Math.max(cubicSide, 11),  // Largura mínima
+      height: Math.max(cubicSide, 2),   // Altura mínima
+      length: Math.max(cubicSide, 16), // Comprimento mínimo
     };
+
 
     // --- 2. Determinar Localização e Aplicar Lógica de Frete ---
     const cepResponse = await fetch(`https://viacep.com.br/ws/${cleanedZipCode}/json/`);
