@@ -40,6 +40,10 @@ const formSchema = z.object({
     code: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Código de cor inválido."),
     name: z.string().min(1, "O nome da cor é obrigatório."),
   })).optional().default([]),
+  weight_kg: z.coerce.number().min(0, "O peso não pode ser negativo.").optional(),
+  length_cm: z.coerce.number().min(0, "O comprimento não pode ser negativo.").optional(),
+  width_cm: z.coerce.number().min(0, "A largura não pode ser negativa.").optional(),
+  height_cm: z.coerce.number().min(0, "A altura não pode ser negativa.").optional(),
 });
 
 interface ProductFormProps {
@@ -60,6 +64,10 @@ export default function ProductForm({ product, onFinished }: ProductFormProps) {
       image_urls: product?.image_urls || [],
       sizes: product?.sizes?.join(", ") || "",
       colors: product?.colors || [],
+      weight_kg: product?.weight_kg || 0,
+      length_cm: product?.length_cm || 0,
+      width_cm: product?.width_cm || 0,
+      height_cm: product?.height_cm || 0,
     },
   });
 
@@ -149,6 +157,57 @@ export default function ProductForm({ product, onFinished }: ProductFormProps) {
                 )}
             />
         </div>
+
+        <div className="space-y-2">
+            <FormLabel>Informações de Logística (para cálculo de frete)</FormLabel>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <FormField
+                    control={form.control}
+                    name="weight_kg"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel className="text-xs font-normal">Peso (kg)</FormLabel>
+                        <FormControl><Input type="number" step="0.01" placeholder="0.3" {...field} /></FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="length_cm"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel className="text-xs font-normal">Comprimento (cm)</FormLabel>
+                        <FormControl><Input type="number" step="0.1" placeholder="20" {...field} /></FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="width_cm"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel className="text-xs font-normal">Largura (cm)</FormLabel>
+                        <FormControl><Input type="number" step="0.1" placeholder="15" {...field} /></FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="height_cm"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel className="text-xs font-normal">Altura (cm)</FormLabel>
+                        <FormControl><Input type="number" step="0.1" placeholder="10" {...field} /></FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            </div>
+        </div>
+
         <FormField
             control={form.control}
             name="category_id"
