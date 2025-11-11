@@ -34,6 +34,7 @@ serve(async (req) => {
       const shippingCost = parseFloat(metadata.shipping_cost || '0');
       const shippingRateId = metadata.shipping_rate_id;
       const shippingRateName = metadata.shipping_rate_name;
+      const deliveryTime = metadata.delivery_time;
 
       if (!userId || !shippingAddressId || !shippingRateId || !shippingRateName) {
         console.error("Webhook: Metadados essenciais ausentes.");
@@ -63,6 +64,7 @@ serve(async (req) => {
           stripe_payment_intent_id: paymentIntentId,
           shipping_service_id: shippingRateId,
           shipping_service_name: shippingRateName,
+          delivery_time: deliveryTime,
         })
         .select('id')
         .single();

@@ -141,12 +141,20 @@ export const OrderInvoice = ({ order }: { order: any }) => (
         </Text>
       </View>
 
-      {/* Endereço de Entrega */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Endereço de Entrega</Text>
-        <Text style={styles.text}>{order.shipping_address?.street || 'Rua não informada'}, {order.shipping_address?.number || 'S/N'}</Text>
-        <Text style={styles.text}>{order.shipping_address?.neighborhood || 'Bairro não informado'} - {order.shipping_address?.city || 'Cidade não informada'}, {order.shipping_address?.state || 'UF'}</Text>
-        <Text style={styles.text}>CEP: {order.shipping_address?.zip_code || 'Não informado'}</Text>
+      {/* Endereço e Envio */}
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <View style={[styles.section, { flex: 1 }]}>
+          <Text style={styles.sectionTitle}>Endereço de Entrega</Text>
+          <Text style={styles.text}>{order.shipping_address?.street || 'Rua não informada'}, {order.shipping_address?.number || 'S/N'}</Text>
+          <Text style={styles.text}>{order.shipping_address?.neighborhood || 'Bairro não informado'} - {order.shipping_address?.city || 'Cidade não informada'}, {order.shipping_address?.state || 'UF'}</Text>
+          <Text style={styles.text}>CEP: {order.shipping_address?.zip_code || 'Não informado'}</Text>
+        </View>
+        <View style={[styles.section, { flex: 1 }]}>
+          <Text style={styles.sectionTitle}>Detalhes do Envio</Text>
+          <Text style={styles.text}>Transportadora: {order.shipping_service_name || 'Não informado'}</Text>
+          <Text style={styles.text}>Prazo de Entrega: {order.delivery_time ? `${order.delivery_time} dias` : 'N/A'}</Text>
+          <Text style={styles.text}>Cód. Rastreio: {order.tracking_code || 'Não disponível'}</Text>
+        </View>
       </View>
 
       {/* Itens do Pedido */}
@@ -200,4 +208,3 @@ export const OrderInvoice = ({ order }: { order: any }) => (
       </View>
     </Page>
   </Document>
-);

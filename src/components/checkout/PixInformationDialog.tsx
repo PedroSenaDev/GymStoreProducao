@@ -54,9 +54,10 @@ interface PixInformationDialogProps {
   paymentMethod: string | null;
   shippingCost: number;
   shippingRate: { id: string | number; name: string; } | null;
+  deliveryTime: string | number | null;
 }
 
-export function PixInformationDialog({ open, onOpenChange, totalAmount, items, selectedAddressId, paymentMethod, shippingCost, shippingRate }: PixInformationDialogProps) {
+export function PixInformationDialog({ open, onOpenChange, totalAmount, items, selectedAddressId, paymentMethod, shippingCost, shippingRate, deliveryTime }: PixInformationDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [pixData, setPixData] = useState<PixData | null>(null);
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
@@ -91,6 +92,7 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
         pix_charge_id: chargeId,
         shipping_service_id: shippingRate.id.toString(),
         shipping_service_name: shippingRate.name,
+        delivery_time: deliveryTime?.toString(),
       }).select('id').single();
       if (orderError) throw orderError;
       

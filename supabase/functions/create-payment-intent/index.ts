@@ -23,7 +23,7 @@ serve(async (req) => {
   }
 
   try {
-    const { items, shippingCost, userId, shippingAddressId, shippingRateId, shippingRateName } = await req.json();
+    const { items, shippingCost, userId, shippingAddressId, shippingRateId, shippingRateName, deliveryTime } = await req.json();
 
     if (!items || items.length === 0 || !userId || !shippingAddressId || !shippingRateId || !shippingRateName) {
       throw new Error("Informações essenciais do pedido incompletas.");
@@ -52,6 +52,7 @@ serve(async (req) => {
         shipping_cost: shippingCost.toString(),
         shipping_rate_id: shippingRateId.toString(),
         shipping_rate_name: shippingRateName,
+        delivery_time: deliveryTime?.toString() || 'N/A',
     };
 
     const paymentIntent = await stripe.paymentIntents.create({

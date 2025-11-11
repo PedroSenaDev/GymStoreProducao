@@ -32,6 +32,7 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
   const [isPixDialogOpen, setIsPixDialogOpen] = useState(false);
   const [shippingCost, setShippingCost] = useState(0);
+  const [deliveryTime, setDeliveryTime] = useState<string | number | null>(null);
   
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [isLoadingClientSecret, setIsLoadingClientSecret] = useState(false);
@@ -61,6 +62,7 @@ export default function CheckoutPage() {
               shippingCost,
               shippingRateId: selectedRate.id,
               shippingRateName: selectedRate.name,
+              deliveryTime: deliveryTime,
             },
           });
           if (error || data.error) throw new Error(error?.message || data.error);
@@ -76,7 +78,7 @@ export default function CheckoutPage() {
       }
     };
     createPaymentIntent();
-  }, [paymentMethod, total, selectedAddressId, selectedRate, session?.user.id, selectedItems, shippingCost, clearNonSelectedItems, isShippingSelected]);
+  }, [paymentMethod, total, selectedAddressId, selectedRate, session?.user.id, selectedItems, shippingCost, deliveryTime, clearNonSelectedItems, isShippingSelected]);
 
   const handleFinalizeOrder = () => {
     if (isCheckoutDisabled) return;
@@ -85,9 +87,10 @@ export default function CheckoutPage() {
     }
   };
 
-  const handleShippingChange = (cost: number, rateId: string | number, rateName: string) => {
+  const handleShippingChange = (cost: number, rateId: string | number, rateName: string, time: string | number) => {
     setShippingCost(cost);
     setSelectedRate(rateId ? { id: rateId, name: rateName } : null);
+    setDeliveryTime(time);
   };
 
   if (!session) {
@@ -173,6 +176,7 @@ export default function CheckoutPage() {
         paymentMethod={paymentMethod}
         shippingCost={shippingCost}
         shippingRate={selectedRate}
+        deliveryTime={deliveryTime}
       />
     </div>
   );

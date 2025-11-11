@@ -160,6 +160,16 @@ export default function OrderDetails({ orderId }: { orderId: string }) {
           <div className="space-y-4">
             <h4 className="font-semibold flex items-center"><Truck className="mr-2 h-4 w-4" /> Informações de Envio</h4>
             <div className="text-sm">
+              <span className="text-muted-foreground">Transportadora: </span>
+              <span>{order.shipping_service_name || 'Não disponível'}</span>
+            </div>
+            {order.delivery_time && (
+              <div className="text-sm">
+                <span className="text-muted-foreground">Prazo de Entrega: </span>
+                <span>{order.delivery_time} dias</span>
+              </div>
+            )}
+            <div className="text-sm">
               <span className="text-muted-foreground">Cód. Rastreio: </span>
               <span>{order.tracking_code || 'Não disponível'}</span>
             </div>

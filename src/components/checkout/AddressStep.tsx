@@ -37,7 +37,7 @@ interface ShippingOption {
 interface AddressStepProps {
   selectedAddressId: string | null;
   onAddressSelect: (id: string | null) => void;
-  onShippingChange: (cost: number, rateId: string | number, rateName: string) => void;
+  onShippingChange: (cost: number, rateId: string | number, rateName: string, deliveryTime: string | number) => void;
 }
 
 async function fetchAddresses(userId: string): Promise<Address[]> {
@@ -92,7 +92,7 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
     setQuoteError(null);
     setShippingOptions([]);
     setSelectedRateId(null);
-    onShippingChange(0, '', '');
+    onShippingChange(0, '', '', '');
 
     try {
       const { data, error } = await supabase.functions.invoke('quote-shipping', {
@@ -117,7 +117,7 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
     const selectedRate = shippingOptions.find(r => r.id.toString() === rateId);
     if (selectedRate) {
       setSelectedRateId(rateId);
-      onShippingChange(selectedRate.price, selectedRate.id, `${selectedRate.company.name} - ${selectedRate.name}`);
+      onShippingChange(selectedRate.price, selectedRate.id, `${selectedRate.company.name} - ${selectedRate.name}`, selectedRate.delivery_time);
     }
   };
 
@@ -128,7 +128,7 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
           <h3 className="text-lg font-semibold">1. Endereço de Entrega</h3>
           {isLoadingAddresses ? <Loader2 className="animate-spin" /> : (
             <>
-              <RadioGroup value={selectedAddressId || ""} onValueChange={id => { onAddressSelect(id); setZipCode(addresses?.find(a => a.id === id)?.zip_code || ""); setShippingOptions([]); setSelectedRateId(null); onShippingChange(0, '', ''); }}>
+              <RadioGroup value={selectedAddressId || ""} onValueChange={id => { onAddressSelect(id); setZipCode(addresses?.find(a => a.id === id)?.zip_code || ""); setShippingOptions([]); setSelectedRateId(null); onShippingChange(0, '', '', ''); }}>
                 {addresses?.map((address) => (
                   <Label key={address.id} htmlFor={`address-${address.id}`} className="flex cursor-pointer rounded-lg border p-4 transition-colors has-[:checked]:border-primary">
                     <RadioGroupItem value={address.id} id={`address-${address.id}`} className="mr-4 mt-1" />

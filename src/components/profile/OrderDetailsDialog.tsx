@@ -136,12 +136,12 @@ export default function OrderDetailsDialog({ order, open, onOpenChange }: OrderD
                   </Badge>
                 </div>
               </div>
-              {order.tracking_code && (
-                <div className="space-y-2 md:col-span-2">
-                  <h4 className="font-semibold flex items-center"><Truck className="mr-2 h-4 w-4" /> Rastreio</h4>
-                  <p className="text-muted-foreground">Código: {order.tracking_code}</p>
-                </div>
-              )}
+              <div className="space-y-2 md:col-span-2">
+                <h4 className="font-semibold flex items-center"><Truck className="mr-2 h-4 w-4" /> Envio</h4>
+                <p className="text-muted-foreground">Transportadora: {order.shipping_service_name || 'Não informado'}</p>
+                {order.delivery_time && <p className="text-muted-foreground">Prazo de entrega: {order.delivery_time} dias</p>}
+                {order.tracking_code && <p className="text-muted-foreground">Código de Rastreio: {order.tracking_code}</p>}
+              </div>
             </div>
           </div>
         </ScrollArea>
