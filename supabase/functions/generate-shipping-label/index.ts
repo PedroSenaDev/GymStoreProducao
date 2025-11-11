@@ -72,6 +72,11 @@ serve(async (req) => {
     let totalHeight = 0;
 
     const productsPayload = order.order_items.map((item: any) => {
+      // VERIFICAÇÃO CRÍTICA: Garante que o produto associado ao item do pedido ainda existe.
+      if (!item.products) {
+        throw new Error(`O produto com ID ${item.product_id} neste pedido não foi encontrado. Ele pode ter sido excluído.`);
+      }
+
       const quantity = item.quantity || 1;
       totalWeight += (item.products.weight_kg || 0.1) * quantity;
       maxLength = Math.max(maxLength, item.products.length_cm || 1);
