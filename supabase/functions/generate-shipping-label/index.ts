@@ -61,6 +61,10 @@ serve(async (req) => {
     if (orderError) throw new Error(`Pedido não encontrado: ${orderError.message}`);
     if (order.status !== 'processing') throw new Error("A etiqueta só pode ser gerada para pedidos com status 'Processando'.");
 
+    // Validações de dados críticos
+    if (!order.profiles) throw new Error("Dados do perfil do cliente não encontrados.");
+    if (!order.shipping_address) throw new Error("Endereço de entrega não encontrado.");
+
     // 2. Preparar dados para a API do Melhor Envio
     let totalWeight = 0;
     let maxLength = 0;
@@ -89,9 +93,9 @@ serve(async (req) => {
 
     const recipientPayload = {
         name: order.profiles.full_name,
-        phone: order.profiles.phone.replace(/\D/g, ''),
+        phone: (order.profiles.phone || '').replace(/\D/g, ''),
         email: order.profiles.email,
-        document: order.profiles.cpf.replace(/\D/g, ''),
+        document: (order.profiles.cpf || '').replace(/\D/g, ''),
         address: order.shipping_address.street,
         complement: order.shipping_address.complement,
         number: order.shipping_address.number,
@@ -99,8 +103,12 @@ serve(async (req) => {
         city: order.shipping_address.city,
         state_abbr: order.shipping_address.state,
         country_id: "BR",
-        postal_code: order.shipping_address.zip_code.replace(/\D/g, ''),
+        postal_code: (order.shipping_address.zip_code || '').replace(/\D/g, ''),
     };
+
+    if (!recipientPayload.name || !recipientPayload.document || !recipientPayload.postal_code || !recipientPayload.address) {
+        throw new Error("Informações críticas do destinatário (nome, CPF, CEP, rua) estão faltando no cadastro do cliente.");
+    }
 
     // 3. Adicionar envio ao carrinho do Melhor Envio
     const cartResponse = await fetch('https://sandbox.melhorenvio.com.br/api/v2/me/shipment/cart', {
