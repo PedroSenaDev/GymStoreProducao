@@ -208,3 +208,4 @@ export const OrderInvoice = ({ order }: { order: any }) => (
       </View>
     </Page>
   </Document>
+);
