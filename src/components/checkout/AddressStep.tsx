@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Address } from "@/types/address";
 import { useSessionStore } from "@/store/sessionStore";
@@ -36,6 +36,17 @@ interface AddressStepProps {
   onShippingChange: (cost: number, rateId: string | number, rateName: string) => void;
 }
 
+async function fetchAddresses(userId: string): Promise<Address[]> {
+  const { data, error } = await supabase
+    .from("addresses")
+    .select("*")
+    .eq("user_id", userId)
+    .order("is_default", { ascending: false })
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
 export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChange }: AddressStepProps) {
@@ -52,15 +63,21 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
   const { items } = useCartStore();
   const selectedItems = items.filter(item => item.selected);
 
-  const { data: addresses, isLoading: isLoadingAddresses } = useQueryClient().getQueryData(['addresses', userId]) as { data: Address[], isLoading: boolean };
+  const { data: addresses, isLoading: isLoadingAddresses } = useQuery({
+    queryKey: ["addresses", userId],
+    queryFn: () => fetchAddresses(userId!),
+    enabled: !!userId,
+  });
 
   useEffect(() => {
-    const defaultAddress = addresses?.find(a => a.is_default);
-    if (defaultAddress) {
-      onAddressSelect(defaultAddress.id);
-      setZipCode(defaultAddress.zip_code);
+    if (addresses) {
+      const defaultAddress = addresses.find(a => a.is_default);
+      if (defaultAddress && !selectedAddressId) {
+        onAddressSelect(defaultAddress.id);
+        setZipCode(defaultAddress.zip_code);
+      }
     }
-  }, [addresses, onAddressSelect]);
+  }, [addresses, onAddressSelect, selectedAddressId]);
 
   const handleQuoteShipping = async () => {
     if (!zipCode || zipCode.replace(/\D/g, '').length !== 8) {
