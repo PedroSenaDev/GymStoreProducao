@@ -34,26 +34,28 @@ serve(async (req) => {
 
     // --- 1. Calcular o pacote consolidado e subtotal ---
     let totalWeight = 0;
-    let totalVolume = 0;
     let subtotal = 0;
+    let totalHeight = 0;
+    let maxLength = 0;
+    let maxWidth = 0;
 
     cartItems.forEach((item: any) => {
       const quantity = item.quantity || 1;
-      const itemVolume = (item.length_cm || 1) * (item.width_cm || 1) * (item.height_cm || 1);
-      totalVolume += itemVolume * quantity;
       totalWeight += (item.weight_kg || 0.1) * quantity;
       subtotal += item.price * quantity;
+      
+      // Simula empilhamento para altura e pega as maiores outras dimensões
+      totalHeight += (item.height_cm || 1) * quantity;
+      maxLength = Math.max(maxLength, item.length_cm || 1);
+      maxWidth = Math.max(maxWidth, item.width_cm || 1);
     });
-
-    // Calcula a dimensão de um cubo com o volume total (raiz cúbica)
-    const cubicSide = Math.cbrt(totalVolume);
 
     // Garante que as dimensões atendam aos mínimos dos Correios
     const finalPackage = {
       weight: totalWeight,
-      width: Math.max(cubicSide, 11),  // Largura mínima
-      height: Math.max(cubicSide, 2),   // Altura mínima
-      length: Math.max(cubicSide, 16), // Comprimento mínimo
+      width: Math.max(maxWidth, 11),
+      height: Math.max(totalHeight, 2),
+      length: Math.max(maxLength, 16),
     };
 
 
@@ -97,8 +99,6 @@ serve(async (req) => {
           services: "1,2,3" // 1: PAC, 2: SEDEX, 3: Jadlog .Package
         };
 
-        console.log("Enviando para Melhor Envio:", JSON.stringify(requestBody, null, 2));
-
         const meResponse = await fetch('https://sandbox.melhorenvio.com.br/api/v2/me/shipment/calculate', {
           method: 'POST',
           headers: {
@@ -110,13 +110,14 @@ serve(async (req) => {
           body: JSON.stringify(requestBody)
         });
 
-        const responseText = await meResponse.text();
-        console.log("Resposta da API Melhor Envio:", responseText);
+        const meRates = await meResponse.json();
 
         if (meResponse.ok) {
-          const meRates = JSON.parse(responseText);
+          const apiErrors: string[] = [];
           meRates.forEach((rate: any) => {
-            if (!rate.error && rate.company) {
+            if (rate.error) {
+              apiErrors.push(`${rate.company.name}: ${rate.error}`);
+            } else if (rate.company) {
               shippingOptions.push({
                 id: rate.id,
                 name: rate.name,
@@ -130,8 +131,13 @@ serve(async (req) => {
               });
             }
           });
+
+          if (shippingOptions.length === 0 && apiErrors.length > 0) {
+            throw new Error(`Erros da transportadora: ${apiErrors.join('; ')}`);
+          }
+
         } else {
-          console.error("Erro na API Melhor Envio. Status:", meResponse.status);
+          throw new Error(`Erro na API Melhor Envio: ${JSON.stringify(meRates.errors || meRates)}`);
         }
       }
     }
