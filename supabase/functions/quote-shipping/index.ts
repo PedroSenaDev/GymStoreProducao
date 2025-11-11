@@ -97,7 +97,7 @@ serve(async (req) => {
         // Log detalhado para depuração
         console.log("Enviando para Melhor Envio:", JSON.stringify(requestBody, null, 2));
 
-        const meResponse = await fetch('https://www.melhorenvio.com.br/api/v2/me/shipment/calculate', {
+        const meResponse = await fetch('https://sandbox.melhorenvio.com.br/api/v2/me/shipment/calculate', {
           method: 'POST',
           headers: {
             'Accept': 'application/json',
