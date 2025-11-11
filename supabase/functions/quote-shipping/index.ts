@@ -87,6 +87,16 @@ serve(async (req) => {
     } else {
       // --- Lógica para Melhor Envio (Nacional) ---
       if (MELHOR_ENVIO_API_KEY) {
+        const requestBody = {
+          from: { postal_code: SENDER_ZIP_CODE },
+          to: { postal_code: cleanedZipCode },
+          package: finalPackage,
+          services: "1,2" // Adicionado para solicitar explicitamente PAC e SEDEX
+        };
+
+        // Log detalhado para depuração
+        console.log("Enviando para Melhor Envio:", JSON.stringify(requestBody, null, 2));
+
         const meResponse = await fetch('https://www.melhorenvio.com.br/api/v2/me/shipment/calculate', {
           method: 'POST',
           headers: {
@@ -95,15 +105,14 @@ serve(async (req) => {
             'Authorization': `Bearer ${MELHOR_ENVIO_API_KEY}`,
             'User-Agent': 'GYMSTORE (contato@gymstore.com)'
           },
-          body: JSON.stringify({
-            from: { postal_code: SENDER_ZIP_CODE },
-            to: { postal_code: cleanedZipCode },
-            package: finalPackage,
-          })
+          body: JSON.stringify(requestBody)
         });
 
+        const responseText = await meResponse.text();
+        console.log("Resposta da API Melhor Envio:", responseText);
+
         if (meResponse.ok) {
-          const meRates = await meResponse.json();
+          const meRates = JSON.parse(responseText);
           meRates.forEach((rate: any) => {
             if (!rate.error) {
               shippingOptions.push({
@@ -116,7 +125,7 @@ serve(async (req) => {
             }
           });
         } else {
-          console.error("Melhor Envio API error:", await meResponse.text());
+          console.error("Erro na API Melhor Envio. Status:", meResponse.status);
         }
       }
     }
@@ -126,7 +135,7 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error("Error in quote-shipping function:", error);
+    console.error("Erro na função quote-shipping:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
