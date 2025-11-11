@@ -53,10 +53,10 @@ interface PixInformationDialogProps {
   selectedAddressId: string | null;
   paymentMethod: string | null;
   shippingCost: number;
-  // Removendo shippingDistance e shippingZoneId
+  shippingRate: { id: string | number; name: string; } | null;
 }
 
-export function PixInformationDialog({ open, onOpenChange, totalAmount, items, selectedAddressId, paymentMethod, shippingCost }: PixInformationDialogProps) {
+export function PixInformationDialog({ open, onOpenChange, totalAmount, items, selectedAddressId, paymentMethod, shippingCost, shippingRate }: PixInformationDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [pixData, setPixData] = useState<PixData | null>(null);
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
@@ -80,16 +80,17 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
 
   const { mutate: createOrderAndFinalize, isPending: isFinalizingOrder } = useMutation({
     mutationFn: async (chargeId: string) => {
-      if (!session?.user.id || !selectedAddressId || !paymentMethod || items.length === 0) {
+      if (!session?.user.id || !selectedAddressId || !paymentMethod || items.length === 0 || !shippingRate) {
         throw new Error("Dados do pedido incompletos para finalização.");
       }
       
-      // Inserindo o pedido sem as colunas removidas (shipping_distance, shipping_zone_id)
       const { data: orderData, error: orderError } = await supabase.from('orders').insert({
         user_id: session.user.id, total_amount: totalAmount, status: 'processing',
         shipping_address_id: selectedAddressId, payment_method: paymentMethod,
         shipping_cost: shippingCost,
         pix_charge_id: chargeId,
+        shipping_service_id: shippingRate.id.toString(),
+        shipping_service_name: shippingRate.name,
       }).select('id').single();
       if (orderError) throw orderError;
       

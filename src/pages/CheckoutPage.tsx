@@ -28,12 +28,11 @@ export default function CheckoutPage() {
   const { data: profile, isLoading: isLoadingProfile } = useProfile();
   
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
-  const [selectedRateId, setSelectedRateId] = useState<string | null>(null); // Novo estado para a taxa fixa
+  const [selectedRate, setSelectedRate] = useState<{ id: string | number; name: string; } | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
   const [isPixDialogOpen, setIsPixDialogOpen] = useState(false);
   const [shippingCost, setShippingCost] = useState(0);
   
-  // Removendo shippingDistance e shippingZoneId
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [isLoadingClientSecret, setIsLoadingClientSecret] = useState(false);
 
@@ -42,17 +41,16 @@ export default function CheckoutPage() {
   const total = subtotal + shippingCost;
 
   const isProfileIncomplete = !profile?.full_name || !profile?.cpf;
-  const isShippingCalculated = selectedAddressId && selectedRateId !== null; // Verifica se a taxa foi selecionada
-  const isCheckoutDisabled = !isShippingCalculated || !paymentMethod || isProfileIncomplete || isLoadingProfile;
+  const isShippingSelected = selectedAddressId && selectedRate;
+  const isCheckoutDisabled = !isShippingSelected || !paymentMethod || isProfileIncomplete || isLoadingProfile;
 
   useEffect(() => {
     const createPaymentIntent = async () => {
-      if (paymentMethod === 'credit_card' && total > 0 && selectedAddressId && selectedRateId && session?.user.id) {
+      if (paymentMethod === 'credit_card' && total > 0 && isShippingSelected && session?.user.id) {
         setIsLoadingClientSecret(true);
-        setClientSecret(null); // Clear previous secret
+        setClientSecret(null);
 
         try {
-          // CRITICAL STEP: Ensure only selected items are in the DB cart before creating PI
           await clearNonSelectedItems();
 
           const { data, error } = await supabase.functions.invoke('create-payment-intent', {
@@ -61,14 +59,15 @@ export default function CheckoutPage() {
               shippingAddressId: selectedAddressId,
               userId: session.user.id,
               shippingCost,
-              shippingRateId: selectedRateId, // Passando o ID da taxa fixa
+              shippingRateId: selectedRate.id,
+              shippingRateName: selectedRate.name,
             },
           });
           if (error || data.error) throw new Error(error?.message || data.error);
           setClientSecret(data.clientSecret);
         } catch (err: any) {
           showError(`Erro ao iniciar pagamento: ${err.message}`);
-          setPaymentMethod(null); // Reseta o método de pagamento em caso de erro
+          setPaymentMethod(null);
         } finally {
           setIsLoadingClientSecret(false);
         }
@@ -77,20 +76,18 @@ export default function CheckoutPage() {
       }
     };
     createPaymentIntent();
-  }, [paymentMethod, total, selectedAddressId, selectedRateId, session?.user.id, selectedItems, shippingCost, clearNonSelectedItems]);
+  }, [paymentMethod, total, selectedAddressId, selectedRate, session?.user.id, selectedItems, shippingCost, clearNonSelectedItems, isShippingSelected]);
 
   const handleFinalizeOrder = () => {
     if (isCheckoutDisabled) return;
     if (paymentMethod === 'pix') {
       setIsPixDialogOpen(true);
     }
-    // Para cartão, o botão de pagamento está dentro do CheckoutForm
   };
 
-  // Atualiza o custo do frete e o ID da taxa selecionada
-  const handleShippingChange = (cost: number, rateId: string | null) => {
+  const handleShippingChange = (cost: number, rateId: string | number, rateName: string) => {
     setShippingCost(cost);
-    setSelectedRateId(rateId);
+    setSelectedRate(rateId ? { id: rateId, name: rateName } : null);
   };
 
   if (!session) {
@@ -108,27 +105,22 @@ export default function CheckoutPage() {
         
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-3 lg:items-start">
           <div className="space-y-8 lg:col-span-2">
+            <AddressStep 
+              selectedAddressId={selectedAddressId} 
+              onAddressSelect={setSelectedAddressId}
+              onShippingChange={handleShippingChange}
+            />
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold">1. Endereço e Frete</h2>
-              <AddressStep 
-                selectedAddressId={selectedAddressId} 
-                onAddressSelect={setSelectedAddressId}
-                selectedRateId={selectedRateId}
-                onRateSelect={setSelectedRateId}
-                onShippingChange={handleShippingChange}
-              />
-            </div>
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold">2. Método de Pagamento</h2>
-              {!isShippingCalculated && (
+              <h2 className="text-xl font-semibold">3. Método de Pagamento</h2>
+              {!isShippingSelected && (
                 <Alert variant="default">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    Selecione um endereço e uma opção de frete para continuar.
+                    Selecione um endereço e calcule o frete para continuar.
                   </AlertDescription>
                 </Alert>
               )}
-              <div className={!isShippingCalculated ? 'pointer-events-none opacity-50' : ''}>
+              <div className={!isShippingSelected ? 'pointer-events-none opacity-50' : ''}>
                 <PaymentStep selectedPaymentMethod={paymentMethod} onPaymentMethodSelect={setPaymentMethod} />
               </div>
               {isLoadingClientSecret && (
@@ -180,7 +172,7 @@ export default function CheckoutPage() {
         selectedAddressId={selectedAddressId}
         paymentMethod={paymentMethod}
         shippingCost={shippingCost}
-        // Removendo props de frete dinâmico
+        shippingRate={selectedRate}
       />
     </div>
   );

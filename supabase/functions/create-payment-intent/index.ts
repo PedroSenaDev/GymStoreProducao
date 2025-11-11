@@ -23,9 +23,9 @@ serve(async (req) => {
   }
 
   try {
-    const { items, shippingCost, userId, shippingAddressId, shippingRateId } = await req.json();
+    const { items, shippingCost, userId, shippingAddressId, shippingRateId, shippingRateName } = await req.json();
 
-    if (!items || items.length === 0 || !userId || !shippingAddressId || !shippingRateId) {
+    if (!items || items.length === 0 || !userId || !shippingAddressId || !shippingRateId || !shippingRateName) {
       throw new Error("Informações essenciais do pedido incompletas.");
     }
 
@@ -46,12 +46,12 @@ serve(async (req) => {
     const totalAmount = subtotal + shippingCost;
 
     // 2. Criar o PaymentIntent no Stripe
-    // Passando os dados essenciais para o metadata, que será lido pelo webhook.
     const essentialMetadata = {
         user_id: userId,
         shipping_address_id: shippingAddressId,
         shipping_cost: shippingCost.toString(),
-        shipping_rate_id: shippingRateId, // Usando o ID da taxa fixa
+        shipping_rate_id: shippingRateId.toString(),
+        shipping_rate_name: shippingRateName,
     };
 
     const paymentIntent = await stripe.paymentIntents.create({
