@@ -95,7 +95,12 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
         body: { cartItems: selectedItems, zipCode },
       });
       if (error || data.error) throw new Error(error?.message || data.error);
-      setShippingOptions(data);
+      
+      if (data && data.length === 0) {
+        setQuoteError("Nenhuma opção de frete encontrada para este CEP. Verifique o CEP ou tente novamente mais tarde.");
+      } else {
+        setShippingOptions(data);
+      }
     } catch (err: any) {
       setQuoteError("Não foi possível calcular o frete. Verifique o CEP e tente novamente.");
       showError(err.message);
