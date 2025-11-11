@@ -80,7 +80,8 @@ serve(async (req) => {
             name: rate.label,
             price: rate.price,
             delivery_time: "N/A",
-            type: 'fixed'
+            type: 'fixed',
+            company: { name: "Entrega Local", picture: null }
           });
         });
       }
@@ -91,10 +92,9 @@ serve(async (req) => {
           from: { postal_code: SENDER_ZIP_CODE },
           to: { postal_code: cleanedZipCode },
           package: finalPackage,
-          services: "1,2" // Adicionado para solicitar explicitamente PAC e SEDEX
+          services: "1,2,3" // 1: PAC, 2: SEDEX, 3: Jadlog .Package
         };
 
-        // Log detalhado para depuração
         console.log("Enviando para Melhor Envio:", JSON.stringify(requestBody, null, 2));
 
         const meResponse = await fetch('https://sandbox.melhorenvio.com.br/api/v2/me/shipment/calculate', {
@@ -114,13 +114,17 @@ serve(async (req) => {
         if (meResponse.ok) {
           const meRates = JSON.parse(responseText);
           meRates.forEach((rate: any) => {
-            if (!rate.error) {
+            if (!rate.error && rate.company) {
               shippingOptions.push({
                 id: rate.id,
                 name: rate.name,
                 price: parseFloat(rate.price),
                 delivery_time: rate.delivery_time,
-                type: 'gateway'
+                type: 'gateway',
+                company: {
+                  name: rate.company.name,
+                  picture: rate.company.picture
+                }
               });
             }
           });

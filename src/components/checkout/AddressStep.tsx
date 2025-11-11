@@ -5,7 +5,7 @@ import { Address } from "@/types/address";
 import { useSessionStore } from "@/store/sessionStore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, PlusCircle, MapPin, AlertCircle, Search } from "lucide-react";
+import { Loader2, PlusCircle, MapPin, AlertCircle, Search, Truck } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -28,6 +28,10 @@ interface ShippingOption {
   price: number;
   delivery_time: string | number;
   type: 'fixed' | 'gateway';
+  company: {
+    name: string;
+    picture: string | null;
+  };
 }
 
 interface AddressStepProps {
@@ -113,7 +117,7 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
     const selectedRate = shippingOptions.find(r => r.id.toString() === rateId);
     if (selectedRate) {
       setSelectedRateId(rateId);
-      onShippingChange(selectedRate.price, selectedRate.id, selectedRate.name);
+      onShippingChange(selectedRate.price, selectedRate.id, `${selectedRate.company.name} - ${selectedRate.name}`);
     }
   };
 
@@ -168,12 +172,22 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
               {shippingOptions.map((rate) => (
                 <Label key={rate.id} htmlFor={`rate-${rate.id}`} className="flex cursor-pointer rounded-lg border p-4 transition-colors has-[:checked]:border-primary">
                   <RadioGroupItem value={rate.id.toString()} id={`rate-${rate.id}`} className="mr-4 mt-1" />
-                  <div className="flex-1 text-sm">
-                    <div className="flex justify-between items-center">
-                      <p className="font-semibold">{rate.name}</p>
-                      <p className="font-bold">{rate.price === 0 ? 'Grátis' : formatCurrency(rate.price)}</p>
+                  <div className="flex flex-1 items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      {rate.company.picture ? (
+                        <img src={rate.company.picture} alt={rate.company.name} className="h-6 w-auto" />
+                      ) : (
+                        <Truck className="h-6 w-6 text-muted-foreground" />
+                      )}
+                      <div>
+                        <p className="font-semibold">{rate.company.name}</p>
+                        <p className="text-xs text-muted-foreground">{rate.name}</p>
+                      </div>
                     </div>
-                    {rate.type === 'gateway' && <p className="text-xs text-muted-foreground">Prazo: {rate.delivery_time} dias úteis</p>}
+                    <div className="text-right">
+                      <p className="font-bold">{rate.price === 0 ? 'Grátis' : formatCurrency(rate.price)}</p>
+                      {rate.type === 'gateway' && <p className="text-xs text-muted-foreground">{rate.delivery_time} dias</p>}
+                    </div>
                   </div>
                 </Label>
               ))}
