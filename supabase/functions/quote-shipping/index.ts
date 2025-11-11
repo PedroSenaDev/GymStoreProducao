@@ -92,14 +92,13 @@ serve(async (req) => {
           services: "1,2,3,4", // 1: PAC, 2: SEDEX, 3: Jadlog .Package, 4: Jadlog .Com
           options: {
             insurance_value: subtotal,
-            receipt: false,
-            own_hand: false,
+            receipt: false, // Desativa o Aviso de Recebimento
+            own_hand: false, // Desativa a Mão Própria
             collect: false,
-            non_commercial: true, // Garante que o cálculo seja idêntico ao da calculadora
           }
         };
 
-        const meResponse = await fetch('https://www.melhorenvio.com.br/api/v2/me/shipment/calculate', { // APONTANDO PARA PRODUÇÃO
+        const meResponse = await fetch('https://sandbox.melhorenvio.com.br/api/v2/me/shipment/calculate', {
           method: 'POST',
           headers: {
             'Accept': 'application/json',
