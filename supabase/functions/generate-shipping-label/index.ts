@@ -12,24 +12,30 @@ const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 )
 
-// Dados do remetente (Sua loja)
-const SENDER_DATA = {
-    name: "GYMSTORE",
-    phone: "38999999999",
-    email: "contato@gymstore.com",
-    document: "11111111111111", // CNPJ da loja
-    company_document: "11111111111111",
-    state_register: "isento",
-    address: "Praça Doutor Carlos",
-    complement: "Centro",
-    number: "150",
-    district: "Centro",
-    city: "Montes Claros",
-    state_abbr: "MG",
-    country_id: "BR",
-    postal_code: "39400001",
-    note: "Nota fiscal"
-};
+// Função auxiliar para fazer requisições autenticadas à API da Melhor Envio
+async function fetchMelhorEnvio(endpoint: string, options: RequestInit) {
+    const url = `https://sandbox.melhorenvio.com.br${endpoint}`;
+    const response = await fetch(url, {
+        ...options,
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${MELHOR_ENVIO_API_KEY}`,
+            'User-Agent': 'GYMSTORE (contato@gymstore.com)',
+            ...options.headers,
+        },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        // Extrai a mensagem de erro específica da API para um feedback claro
+        const errorMessage = data?.message || data?.error || (data?.errors ? JSON.stringify(data.errors) : 'Erro desconhecido na API Melhor Envio.');
+        throw new Error(`Erro na API Melhor Envio (${response.status}): ${errorMessage}`);
+    }
+
+    return data;
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -46,7 +52,7 @@ serve(async (req) => {
       throw new Error("ID do pedido é obrigatório.");
     }
 
-    // 1. Buscar dados completos do pedido
+    // 1. Buscar dados completos do pedido no Supabase
     const { data: order, error: orderError } = await supabaseAdmin
       .from('orders')
       .select(`
@@ -59,11 +65,18 @@ serve(async (req) => {
 
     if (orderError) throw new Error(`Pedido não encontrado: ${orderError.message}`);
     if (order.status !== 'processing') throw new Error("A etiqueta só pode ser gerada para pedidos com status 'Processando'.");
-
-    // Validações de dados críticos
     if (!order.profiles) throw new Error("Dados do perfil do cliente não encontrados.");
-    
-    // 2. Preparar dados para a API do Melhor Envio
+
+    // 2. Buscar endereço do remetente na Melhor Envio
+    const senderAddresses = await fetchMelhorEnvio('/api/v2/me/companies/addresses', { method: 'GET' });
+    if (!senderAddresses || senderAddresses.data.length === 0) {
+        throw new Error("Nenhum endereço de remetente encontrado na sua conta Melhor Envio. Por favor, cadastre um endereço no painel da Melhor Envio.");
+    }
+    // Usa o endereço padrão ou o primeiro da lista
+    const senderAddress = senderAddresses.data.find((addr: any) => addr.default) || senderAddresses.data[0];
+    const senderAddressId = senderAddress.id;
+
+    // 3. Preparar dados do pacote e destinatário
     let totalWeight = 0;
     let maxLength = 0;
     let maxWidth = 0;
@@ -73,7 +86,6 @@ serve(async (req) => {
       if (!item.products) {
         throw new Error(`O produto com ID ${item.product_id} neste pedido não foi encontrado. Ele pode ter sido excluído.`);
       }
-
       const quantity = item.quantity || 1;
       totalWeight += (item.products.weight_kg || 0.1) * quantity;
       maxLength = Math.max(maxLength, item.products.length_cm || 1);
@@ -112,18 +124,12 @@ serve(async (req) => {
         throw new Error("Informações críticas do destinatário (nome, CPF, CEP, rua) estão faltando no cadastro do cliente.");
     }
 
-    // 3. Adicionar envio ao carrinho do Melhor Envio
-    const cartResponse = await fetch('https://sandbox.melhorenvio.com.br/api/v2/me/shipment/cart', {
+    // 4. Adicionar envio ao carrinho do Melhor Envio
+    const cartData = await fetchMelhorEnvio('/api/v2/me/shipment/cart', {
         method: 'POST',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${MELHOR_ENVIO_API_KEY}`,
-            'User-Agent': 'GYMSTORE (contato@gymstore.com)'
-        },
         body: JSON.stringify({
             service: order.shipping_service_id,
-            from: SENDER_DATA,
+            from: { address_id: senderAddressId }, // Usando o ID do endereço do remetente
             to: recipientPayload,
             products: productsPayload,
             package: packagePayload,
@@ -136,60 +142,37 @@ serve(async (req) => {
             }
         })
     });
-
-    const cartData = await cartResponse.json();
-    if (!cartResponse.ok) throw new Error(`Erro ao adicionar ao carrinho ME: ${JSON.stringify(cartData.errors || cartData)}`);
     const cartItemId = cartData.id;
 
-    // 4. Comprar a etiqueta (Checkout)
-    const checkoutResponse = await fetch('https://sandbox.melhorenvio.com.br/api/v2/me/shipment/checkout', {
+    // 5. Comprar a etiqueta (Checkout)
+    await fetchMelhorEnvio('/api/v2/me/shipment/checkout', {
         method: 'POST',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${MELHOR_ENVIO_API_KEY}`,
-        },
         body: JSON.stringify({ orders: [cartItemId] })
     });
-    if (!checkoutResponse.ok) throw new Error("Erro ao comprar a etiqueta no Melhor Envio.");
 
-    // 5. Gerar a etiqueta para impressão
-    const generateResponse = await fetch('https://sandbox.melhorenvio.com.br/api/v2/me/shipment/generate', {
+    // 6. Gerar a etiqueta para impressão
+    await fetchMelhorEnvio('/api/v2/me/shipment/generate', {
         method: 'POST',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${MELHOR_ENVIO_API_KEY}`,
-        },
         body: JSON.stringify({ orders: [cartItemId] })
     });
-    if (!generateResponse.ok) throw new Error("Erro ao gerar a etiqueta para impressão.");
 
-    // 6. Imprimir a etiqueta para obter o link e o código de rastreio
-    const printResponse = await fetch('https://sandbox.melhorenvio.com.br/api/v2/me/shipment/print', {
+    // 7. Imprimir a etiqueta para obter o link e o código de rastreio
+    const printData = await fetchMelhorEnvio('/api/v2/me/shipment/print', {
         method: 'POST',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${MELHOR_ENVIO_API_KEY}`,
-        },
         body: JSON.stringify({ mode: 'private', orders: [cartItemId] })
     });
-    
-    const printData = await printResponse.json();
-    if (!printResponse.ok) throw new Error(`Erro ao imprimir a etiqueta: ${JSON.stringify(printData)}`);
     
     const labelUrl = printData.url;
     const trackingCode = cartData.tracking;
 
-    // 7. Atualizar o pedido no Supabase
+    // 8. Atualizar o pedido no Supabase
     const { error: updateError } = await supabaseAdmin
       .from('orders')
       .update({ status: 'shipped', tracking_code: trackingCode })
       .eq('id', orderId);
     if (updateError) throw new Error(`Erro ao atualizar o pedido no banco de dados: ${updateError.message}`);
 
-    // 8. Retornar a URL da etiqueta para o frontend
+    // 9. Retornar a URL da etiqueta para o frontend
     return new Response(JSON.stringify({ labelUrl }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
