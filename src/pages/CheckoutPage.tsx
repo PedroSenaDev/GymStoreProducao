@@ -139,31 +139,27 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          <div className="lg:col-span-1">
-            <div className="sticky top-28 space-y-6">
-              <div className="space-y-4">
-                <h2 className="text-xl font-semibold">Resumo do Pedido</h2>
-                <OrderSummary items={selectedItems} shippingCost={shippingCost} />
-              </div>
-              {isProfileIncomplete && !isLoadingProfile && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Por favor, <a href="/profile/details" className="font-semibold underline">complete seu perfil</a> (nome e CPF) para continuar.
-                  </AlertDescription>
-                </Alert>
-              )}
-              {paymentMethod !== 'credit_card' && (
-                <Button
-                  size="lg"
-                  className="w-full"
-                  onClick={handleFinalizeOrder}
-                  disabled={isCheckoutDisabled}
-                >
-                  Finalizar Pedido
-                </Button>
-              )}
-            </div>
+          <div className="lg:col-span-1 sticky top-28 space-y-6">
+            <h2 className="text-xl font-semibold">Resumo do Pedido</h2>
+            <OrderSummary items={selectedItems} shippingCost={shippingCost} />
+            {isProfileIncomplete && !isLoadingProfile && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Por favor, <a href="/profile/details" className="font-semibold underline">complete seu perfil</a> (nome e CPF) para continuar.
+                </AlertDescription>
+              </Alert>
+            )}
+            {paymentMethod !== 'credit_card' && (
+              <Button
+                size="lg"
+                className="w-full"
+                onClick={handleFinalizeOrder}
+                disabled={isCheckoutDisabled}
+              >
+                Finalizar Pedido
+              </Button>
+            )}
           </div>
         </div>
       </div>
