@@ -158,7 +158,7 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">2. Opções de Frete</h3>
           <div className="flex flex-col sm:flex-row items-start gap-2">
-            <Input placeholder="Digite seu CEP" value={zipCode} onChange={(e) => setZipCode(e.target.value)} disabled={!selectedAddressId} className="flex-1" />
+            <Input placeholder="CEP do endereço selecionado" value={zipCode} readOnly disabled={!selectedAddressId} className="flex-1 bg-muted" />
             <Button onClick={handleQuoteShipping} disabled={!selectedAddressId || isLoadingQuote} className="w-full sm:w-auto">
               {isLoadingQuote ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
               Calcular Frete
