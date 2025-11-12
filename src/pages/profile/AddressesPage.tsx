@@ -39,6 +39,7 @@ async function fetchAddresses(userId: string): Promise<Address[]> {
     .from("addresses")
     .select("*")
     .eq("user_id", userId)
+    .eq("is_active", true) // Apenas busca endereços ativos
     .order("is_default", { ascending: false })
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
@@ -63,7 +64,11 @@ export default function AddressesPage() {
 
   const { mutate: deleteAddress } = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("addresses").delete().eq("id", id);
+      // Altera de DELETE para UPDATE (soft delete)
+      const { error } = await supabase
+        .from("addresses")
+        .update({ is_active: false })
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
