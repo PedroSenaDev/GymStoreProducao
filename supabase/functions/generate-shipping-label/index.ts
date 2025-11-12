@@ -52,7 +52,6 @@ serve(async (req) => {
       .select(`
         *,
         profiles (full_name, phone, email, cpf),
-        shipping_address:addresses (*),
         order_items (*, products (*))
       `)
       .eq('id', orderId)
@@ -63,8 +62,7 @@ serve(async (req) => {
 
     // Validações de dados críticos
     if (!order.profiles) throw new Error("Dados do perfil do cliente não encontrados.");
-    if (!order.shipping_address) throw new Error("Endereço de entrega não encontrado.");
-
+    
     // 2. Preparar dados para a API do Melhor Envio
     let totalWeight = 0;
     let maxLength = 0;
@@ -100,14 +98,14 @@ serve(async (req) => {
         phone: String(order.profiles.phone || '').replace(/\D/g, ''),
         email: order.profiles.email,
         document: String(order.profiles.cpf || '').replace(/\D/g, ''),
-        address: order.shipping_address.street,
-        complement: order.shipping_address.complement,
-        number: order.shipping_address.number || 'S/N', // CORREÇÃO: Garante que o número seja "S/N" se estiver vazio
-        district: order.shipping_address.neighborhood,
-        city: order.shipping_address.city,
-        state_abbr: order.shipping_address.state,
+        address: order.shipping_street,
+        complement: order.shipping_complement,
+        number: order.shipping_number || 'S/N',
+        district: order.shipping_neighborhood,
+        city: order.shipping_city,
+        state_abbr: order.shipping_state,
         country_id: "BR",
-        postal_code: String(order.shipping_address.zip_code || '').replace(/\D/g, ''),
+        postal_code: String(order.shipping_zip_code || '').replace(/\D/g, ''),
     };
 
     if (!recipientPayload.name || !recipientPayload.document || !recipientPayload.postal_code || !recipientPayload.address) {
