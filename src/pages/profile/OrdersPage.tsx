@@ -14,7 +14,7 @@ import OrderDetailsDialog from "@/components/profile/OrderDetailsDialog";
 async function fetchUserOrders(userId: string): Promise<Order[]> {
   const { data, error } = await supabase
     .from("orders")
-    .select("*, order_items(*, products(*)), shipping_address:shipping_address_id(*)")
+    .select("*, order_items(*, products(*))") // Removido o join com shipping_address
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 

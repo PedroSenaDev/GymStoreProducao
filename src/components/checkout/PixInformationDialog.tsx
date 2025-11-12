@@ -84,6 +84,15 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
       if (!session?.user.id || !selectedAddressId || !paymentMethod || items.length === 0 || !shippingRate) {
         throw new Error("Dados do pedido incompletos para finalização.");
       }
+
+      // Buscar o endereço completo para fazer o snapshot
+      const { data: address, error: addressError } = await supabase
+        .from('addresses')
+        .select('*')
+        .eq('id', selectedAddressId)
+        .single();
+      
+      if (addressError) throw new Error(`Endereço de entrega não encontrado: ${addressError.message}`);
       
       const { data: orderData, error: orderError } = await supabase.from('orders').insert({
         user_id: session.user.id, total_amount: totalAmount, status: 'processing',
@@ -93,6 +102,14 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
         shipping_service_id: shippingRate.id.toString(),
         shipping_service_name: shippingRate.name,
         delivery_time: deliveryTime?.toString(),
+        // Snapshot do endereço
+        shipping_street: address.street,
+        shipping_number: address.number,
+        shipping_complement: address.complement,
+        shipping_neighborhood: address.neighborhood,
+        shipping_city: address.city,
+        shipping_state: address.state,
+        shipping_zip_code: address.zip_code,
       }).select('id').single();
       if (orderError) throw orderError;
       

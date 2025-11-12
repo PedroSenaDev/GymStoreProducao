@@ -108,11 +108,11 @@ export default function OrderDetailsDialog({ order, open, onOpenChange }: OrderD
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
               <div className="space-y-2">
                 <h4 className="font-semibold flex items-center"><MapPin className="mr-2 h-4 w-4" /> Endereço de Entrega</h4>
-                {order.shipping_address ? (
+                {order.shipping_street ? (
                   <address className="not-italic text-muted-foreground">
-                    {order.shipping_address.street}, {order.shipping_address.number}<br />
-                    {order.shipping_address.neighborhood}<br />
-                    {order.shipping_address.city}, {order.shipping_address.state} - {order.shipping_address.zip_code}
+                    {order.shipping_street}, {order.shipping_number}<br />
+                    {order.shipping_neighborhood}<br />
+                    {order.shipping_city}, {order.shipping_state} - {order.shipping_zip_code}
                   </address>
                 ) : (
                   <p className="text-muted-foreground">Endereço não informado.</p>

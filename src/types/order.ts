@@ -18,10 +18,21 @@ export interface Order {
   items: OrderItem[];
   total_amount: number;
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
-  shipping_address: Address;
   created_at: string;
   payment_method?: string;
   shipping_cost?: number;
   tracking_code?: string;
   order_items?: OrderItem[]; // From Supabase join
+
+  // Endereço 'congelado' no momento da compra
+  shipping_street?: string;
+  shipping_number?: string;
+  shipping_complement?: string;
+  shipping_neighborhood?: string;
+  shipping_city?: string;
+  shipping_state?: string;
+  shipping_zip_code?: string;
+  
+  // Mantido para referência, mas não para exibição
+  shipping_address_id?: string; 
 }

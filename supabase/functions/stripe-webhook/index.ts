@@ -41,6 +41,15 @@ serve(async (req) => {
         return new Response("Metadados ausentes.", { status: 400 });
       }
 
+      // Buscar o endereço completo para fazer o snapshot
+      const { data: address, error: addressError } = await supabaseAdmin
+        .from('addresses')
+        .select('*')
+        .eq('id', shippingAddressId)
+        .single();
+      
+      if (addressError) throw new Error(`Endereço de entrega não encontrado: ${addressError.message}`);
+
       const { data: cartItems, error: cartError } = await supabaseAdmin
         .from('cart_items')
         .select('id, product_id, quantity, selected_size, selected_color, products(price, colors)')
@@ -58,13 +67,21 @@ serve(async (req) => {
           user_id: userId,
           total_amount: totalAmount,
           status: 'processing',
-          shipping_address_id: shippingAddressId,
+          shipping_address_id: shippingAddressId, // Mantém a referência
           payment_method: 'credit_card',
           shipping_cost: shippingCost,
           stripe_payment_intent_id: paymentIntentId,
           shipping_service_id: shippingRateId,
           shipping_service_name: shippingRateName,
           delivery_time: deliveryTime,
+          // Snapshot do endereço
+          shipping_street: address.street,
+          shipping_number: address.number,
+          shipping_complement: address.complement,
+          shipping_neighborhood: address.neighborhood,
+          shipping_city: address.city,
+          shipping_state: address.state,
+          shipping_zip_code: address.zip_code,
         })
         .select('id')
         .single();
