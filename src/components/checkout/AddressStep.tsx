@@ -45,6 +45,7 @@ async function fetchAddresses(userId: string): Promise<Address[]> {
     .from("addresses")
     .select("*")
     .eq("user_id", userId)
+    .eq("is_active", true) // Apenas busca endereços ativos
     .order("is_default", { ascending: false })
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
