@@ -158,15 +158,20 @@ export default function ProductForm({ product, onFinished }: ProductFormProps) {
             />
         </div>
 
-        <div className="space-y-2">
-            <FormLabel>Informações de Logística (para cálculo de frete)</FormLabel>
+        <div className="space-y-4 rounded-lg border p-4">
+            <div className="space-y-1">
+                <FormLabel>Informações de Logística</FormLabel>
+                <p className="text-sm text-muted-foreground">
+                    Dimensões e peso do pacote para cálculo de frete.
+                </p>
+            </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <FormField
                     control={form.control}
                     name="weight_kg"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel className="text-xs font-normal">Peso (kg)</FormLabel>
+                        <FormLabel>Peso (kg)</FormLabel>
                         <FormControl><Input type="number" step="0.01" placeholder="0.3" {...field} /></FormControl>
                         <FormMessage />
                         </FormItem>
@@ -177,7 +182,7 @@ export default function ProductForm({ product, onFinished }: ProductFormProps) {
                     name="length_cm"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel className="text-xs font-normal">Comprimento (cm)</FormLabel>
+                        <FormLabel>Comprimento (cm)</FormLabel>
                         <FormControl><Input type="number" step="0.1" placeholder="20" {...field} /></FormControl>
                         <FormMessage />
                         </FormItem>
@@ -188,7 +193,7 @@ export default function ProductForm({ product, onFinished }: ProductFormProps) {
                     name="width_cm"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel className="text-xs font-normal">Largura (cm)</FormLabel>
+                        <FormLabel>Largura (cm)</FormLabel>
                         <FormControl><Input type="number" step="0.1" placeholder="15" {...field} /></FormControl>
                         <FormMessage />
                         </FormItem>
@@ -199,7 +204,7 @@ export default function ProductForm({ product, onFinished }: ProductFormProps) {
                     name="height_cm"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel className="text-xs font-normal">Altura (cm)</FormLabel>
+                        <FormLabel>Altura (cm)</FormLabel>
                         <FormControl><Input type="number" step="0.1" placeholder="10" {...field} /></FormControl>
                         <FormMessage />
                         </FormItem>
