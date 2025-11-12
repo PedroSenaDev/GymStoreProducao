@@ -182,7 +182,7 @@ export default function ProductForm({ product, onFinished }: ProductFormProps) {
                     name="length_cm"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Comprimento (cm)</FormLabel>
+                        <FormLabel>Comp. (cm)</FormLabel>
                         <FormControl><Input type="number" step="0.1" placeholder="20" {...field} /></FormControl>
                         <FormMessage />
                         </FormItem>
@@ -193,7 +193,7 @@ export default function ProductForm({ product, onFinished }: ProductFormProps) {
                     name="width_cm"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Largura (cm)</FormLabel>
+                        <FormLabel>Larg. (cm)</FormLabel>
                         <FormControl><Input type="number" step="0.1" placeholder="15" {...field} /></FormControl>
                         <FormMessage />
                         </FormItem>
@@ -204,7 +204,7 @@ export default function ProductForm({ product, onFinished }: ProductFormProps) {
                     name="height_cm"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Altura (cm)</FormLabel>
+                        <FormLabel>Alt. (cm)</FormLabel>
                         <FormControl><Input type="number" step="0.1" placeholder="10" {...field} /></FormControl>
                         <FormMessage />
                         </FormItem>
