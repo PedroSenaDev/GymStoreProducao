@@ -26,11 +26,19 @@ async function fetchMelhorEnvio(endpoint: string, options: RequestInit) {
         },
     });
 
-    const data = await response.json();
+    let data;
+    try {
+        data = await response.json();
+    } catch (e) {
+        // Se o parsing falhar, o corpo da resposta provavelmente não era JSON.
+        // Isso pode acontecer em erros de gateway (5xx) ou autenticação.
+        const responseText = await response.text();
+        throw new Error(`A API Melhor Envio retornou uma resposta inválida (status ${response.status}). Resposta: ${responseText}`);
+    }
 
     if (!response.ok) {
-        // Extrai a mensagem de erro específica da API para um feedback claro
-        const errorMessage = data?.message || data?.error || (data?.errors ? JSON.stringify(data.errors) : 'Erro desconhecido na API Melhor Envio.');
+        // Se a resposta for um erro JSON, extrai a mensagem.
+        const errorMessage = data?.message || data?.error || (data?.errors ? JSON.stringify(data.errors) : JSON.stringify(data));
         throw new Error(`Erro na API Melhor Envio (${response.status}): ${errorMessage}`);
     }
 
