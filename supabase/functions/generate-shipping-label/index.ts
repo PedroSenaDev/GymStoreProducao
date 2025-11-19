@@ -80,6 +80,21 @@ serve(async (req) => {
     });
 
     const packagePayload = { weight: totalWeight, width: Math.max(maxWidth, 11), height: Math.max(totalHeight, 2), length: Math.max(maxLength, 16) };
+    
+    const senderPayload = {
+        name: "GYMSTORE",
+        phone: "38999999999", // Use um telefone válido da sua loja
+        email: "contato@gymstore.com",
+        document: "11111111111111", // Use um CNPJ válido da sua loja
+        address: "Rua da Loja",
+        number: "123",
+        district: "Centro",
+        city: "Montes Claros",
+        state_abbr: "MG",
+        country_id: "BR",
+        postal_code: "39400001",
+    };
+
     const recipientPayload = {
         name: order.profiles.full_name, phone: String(order.profiles.phone || '').replace(/\D/g, ''), email: order.profiles.email,
         document: String(order.profiles.cpf || '').replace(/\D/g, ''), address: order.shipping_street, complement: order.shipping_complement,
@@ -92,7 +107,9 @@ serve(async (req) => {
     const cartItem = await fetchMelhorEnvio('/api/v2/me/cart', {
         method: 'POST',
         body: JSON.stringify({
-            service: order.shipping_service_id, from: { postal_code: "39400001" }, to: recipientPayload,
+            service: order.shipping_service_id, 
+            from: senderPayload, 
+            to: recipientPayload,
             products: order.order_items.map((item: any) => ({ name: item.products.name, quantity: item.quantity, unitary_value: item.price })),
             package: packagePayload,
             options: { insurance_value: totalValue, receipt: false, own_hand: false, reverse: false, non_commercial: true }
