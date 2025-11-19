@@ -55,12 +55,9 @@ serve(async (req) => {
     }
 
     const { orderId } = await req.json();
-    if (!orderId) {
-      throw new Error("ID do pedido é obrigatório.");
-    }
+    if (!orderId) throw new Error("ID do pedido é obrigatório.");
     console.log(`[LOG] Gerando etiqueta para o pedido ID: ${orderId}`);
 
-    // 1. Buscar dados completos do pedido no Supabase
     const { data: order, error: orderError } = await supabaseAdmin
       .from('orders')
       .select(`*, profiles (*), order_items (*, products (*))`)
@@ -72,13 +69,7 @@ serve(async (req) => {
     if (!order.profiles) throw new Error("Dados do perfil do cliente não encontrados.");
     console.log("[LOG] Dados do pedido obtidos do Supabase com sucesso.");
 
-    // 2. Preparar dados do pacote e destinatário
-    let totalWeight = 0;
-    let totalValue = 0;
-    let maxLength = 0;
-    let maxWidth = 0;
-    let totalHeight = 0;
-
+    let totalWeight = 0, totalValue = 0, maxLength = 0, maxWidth = 0, totalHeight = 0;
     order.order_items.forEach((item: any) => {
       const quantity = item.quantity || 1;
       totalWeight += (item.products.weight_kg || 0.1) * quantity;
@@ -88,65 +79,46 @@ serve(async (req) => {
       totalHeight += (item.products.height_cm || 1) * quantity;
     });
 
-    const packagePayload = {
-      weight: totalWeight,
-      width: Math.max(maxWidth, 11),
-      height: Math.max(totalHeight, 2),
-      length: Math.max(maxLength, 16),
-    };
-
+    const packagePayload = { weight: totalWeight, width: Math.max(maxWidth, 11), height: Math.max(totalHeight, 2), length: Math.max(maxLength, 16) };
     const recipientPayload = {
-        name: order.profiles.full_name,
-        phone: String(order.profiles.phone || '').replace(/\D/g, ''),
-        email: order.profiles.email,
-        document: String(order.profiles.cpf || '').replace(/\D/g, ''),
-        address: order.shipping_street,
-        complement: order.shipping_complement,
-        number: order.shipping_number || 'S/N',
-        district: order.shipping_neighborhood,
-        city: order.shipping_city,
-        state_abbr: order.shipping_state,
-        country_id: "BR",
-        postal_code: String(order.shipping_zip_code || '').replace(/\D/g, ''),
+        name: order.profiles.full_name, phone: String(order.profiles.phone || '').replace(/\D/g, ''), email: order.profiles.email,
+        document: String(order.profiles.cpf || '').replace(/\D/g, ''), address: order.shipping_street, complement: order.shipping_complement,
+        number: order.shipping_number || 'S/N', district: order.shipping_neighborhood, city: order.shipping_city,
+        state_abbr: order.shipping_state, country_id: "BR", postal_code: String(order.shipping_zip_code || '').replace(/\D/g, ''),
     };
     console.log("[LOG] Payloads do pacote e destinatário preparados.");
     
-    // 3. ETAPA 1: Criar o envio
-    const shipment = await fetchMelhorEnvio('/api/v2/me/shipment', {
+    // ETAPA 1: Adicionar envio ao carrinho
+    const cartItem = await fetchMelhorEnvio('/api/v2/me/cart', {
         method: 'POST',
         body: JSON.stringify({
-            service: order.shipping_service_id,
-            from: { postal_code: "39400001" },
-            to: recipientPayload,
+            service: order.shipping_service_id, from: { postal_code: "39400001" }, to: recipientPayload,
+            products: order.order_items.map((item: any) => ({ name: item.products.name, quantity: item.quantity, unitary_value: item.price })),
             package: packagePayload,
-            options: {
-                insurance_value: totalValue,
-                receipt: false,
-                own_hand: false,
-                reverse: false,
-                non_commercial: true,
-            }
+            options: { insurance_value: totalValue, receipt: false, own_hand: false, reverse: false, non_commercial: true }
         })
     });
-    const shipmentId = shipment.id;
-    const trackingCode = shipment.tracking;
-    console.log(`[LOG] Envio criado na Melhor Envio. ID: ${shipmentId}, Rastreio: ${trackingCode}`);
+    const cartId = cartItem.id;
+    console.log(`[LOG] Envio adicionado ao carrinho da Melhor Envio. ID do Carrinho: ${cartId}`);
 
-    // 4. ETAPA 2: Pagar o envio
-    await fetchMelhorEnvio('/api/v2/me/shipment/purchase', {
+    // ETAPA 2: Pagar/Finalizar o carrinho
+    const checkout = await fetchMelhorEnvio('/api/v2/me/cart/checkout', {
         method: 'POST',
-        body: JSON.stringify({ shipments: [shipmentId] })
+        body: JSON.stringify({ orders: [cartId] })
     });
-    console.log("[LOG] Pagamento do envio confirmado.");
+    const purchase = checkout.purchase;
+    const shipmentId = purchase.orders[0].id;
+    const trackingCode = purchase.orders[0].tracking;
+    console.log(`[LOG] Checkout do carrinho realizado. ID do Envio: ${shipmentId}, Rastreio: ${trackingCode}`);
 
-    // 5. ETAPA 3: Gerar a etiqueta
+    // ETAPA 3: Gerar a etiqueta
     await fetchMelhorEnvio('/api/v2/me/shipment/generate', {
         method: 'POST',
-        body: JSON.stringify({ shipments: [shipmentId] })
+        body: JSON.stringify({ orders: [shipmentId] })
     });
     console.log("[LOG] Geração da etiqueta solicitada.");
 
-    // 6. ETAPA 4: Obter o link de impressão
+    // ETAPA 4: Obter o link de impressão
     const printData = await fetchMelhorEnvio('/api/v2/me/shipment/print', {
         method: 'POST',
         body: JSON.stringify({ mode: 'private', orders: [shipmentId] })
@@ -154,7 +126,7 @@ serve(async (req) => {
     const labelUrl = printData.url;
     console.log(`[LOG] URL da etiqueta obtida: ${labelUrl}`);
 
-    // 7. Atualizar o pedido no Supabase
+    // ETAPA 5: Atualizar o pedido no Supabase
     const { error: updateError } = await supabaseAdmin
       .from('orders')
       .update({ status: 'shipped', tracking_code: trackingCode })
@@ -162,7 +134,6 @@ serve(async (req) => {
     if (updateError) throw new Error(`Erro ao atualizar o pedido no banco de dados: ${updateError.message}`);
     console.log("[LOG] Pedido atualizado no Supabase para 'shipped'.");
 
-    // 8. Retornar a URL da etiqueta
     return new Response(JSON.stringify({ labelUrl }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
