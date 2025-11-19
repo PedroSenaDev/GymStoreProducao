@@ -83,9 +83,10 @@ serve(async (req) => {
     
     const senderPayload = {
         name: "GYMSTORE",
-        phone: "38999999999", // Use um telefone válido da sua loja
+        phone: "38999999999",
         email: "contato@gymstore.com",
-        document: "58858284000131", // CNPJ real da loja
+        // Usando um CPF de teste válido devido à flag 'non_commercial'
+        document: "21558890830", 
         address: "Rua da Loja",
         number: "123",
         district: "Centro",
