@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, User, MapPin, Package, CreditCard, Truck, Edit, FileDown, Ticket } from "lucide-react";
+import { Loader2, User, MapPin, Package, CreditCard, Truck, Edit, FileDown } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -14,10 +14,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import UpdateOrderForm from "./UpdateOrderForm";
-import { Order } from "@/types/order";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { OrderInvoice } from "@/components/admin/OrderInvoice";
-import { showError, showSuccess } from "@/utils/toast";
 
 async function fetchOrderDetails(orderId: string) {
   const { data, error } = await supabase
@@ -49,31 +47,11 @@ const translateStatus = (status: string): string => {
 
 export default function OrderDetails({ orderId }: { orderId: string }) {
   const [isUpdateDialogOpen, setUpdateDialogOpen] = useState(false);
-  const queryClient = useQueryClient();
 
   const { data: order, isLoading, isError } = useQuery({
     queryKey: ["orderDetails", orderId],
     queryFn: () => fetchOrderDetails(orderId),
     enabled: !!orderId,
-  });
-
-  const { mutate: generateLabel, isPending: isGeneratingLabel } = useMutation({
-    mutationFn: async (id: string) => {
-      const { data, error } = await supabase.functions.invoke('generate-shipping-label', {
-        body: { orderId: id },
-      });
-      if (error || data.error) throw new Error(error?.message || data.error);
-      return data;
-    },
-    onSuccess: (data) => {
-      showSuccess("Etiqueta gerada com sucesso!");
-      window.open(data.labelUrl, '_blank');
-      queryClient.invalidateQueries({ queryKey: ["orderDetails", orderId] });
-      queryClient.invalidateQueries({ queryKey: ["adminOrders"] });
-    },
-    onError: (error: any) => {
-      showError(`Falha ao gerar etiqueta: ${error.message}`);
-    },
   });
 
   if (isLoading) {
@@ -95,15 +73,6 @@ export default function OrderDetails({ orderId }: { orderId: string }) {
             </p>
           </div>
           <div className="flex flex-wrap gap-2 self-start sm:self-auto">
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => generateLabel(order.id)}
-              disabled={order.status !== 'processing' || isGeneratingLabel}
-            >
-              {isGeneratingLabel ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Ticket className="mr-2 h-4 w-4" />}
-              {isGeneratingLabel ? 'Gerando...' : 'Gerar Etiqueta'}
-            </Button>
             <PDFDownloadLink
               document={<OrderInvoice order={order} />}
               fileName={`pedido_${order.id.substring(0, 8)}.pdf`}

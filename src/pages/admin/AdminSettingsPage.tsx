@@ -29,7 +29,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
   } from "@/components/ui/alert-dialog";
-import { Loader2, PlusCircle, Edit, Trash2, Truck, AlertTriangle, CheckCircle } from "lucide-react";
+import { Loader2, PlusCircle, Edit, Trash2, Truck } from "lucide-react";
 import PolicyForm from "./PolicyForm";
 import AboutUsForm from "./AboutUsForm";
 import SizeChartForm from "./SizeChartForm";
@@ -43,7 +43,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Link } from "react-router-dom";
-import { cn } from "@/lib/utils";
 
 async function fetchPolicies(): Promise<Policy[]> {
   const { data, error } = await supabase.from("policies").select("*").not('display_area', 'eq', 'about_us').order('created_at', { ascending: false });
@@ -62,55 +61,6 @@ async function fetchSizeCharts(): Promise<SizeChart[]> {
     if (error) throw new Error(error.message);
     return data || [];
 }
-
-const ApiDiagnosticsCard = () => {
-    const [isLoading, setIsLoading] = useState(false);
-    const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
-  
-    const handleTestConnection = async () => {
-      setIsLoading(true);
-      setResult(null);
-      try {
-        const { data, error } = await supabase.functions.invoke('test-melhor-envio');
-        if (error) throw error;
-        if (data.success) {
-          setResult({ success: true, message: data.message });
-        } else {
-          setResult({ success: false, message: data.error });
-        }
-      } catch (err: any) {
-        setResult({ success: false, message: err.message });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-  
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Diagnóstico de API</CardTitle>
-          <CardDescription>Verifique a conexão com serviços externos como a Melhor Envio.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button onClick={handleTestConnection} disabled={isLoading}>
-            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Testar Conexão com Melhor Envio
-          </Button>
-          {result && (
-            <div className={cn("mt-4 rounded-md border p-4 text-sm", result.success ? "bg-green-50 border-green-200 text-green-800" : "bg-red-50 border-red-200 text-red-800")}>
-              <div className="flex items-start gap-3">
-                {result.success ? <CheckCircle className="h-5 w-5 flex-shrink-0" /> : <AlertTriangle className="h-5 w-5 flex-shrink-0" />}
-                <div className="flex-1 break-words">
-                  <p className="font-semibold">{result.success ? "Sucesso!" : "Falha na Conexão"}</p>
-                  <p className="mt-1">{result.message}</p>
-                </div>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    );
-  };
 
 export default function AdminSettingsPage() {
   const [activeTab, setActiveTab] = useState("about");
@@ -188,7 +138,6 @@ export default function AdminSettingsPage() {
                 <SelectItem value="shipping">Frete</SelectItem>
                 <SelectItem value="size-charts">Tabelas de Medidas</SelectItem>
                 <SelectItem value="policies">Políticas</SelectItem>
-                <SelectItem value="diagnostics">Diagnóstico</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -376,10 +325,6 @@ export default function AdminSettingsPage() {
                 ))}
               </CardContent>
             </Card>
-          </TabsContent>
-
-          <TabsContent value="diagnostics" className="mt-6">
-            <ApiDiagnosticsCard />
           </TabsContent>
         </Tabs>
       )}

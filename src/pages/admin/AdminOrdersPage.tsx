@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Order } from "@/types/order";
 import { Profile } from "@/types/profile";
@@ -27,26 +27,38 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Eye, Search } from "lucide-react";
+import { Loader2, Eye, Search, Download } from "lucide-react";
 import { format, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import OrderDetails from "./OrderDetails";
 import { cn } from "@/lib/utils";
 import { DateRangePicker } from "@/components/admin/DateRangePicker";
 import { DateRange } from "react-day-picker";
+import { showError, showSuccess } from "@/utils/toast";
 
-type OrderWithProfile = Order & {
-  profiles: Pick<Profile, 'full_name'> | null;
+type OrderWithDetails = Order & {
+  profiles: Pick<Profile, 'full_name' | 'cpf' | 'email' | 'phone'> | null;
+  order_items: {
+    quantity: number;
+    products: {
+      name: string;
+      price: number;
+      weight_kg: number;
+      height_cm: number;
+      width_cm: number;
+      length_cm: number;
+    }
+  }[];
 };
 
-async function fetchOrders(): Promise<OrderWithProfile[]> {
+async function fetchOrders(): Promise<OrderWithDetails[]> {
   const { data, error } = await supabase
     .from("orders")
-    .select("*, profiles(full_name)")
+    .select("*, profiles(full_name, cpf, email, phone), order_items(*, products(*))")
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);
-  return data as OrderWithProfile[];
+  return data as OrderWithDetails[];
 }
 
 const translateStatus = (status: string): string => {
@@ -71,14 +83,70 @@ const getStatusVariant = (status: string) => {
   }
 };
 
+// Função para escapar campos do CSV
+const escapeCsvField = (field: any) => {
+    const stringField = String(field ?? '');
+    if (stringField.includes(',') || stringField.includes('"') || stringField.includes('\n')) {
+        return `"${stringField.replace(/"/g, '""')}"`;
+    }
+    return stringField;
+};
+
 export default function AdminOrdersPage() {
-  const [selectedOrder, setSelectedOrder] = useState<OrderWithProfile | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<OrderWithDetails | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   const { data: orders, isLoading } = useQuery({
     queryKey: ["adminOrders"],
     queryFn: fetchOrders,
+  });
+
+  const { mutate: exportToCsv, isPending: isExporting } = useMutation({
+    mutationFn: async () => {
+        if (!orders) throw new Error("Nenhum pedido para exportar.");
+
+        const ordersToExport = orders.filter(order => order.status === 'processing');
+        if (ordersToExport.length === 0) {
+            throw new Error("Não há pedidos com status 'Processando' para exportar.");
+        }
+
+        const headers = [
+            "Destinatário", "CPF", "Endereço", "Número", "Complemento", "Bairro", "Cidade", "UF", "CEP", "Email", "Telefone",
+            "Produto", "Quantidade", "Valor", "Peso (kg)", "Altura (cm)", "Largura (cm)", "Comprimento (cm)", "Valor da Nota"
+        ];
+
+        const rows = ordersToExport.flatMap(order => {
+            const recipientInfo = [
+                order.profiles?.full_name, order.profiles?.cpf, order.shipping_street, order.shipping_number, order.shipping_complement,
+                order.shipping_neighborhood, order.shipping_city, order.shipping_state, order.shipping_zip_code,
+                order.profiles?.email, order.profiles?.phone
+            ];
+
+            return order.order_items.map(item => [
+                ...recipientInfo,
+                item.products.name, item.quantity, item.products.price, item.products.weight_kg,
+                item.products.height_cm, item.products.width_cm, item.products.length_cm, order.total_amount
+            ].map(escapeCsvField));
+        });
+
+        const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `pedidos_melhor_envio_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    },
+    onSuccess: () => {
+        showSuccess("Arquivo CSV gerado com sucesso!");
+    },
+    onError: (error: any) => {
+        showError(error.message);
+    }
   });
 
   const filteredOrders = useMemo(() => {
@@ -115,6 +183,10 @@ export default function AdminOrdersPage() {
                 {filteredOrders ? `${filteredOrders.length} pedido(s) encontrado(s).` : 'Carregando...'}
               </CardDescription>
             </div>
+            <Button onClick={() => exportToCsv()} disabled={isExporting}>
+                {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                Exportar para Melhor Envio
+            </Button>
           </div>
           <div className="flex flex-col md:flex-row items-center gap-4 pt-4">
             <div className="relative w-full md:flex-1">
