@@ -113,7 +113,6 @@ export default function AdminOrdersPage() {
             let totalHeight = 0;
             let maxLength = 0;
             let maxWidth = 0;
-            const itemContents: string[] = [];
 
             order.order_items.forEach(item => {
                 const quantity = item.quantity || 1;
@@ -121,42 +120,19 @@ export default function AdminOrdersPage() {
                 totalHeight += (item.products.height_cm || 2) * quantity;
                 maxLength = Math.max(maxLength, item.products.length_cm || 16);
                 maxWidth = Math.max(maxWidth, item.products.width_cm || 11);
-                itemContents.push(`${item.products.name} (x${quantity})`);
             });
 
             const declaredValue = order.total_amount - (order.shipping_cost || 0);
 
             return {
-                'service': order.shipping_service_id,
-                'agency': null,
-                'from_name': 'GYMSTORE',
-                'from_email': 'contato@gymstore.com',
-                'from_document': 'SEU_CNPJ_AQUI', // Substituir pelo seu CNPJ
-                'from_postal_code': '39400001',
-                'from_address': 'Sua Rua',
-                'from_number': 'Seu Número',
-                'to_name': order.profiles?.full_name,
-                'to_document': order.profiles?.cpf,
-                'to_email': order.profiles?.email,
-                'to_phone': order.profiles?.phone,
-                'to_postal_code': order.shipping_zip_code,
-                'to_address': order.shipping_street,
-                'to_number': order.shipping_number,
-                'to_complement': order.shipping_complement,
-                'to_district': order.shipping_neighborhood,
-                'to_city': order.shipping_city,
-                'to_state_abbr': order.shipping_state,
-                'products[0][name]': itemContents.join('; '),
-                'products[0][quantity]': order.order_items.reduce((sum, item) => sum + item.quantity, 0),
-                'products[0][unitary_value]': declaredValue / order.order_items.reduce((sum, item) => sum + item.quantity, 1),
-                'volumes[0][height]': Math.max(totalHeight, 2),
-                'volumes[0][width]': Math.max(maxWidth, 11),
-                'volumes[0][length]': Math.max(maxLength, 16),
-                'volumes[0][weight]': totalWeight,
-                'insurance_value': declaredValue,
-                'receipt': 'false',
-                'own_hand': 'false',
-                'non_commercial': 'false',
+                'CEP DESTINO': order.shipping_zip_code,
+                'PESO (KG)': parseFloat(totalWeight.toFixed(3)),
+                'ALTURA (CM)': Math.max(totalHeight, 2),
+                'LARGURA (CM)': Math.max(maxWidth, 11),
+                'COMPRIMENTO (CM)': Math.max(maxLength, 16),
+                'AVISO DE RECEBIMENTO (AR)': 'NÃO',
+                'MÃO PRÓPRIA (MP)': 'NÃO',
+                'VALOR SEGURADO': parseFloat(declaredValue.toFixed(2)),
             };
         });
 
