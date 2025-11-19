@@ -83,7 +83,6 @@ const getStatusVariant = (status: string) => {
   }
 };
 
-// Função para escapar campos do CSV
 const escapeCsvField = (field: any) => {
     const stringField = String(field ?? '');
     if (stringField.includes(',') || stringField.includes('"') || stringField.includes('\n')) {
@@ -106,32 +105,65 @@ export default function AdminOrdersPage() {
     mutationFn: async () => {
         if (!orders) throw new Error("Nenhum pedido para exportar.");
 
-        const ordersToExport = orders.filter(order => order.status === 'processing');
+        const ordersToExport = orders.filter(order => 
+            order.status === 'processing' &&
+            order.shipping_service_id &&
+            !isNaN(parseInt(order.shipping_service_id))
+        );
+
         if (ordersToExport.length === 0) {
-            throw new Error("Não há pedidos com status 'Processando' para exportar.");
+            throw new Error("Não há pedidos de fora com status 'Processando' para exportar.");
         }
 
         const headers = [
-            "Destinatário", "CPF", "Endereço", "Número", "Complemento", "Bairro", "Cidade", "UF", "CEP", "Email", "Telefone",
-            "Produto", "Quantidade", "Valor", "Peso (kg)", "Altura (cm)", "Largura (cm)", "Comprimento (cm)", "Valor da Nota"
+            "Destinatário", "CPF", "Email", "Telefone", "CEP", "Endereço", "Número", "Complemento", "Bairro", "Cidade", "UF", 
+            "Serviço de Envio", "Valor Declarado (R$)", "Peso (kg)", "Altura (cm)", "Largura (cm)", "Comprimento (cm)", "Conteúdo do Pacote"
         ];
 
-        const rows = ordersToExport.flatMap(order => {
-            const recipientInfo = [
-                order.profiles?.full_name, order.profiles?.cpf, order.shipping_street, order.shipping_number, order.shipping_complement,
-                order.shipping_neighborhood, order.shipping_city, order.shipping_state, order.shipping_zip_code,
-                order.profiles?.email, order.profiles?.phone
+        const rows = ordersToExport.map(order => {
+            let totalWeight = 0;
+            let totalHeight = 0;
+            let maxLength = 0;
+            let maxWidth = 0;
+            const itemContents: string[] = [];
+
+            order.order_items.forEach(item => {
+                const quantity = item.quantity || 1;
+                totalWeight += (item.products.weight_kg || 0.1) * quantity;
+                totalHeight += (item.products.height_cm || 2) * quantity;
+                maxLength = Math.max(maxLength, item.products.length_cm || 16);
+                maxWidth = Math.max(maxWidth, item.products.width_cm || 11);
+                itemContents.push(`${item.products.name} (x${quantity})`);
+            });
+
+            const declaredValue = order.total_amount - (order.shipping_cost || 0);
+
+            const rowData = [
+                order.profiles?.full_name,
+                order.profiles?.cpf,
+                order.profiles?.email,
+                order.profiles?.phone,
+                order.shipping_zip_code,
+                order.shipping_street,
+                order.shipping_number,
+                order.shipping_complement,
+                order.shipping_neighborhood,
+                order.shipping_city,
+                order.shipping_state,
+                order.shipping_service_name,
+                declaredValue.toFixed(2),
+                totalWeight.toFixed(2),
+                Math.max(totalHeight, 2),
+                Math.max(maxWidth, 11),
+                Math.max(maxLength, 16),
+                itemContents.join(', ')
             ];
 
-            return order.order_items.map(item => [
-                ...recipientInfo,
-                item.products.name, item.quantity, item.products.price, item.products.weight_kg,
-                item.products.height_cm, item.products.width_cm, item.products.length_cm, order.total_amount
-            ].map(escapeCsvField));
+            return rowData.map(escapeCsvField);
         });
 
         const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' }); // Add BOM for Excel
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
         link.setAttribute("href", url);
