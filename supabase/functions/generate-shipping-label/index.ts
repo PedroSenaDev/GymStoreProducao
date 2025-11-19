@@ -26,23 +26,16 @@ async function fetchMelhorEnvio(endpoint: string, options: RequestInit) {
         },
     });
 
-    let data;
-    try {
-        data = await response.json();
-    } catch (e) {
-        // Se o parsing falhar, o corpo da resposta provavelmente não era JSON.
-        // Isso pode acontecer em erros de gateway (5xx) ou autenticação.
-        const responseText = await response.text();
-        throw new Error(`A API Melhor Envio retornou uma resposta inválida (status ${response.status}). Resposta: ${responseText}`);
-    }
-
+    const responseText = await response.text();
     if (!response.ok) {
-        // Se a resposta for um erro JSON, extrai a mensagem.
-        const errorMessage = data?.message || data?.error || (data?.errors ? JSON.stringify(data.errors) : JSON.stringify(data));
-        throw new Error(`Erro na API Melhor Envio (${response.status}): ${errorMessage}`);
+        throw new Error(`Erro na API Melhor Envio (${response.status}): ${responseText}`);
     }
-
-    return data;
+    
+    try {
+        return JSON.parse(responseText);
+    } catch (e) {
+        throw new Error(`A API Melhor Envio retornou uma resposta inválida (não-JSON). Resposta: ${responseText}`);
+    }
 }
 
 serve(async (req) => {
@@ -63,11 +56,7 @@ serve(async (req) => {
     // 1. Buscar dados completos do pedido no Supabase
     const { data: order, error: orderError } = await supabaseAdmin
       .from('orders')
-      .select(`
-        *,
-        profiles (full_name, phone, email, cpf),
-        order_items (*, products (*))
-      `)
+      .select(`*, profiles (*), order_items (*, products (*))`)
       .eq('id', orderId)
       .single();
 
@@ -75,35 +64,20 @@ serve(async (req) => {
     if (order.status !== 'processing') throw new Error("A etiqueta só pode ser gerada para pedidos com status 'Processando'.");
     if (!order.profiles) throw new Error("Dados do perfil do cliente não encontrados.");
 
-    // 2. Buscar endereço do remetente na Melhor Envio
-    const senderAddresses = await fetchMelhorEnvio('/api/v2/me/companies/addresses', { method: 'GET' });
-    if (!senderAddresses || senderAddresses.data.length === 0) {
-        throw new Error("Nenhum endereço de remetente encontrado na sua conta Melhor Envio. Por favor, cadastre um endereço no painel da Melhor Envio.");
-    }
-    // Usa o endereço padrão ou o primeiro da lista
-    const senderAddress = senderAddresses.data.find((addr: any) => addr.default) || senderAddresses.data[0];
-    const senderAddressId = senderAddress.id;
-
-    // 3. Preparar dados do pacote e destinatário
+    // 2. Preparar dados do pacote e destinatário
     let totalWeight = 0;
+    let totalValue = 0;
     let maxLength = 0;
     let maxWidth = 0;
     let totalHeight = 0;
 
-    const productsPayload = order.order_items.map((item: any) => {
-      if (!item.products) {
-        throw new Error(`O produto com ID ${item.product_id} neste pedido não foi encontrado. Ele pode ter sido excluído.`);
-      }
+    order.order_items.forEach((item: any) => {
       const quantity = item.quantity || 1;
       totalWeight += (item.products.weight_kg || 0.1) * quantity;
+      totalValue += item.price * quantity;
       maxLength = Math.max(maxLength, item.products.length_cm || 1);
       maxWidth = Math.max(maxWidth, item.products.width_cm || 1);
       totalHeight += (item.products.height_cm || 1) * quantity;
-      return {
-        name: item.products.name,
-        quantity: quantity,
-        unitary_value: item.price,
-      };
     });
 
     const packagePayload = {
@@ -127,22 +101,17 @@ serve(async (req) => {
         country_id: "BR",
         postal_code: String(order.shipping_zip_code || '').replace(/\D/g, ''),
     };
-
-    if (!recipientPayload.name || !recipientPayload.document || !recipientPayload.postal_code || !recipientPayload.address) {
-        throw new Error("Informações críticas do destinatário (nome, CPF, CEP, rua) estão faltando no cadastro do cliente.");
-    }
-
-    // 4. Adicionar envio ao carrinho do Melhor Envio
-    const cartData = await fetchMelhorEnvio('/api/v2/me/shipment/cart', {
+    
+    // 3. ETAPA 1: Criar o envio
+    const shipment = await fetchMelhorEnvio('/api/v2/me/shipment', {
         method: 'POST',
         body: JSON.stringify({
             service: order.shipping_service_id,
-            from: { address_id: senderAddressId }, // Usando o ID do endereço do remetente
+            from: { postal_code: "39400001" }, // CEP do remetente
             to: recipientPayload,
-            products: productsPayload,
             package: packagePayload,
             options: {
-                insurance_value: order.total_amount,
+                insurance_value: totalValue,
                 receipt: false,
                 own_hand: false,
                 reverse: false,
@@ -150,37 +119,36 @@ serve(async (req) => {
             }
         })
     });
-    const cartItemId = cartData.id;
+    const shipmentId = shipment.id;
+    const trackingCode = shipment.tracking;
 
-    // 5. Comprar a etiqueta (Checkout)
-    await fetchMelhorEnvio('/api/v2/me/shipment/checkout', {
+    // 4. ETAPA 2: Pagar o envio (automático no sandbox)
+    await fetchMelhorEnvio('/api/v2/me/shipment/purchase', {
         method: 'POST',
-        body: JSON.stringify({ orders: [cartItemId] })
+        body: JSON.stringify({ shipments: [shipmentId] })
     });
 
-    // 6. Gerar a etiqueta para impressão
+    // 5. ETAPA 3: Gerar a etiqueta
     await fetchMelhorEnvio('/api/v2/me/shipment/generate', {
         method: 'POST',
-        body: JSON.stringify({ orders: [cartItemId] })
+        body: JSON.stringify({ shipments: [shipmentId] })
     });
 
-    // 7. Imprimir a etiqueta para obter o link e o código de rastreio
+    // 6. ETAPA 4: Obter o link de impressão
     const printData = await fetchMelhorEnvio('/api/v2/me/shipment/print', {
         method: 'POST',
-        body: JSON.stringify({ mode: 'private', orders: [cartItemId] })
+        body: JSON.stringify({ mode: 'private', orders: [shipmentId] })
     });
-    
     const labelUrl = printData.url;
-    const trackingCode = cartData.tracking;
 
-    // 8. Atualizar o pedido no Supabase
+    // 7. Atualizar o pedido no Supabase com o código de rastreio e status
     const { error: updateError } = await supabaseAdmin
       .from('orders')
       .update({ status: 'shipped', tracking_code: trackingCode })
       .eq('id', orderId);
     if (updateError) throw new Error(`Erro ao atualizar o pedido no banco de dados: ${updateError.message}`);
 
-    // 9. Retornar a URL da etiqueta para o frontend
+    // 8. Retornar a URL da etiqueta para o frontend
     return new Response(JSON.stringify({ labelUrl }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
