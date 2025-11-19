@@ -85,9 +85,7 @@ serve(async (req) => {
         name: "GYMSTORE",
         phone: "38999999999", // Use um telefone válido da sua loja
         email: "contato@gymstore.com",
-        // IMPORTANTE: Substitua pelo seu CPF ou CNPJ real para produção.
-        // O documento precisa ter um formato válido para o ambiente de testes.
-        document: "11111111111",
+        document: "58858284000131", // CNPJ real da loja
         address: "Rua da Loja",
         number: "123",
         district: "Centro",
