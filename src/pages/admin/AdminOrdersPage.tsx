@@ -98,14 +98,13 @@ export default function AdminOrdersPage() {
     mutationFn: async () => {
         if (!orders) throw new Error("Nenhum pedido para exportar.");
 
-        const ordersToExport = orders.filter(order => 
-            order.status === 'processing' &&
-            order.shipping_service_id &&
-            !isNaN(parseInt(order.shipping_service_id))
-        );
+        const ordersToExport = orders.filter(order => {
+            const isMontesClaros = order.shipping_zip_code?.startsWith('3940');
+            return order.status === 'processing' && !isMontesClaros;
+        });
 
         if (ordersToExport.length === 0) {
-            throw new Error("Não há pedidos de fora com status 'Processando' para exportar.");
+            throw new Error("Não há pedidos externos com status 'Processando' para exportar.");
         }
 
         const dataForSheet = ordersToExport.map(order => {
