@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { DateRangePicker } from "@/components/admin/DateRangePicker";
 import { DateRange } from "react-day-picker";
 import { showError, showSuccess } from "@/utils/toast";
+import * as XLSX from 'xlsx';
 
 type OrderWithDetails = Order & {
   profiles: Pick<Profile, 'full_name' | 'cpf' | 'email' | 'phone'> | null;
@@ -83,14 +84,6 @@ const getStatusVariant = (status: string) => {
   }
 };
 
-const escapeCsvField = (field: any) => {
-    const stringField = String(field ?? '');
-    if (stringField.includes(',') || stringField.includes('"') || stringField.includes('\n')) {
-        return `"${stringField.replace(/"/g, '""')}"`;
-    }
-    return stringField;
-};
-
 export default function AdminOrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<OrderWithDetails | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -101,7 +94,7 @@ export default function AdminOrdersPage() {
     queryFn: fetchOrders,
   });
 
-  const { mutate: exportToCsv, isPending: isExporting } = useMutation({
+  const { mutate: exportOrders, isPending: isExporting } = useMutation({
     mutationFn: async () => {
         if (!orders) throw new Error("Nenhum pedido para exportar.");
 
@@ -115,12 +108,7 @@ export default function AdminOrdersPage() {
             throw new Error("Não há pedidos de fora com status 'Processando' para exportar.");
         }
 
-        const headers = [
-            "Destinatário", "CPF", "Email", "Telefone", "CEP", "Endereço", "Número", "Complemento", "Bairro", "Cidade", "UF", 
-            "Serviço de Envio", "Valor Declarado (R$)", "Peso (kg)", "Altura (cm)", "Largura (cm)", "Comprimento (cm)", "Conteúdo do Pacote"
-        ];
-
-        const rows = ordersToExport.map(order => {
+        const dataForSheet = ordersToExport.map(order => {
             let totalWeight = 0;
             let totalHeight = 0;
             let maxLength = 0;
@@ -138,43 +126,47 @@ export default function AdminOrdersPage() {
 
             const declaredValue = order.total_amount - (order.shipping_cost || 0);
 
-            const rowData = [
-                order.profiles?.full_name,
-                order.profiles?.cpf,
-                order.profiles?.email,
-                order.profiles?.phone,
-                order.shipping_zip_code,
-                order.shipping_street,
-                order.shipping_number,
-                order.shipping_complement,
-                order.shipping_neighborhood,
-                order.shipping_city,
-                order.shipping_state,
-                order.shipping_service_name,
-                declaredValue.toFixed(2),
-                totalWeight.toFixed(2),
-                Math.max(totalHeight, 2),
-                Math.max(maxWidth, 11),
-                Math.max(maxLength, 16),
-                itemContents.join(', ')
-            ];
-
-            return rowData.map(escapeCsvField);
+            return {
+                'service': order.shipping_service_id,
+                'agency': null,
+                'from_name': 'GYMSTORE',
+                'from_email': 'contato@gymstore.com',
+                'from_document': 'SEU_CNPJ_AQUI', // Substituir pelo seu CNPJ
+                'from_postal_code': '39400001',
+                'from_address': 'Sua Rua',
+                'from_number': 'Seu Número',
+                'to_name': order.profiles?.full_name,
+                'to_document': order.profiles?.cpf,
+                'to_email': order.profiles?.email,
+                'to_phone': order.profiles?.phone,
+                'to_postal_code': order.shipping_zip_code,
+                'to_address': order.shipping_street,
+                'to_number': order.shipping_number,
+                'to_complement': order.shipping_complement,
+                'to_district': order.shipping_neighborhood,
+                'to_city': order.shipping_city,
+                'to_state_abbr': order.shipping_state,
+                'products[0][name]': itemContents.join('; '),
+                'products[0][quantity]': order.order_items.reduce((sum, item) => sum + item.quantity, 0),
+                'products[0][unitary_value]': declaredValue / order.order_items.reduce((sum, item) => sum + item.quantity, 1),
+                'volumes[0][height]': Math.max(totalHeight, 2),
+                'volumes[0][width]': Math.max(maxWidth, 11),
+                'volumes[0][length]': Math.max(maxLength, 16),
+                'volumes[0][weight]': totalWeight,
+                'insurance_value': declaredValue,
+                'receipt': 'false',
+                'own_hand': 'false',
+                'non_commercial': 'false',
+            };
         });
 
-        const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
-        const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' }); // Add BOM for Excel
-        const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        link.setAttribute("download", `pedidos_melhor_envio_${new Date().toISOString().split('T')[0]}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const worksheet = XLSX.utils.json_to_sheet(dataForSheet);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Envios");
+        XLSX.writeFile(workbook, `pedidos_melhor_envio_${new Date().toISOString().split('T')[0]}.xlsx`);
     },
     onSuccess: () => {
-        showSuccess("Arquivo CSV gerado com sucesso!");
+        showSuccess("Arquivo .xlsx gerado com sucesso!");
     },
     onError: (error: any) => {
         showError(error.message);
@@ -215,7 +207,7 @@ export default function AdminOrdersPage() {
                 {filteredOrders ? `${filteredOrders.length} pedido(s) encontrado(s).` : 'Carregando...'}
               </CardDescription>
             </div>
-            <Button onClick={() => exportToCsv()} disabled={isExporting}>
+            <Button onClick={() => exportOrders()} disabled={isExporting}>
                 {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                 Exportar para Melhor Envio
             </Button>
