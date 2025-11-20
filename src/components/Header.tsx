@@ -18,7 +18,8 @@ const NavLink = ({ to, children, onClick }: { to: string; children: React.ReactN
   <Link
     to={to}
     onClick={onClick}
-    className="relative z-10 text-sm font-medium text-zinc-900 transition-colors duration-300 ease-out group px-3 py-2 rounded-md hover:text-white"
+    className="relative z-10 text-sm font-medium text-zinc-900 transition-colors duration-300 ease-out group px-3 py-2 rounded-md hover:text-white notranslate"
+    translate="no"
   >
     {children}
     <span className="absolute inset-0 h-full w-full rounded-md -z-10 scale-x-0 origin-left transition-transform duration-300 ease-out group-hover:scale-x-100 bg-black" />
@@ -98,7 +99,8 @@ export const Header = () => {
                                         <Link 
                                           to={item.to} 
                                           onClick={item.to === '/' ? handleHomeClick : undefined}
-                                          className="block py-3 text-lg font-medium text-zinc-800 transition-colors hover:text-black"
+                                          className="block py-3 text-lg font-medium text-zinc-800 transition-colors hover:text-black notranslate"
+                                          translate="no"
                                         >
                                             {item.label}
                                         </Link>

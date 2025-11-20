@@ -36,20 +36,20 @@ export const Footer = () => {
             </p>
           </div>
           <div className="text-center md:text-left">
-            <h3 className="font-semibold text-white mb-4">Navegação</h3>
+            <h3 className="font-semibold text-white mb-4 notranslate" translate="no">Navegação</h3>
             <ul className="space-y-2 text-sm">
-              <li><Link to="/" className="hover:text-white transition-colors">Início</Link></li>
-              <li><Link to="/products" className="hover:text-white transition-colors">Produtos</Link></li>
-              <li><Link to="/contact" className="hover:text-white transition-colors">Contato</Link></li>
+              <li><Link to="/" className="hover:text-white transition-colors notranslate" translate="no">Início</Link></li>
+              <li><Link to="/products" className="hover:text-white transition-colors notranslate" translate="no">Produtos</Link></li>
+              <li><Link to="/contact" className="hover:text-white transition-colors notranslate" translate="no">Contato</Link></li>
             </ul>
           </div>
           <div className="text-center md:text-left">
-            <h3 className="font-semibold text-white mb-4">Políticas</h3>
+            <h3 className="font-semibold text-white mb-4 notranslate" translate="no">Políticas</h3>
             {policies && policies.length > 0 ? (
               <ul className="space-y-2 text-sm">
                 {policies.map(policy => (
                   <li key={policy.id}>
-                    <Link to={`/policy/${policy.id}`} className="hover:text-white transition-colors">
+                    <Link to={`/policy/${policy.id}`} className="hover:text-white transition-colors notranslate" translate="no">
                       {policy.title}
                     </Link>
                   </li>
@@ -60,15 +60,15 @@ export const Footer = () => {
             )}
           </div>
           <div className="text-center md:text-left">
-            <h3 className="font-semibold text-white mb-4">Contato</h3>
-            <ul className="space-y-2 text-sm">
+            <h3 className="font-semibold text-white mb-4 notranslate" translate="no">Contato</h3>
+            <ul className="space-y-2 text-sm notranslate" translate="no">
               <li>contato@gymstore.com</li>
               <li>(11) 99999-9999</li>
             </ul>
           </div>
         </div>
         <Separator className="my-8 bg-gray-800" />
-        <div className="text-center text-sm">
+        <div className="text-center text-sm notranslate" translate="no">
           © {new Date().getFullYear()} GYMSTORE. Todos os direitos reservados.
         </div>
       </div>

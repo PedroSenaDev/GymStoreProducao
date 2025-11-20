@@ -17,7 +17,8 @@ export const Logo = ({ className }: { className?: string }) => {
     <Link 
       to="/" 
       onClick={handleClick}
-      className={cn("text-2xl font-semibold tracking-widest uppercase transition-opacity hover:opacity-80", className)}
+      className={cn("text-2xl font-semibold tracking-widest uppercase transition-opacity hover:opacity-80 notranslate", className)}
+      translate="no"
     >
       <span className="font-black">GYM</span>
       <span className="font-light">STORE</span>
