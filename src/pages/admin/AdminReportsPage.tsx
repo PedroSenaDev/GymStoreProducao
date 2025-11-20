@@ -7,7 +7,9 @@ import { ptBR } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateRangePicker } from "@/components/admin/DateRangePicker";
 import { FullSalesChart } from "@/components/admin/FullSalesChart";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowLeft } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 async function fetchSalesData(dateRange?: DateRange) {
   const from = dateRange?.from ? startOfDay(dateRange.from) : startOfDay(subDays(new Date(), 29));
@@ -52,7 +54,15 @@ export default function AdminReportsPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-3xl font-bold">Relatório de Vendas</h1>
+      <div className="flex items-center gap-4">
+        <Button asChild variant="outline" size="sm" className="w-fit">
+          <Link to="/admin/dashboard">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar para o Dashboard
+          </Link>
+        </Button>
+        <h1 className="text-3xl font-bold">Relatório de Vendas</h1>
+      </div>
       
       <Card>
         <CardHeader>

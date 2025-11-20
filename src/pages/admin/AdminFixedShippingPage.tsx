@@ -28,7 +28,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Loader2, PlusCircle, MoreHorizontal, Truck } from "lucide-react";
+import { Loader2, PlusCircle, MoreHorizontal, ArrowLeft } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,8 +37,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { showError, showSuccess } from "@/utils/toast";
 import FixedShippingRateForm from "./FixedShippingRateForm";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Link } from "react-router-dom";
 
 async function fetchFixedShippingRates(): Promise<FixedShippingRate[]> {
   const { data, error } = await supabase.from("fixed_shipping_rates").select("*").order('min_order_value');
@@ -82,11 +83,16 @@ export default function AdminFixedShippingPage() {
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-6">Configurar Frete Fixo</h1>
+    <div className="space-y-6">
+      <Button asChild variant="outline" size="sm" className="w-fit">
+        <Link to="/admin/settings">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Voltar para Configurações
+        </Link>
+      </Button>
       
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-semibold">Taxas de Frete Fixas</h2>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Taxas de Frete Fixas</h1>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={handleAddNew}>
