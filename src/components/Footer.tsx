@@ -62,7 +62,7 @@ export const Footer = () => {
           <div className="text-center md:text-left">
             <h3 className="font-semibold text-white mb-4 notranslate" translate="no">Contato</h3>
             <ul className="space-y-2 text-sm notranslate" translate="no">
-              <li>contato@gymstore.com</li>
+              <li>gymstoreemoc@gmail.com</li>
               <li>(11) 99999-9999</li>
             </ul>
           </div>
