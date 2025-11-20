@@ -145,9 +145,9 @@ export const OrderInvoice = ({ order }: { order: any }) => (
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <View style={[styles.section, { flex: 1 }]}>
           <Text style={styles.sectionTitle}>Endereço de Entrega</Text>
-          <Text style={styles.text}>{order.shipping_address?.street || 'Rua não informada'}, {order.shipping_address?.number || 'S/N'}</Text>
-          <Text style={styles.text}>{order.shipping_address?.neighborhood || 'Bairro não informado'} - {order.shipping_address?.city || 'Cidade não informada'}, {order.shipping_address?.state || 'UF'}</Text>
-          <Text style={styles.text}>CEP: {order.shipping_address?.zip_code || 'Não informado'}</Text>
+          <Text style={styles.text}>{order.shipping_street || 'Rua não informada'}, {order.shipping_number || 'S/N'}</Text>
+          <Text style={styles.text}>{order.shipping_neighborhood || 'Bairro não informado'} - {order.shipping_city || 'Cidade não informada'}, {order.shipping_state || 'UF'}</Text>
+          <Text style={styles.text}>CEP: {order.shipping_zip_code || 'Não informado'}</Text>
         </View>
         <View style={[styles.section, { flex: 1 }]}>
           <Text style={styles.sectionTitle}>Detalhes do Envio</Text>
@@ -208,3 +208,4 @@ export const OrderInvoice = ({ order }: { order: any }) => (
       </View>
     </Page>
   </Document>
+);
