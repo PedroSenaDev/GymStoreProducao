@@ -4,6 +4,7 @@ export interface Address {
   street: string;
   number?: string;
   complement?: string;
+  ponto_referencia?: string;
   neighborhood: string;
   city: string;
   state: string;

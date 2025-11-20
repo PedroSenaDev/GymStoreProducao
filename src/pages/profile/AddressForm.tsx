@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { showError, showSuccess } from "@/utils/toast";
 import { Address } from "@/types/address";
 import { Loader2 } from "lucide-react";
@@ -25,6 +26,7 @@ const formSchema = z.object({
   street: z.string().min(1),
   number: z.string().optional(),
   complement: z.string().optional(),
+  ponto_referencia: z.string().optional(),
   neighborhood: z.string().min(1),
   city: z.string().min(1),
   state: z.string().min(1),
@@ -48,6 +50,7 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
       street: address?.street || "",
       number: address?.number || "",
       complement: address?.complement || "",
+      ponto_referencia: address?.ponto_referencia || "",
       neighborhood: address?.neighborhood || "",
       city: address?.city || "",
       state: address?.state || "",
@@ -101,7 +104,6 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
     mutationFn: async (values: z.infer<typeof formSchema>) => {
       if (!session?.user.id) throw new Error("Usuário não autenticado.");
 
-      // If setting this address as default, unset others first
       if (values.is_default) {
         const { error: unsetError } = await supabase
           .from("addresses")
@@ -136,111 +138,133 @@ export default function AddressForm({ address, onFinished }: AddressFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit((v) => mutate(v))} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="zip_code"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>CEP</FormLabel>
-              <FormControl>
-                <div className="relative">
-                  <Input placeholder="Apenas números" {...field} />
-                  {isFetchingCep && <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin" />}
-                </div>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <FormField
-            control={form.control}
-            name="street"
-            render={({ field }) => (
-              <FormItem className="sm:col-span-2">
-                <FormLabel>Rua</FormLabel>
-                <FormControl><Input {...field} disabled={isFetchingCep} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="number"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Número</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        <FormField
-          control={form.control}
-          name="complement"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Complemento</FormLabel>
-              <FormControl><Input placeholder="Apto, Bloco, etc." {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="neighborhood"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Bairro</FormLabel>
-              <FormControl><Input {...field} disabled={isFetchingCep} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <FormField
-            control={form.control}
-            name="city"
-            render={({ field }) => (
-              <FormItem className="sm:col-span-2">
-                <FormLabel>Cidade</FormLabel>
-                <FormControl><Input {...field} disabled={isFetchingCep} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="state"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Estado</FormLabel>
-                <FormControl><Input {...field} disabled={isFetchingCep} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        <FormField
-          control={form.control}
-          name="is_default"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-              <FormControl>
-                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-              </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel>Tornar este o endereço padrão</FormLabel>
-              </div>
-            </FormItem>
-          )}
-        />
-        <Button type="submit" disabled={isPending} className="w-full">
-          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Salvar Endereço
-        </Button>
+      <form onSubmit={form.handleSubmit((v) => mutate(v))}>
+        <Card className="border-none shadow-none">
+          <CardContent className="p-0 space-y-4">
+            <FormField
+              control={form.control}
+              name="zip_code"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>CEP</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Input placeholder="Apenas números" {...field} />
+                      {isFetchingCep && <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin" />}
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <FormField
+                control={form.control}
+                name="street"
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-2">
+                    <FormLabel>Rua</FormLabel>
+                    <FormControl><Input {...field} disabled={isFetchingCep} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="number"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Número</FormLabel>
+                    <FormControl><Input {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                control={form.control}
+                name="complement"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Complemento</FormLabel>
+                    <FormControl><Input placeholder="Apto, Bloco, etc." {...field} /></FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="ponto_referencia"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Ponto de Referência</FormLabel>
+                    <FormControl><Input placeholder="Opcional" {...field} /></FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            </div>
+            <FormField
+              control={form.control}
+              name="neighborhood"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Bairro</FormLabel>
+                  <FormControl><Input {...field} disabled={isFetchingCep} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <FormField
+                control={form.control}
+                name="city"
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-2">
+                    <FormLabel>Cidade</FormLabel>
+                    <FormControl><Input {...field} disabled={isFetchingCep} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="state"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Estado</FormLabel>
+                    <FormControl><Input {...field} disabled={isFetchingCep} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <FormField
+              control={form.control}
+              name="is_default"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                  <FormControl>
+                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>Tornar este o endereço padrão</FormLabel>
+                  </div>
+                </FormItem>
+              )}
+            />
+          </CardContent>
+          <CardFooter className="flex-col items-start p-0 pt-6">
+            <p className="text-xs text-muted-foreground mb-4">
+              Atenção: Preencha seus dados com cuidado. Não nos responsabilizamos por informações de entrega incorretas que possam resultar em falhas na entrega.
+            </p>
+            <Button type="submit" disabled={isPending} className="w-full">
+              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Salvar Endereço
+            </Button>
+          </CardFooter>
+        </Card>
       </form>
     </Form>
   );

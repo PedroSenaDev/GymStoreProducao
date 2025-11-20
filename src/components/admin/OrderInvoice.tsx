@@ -125,7 +125,7 @@ export const OrderInvoice = ({ order }: { order: any }) => (
       {/* Cabeçalho */}
       <View style={styles.header}>
         <Text style={styles.headerText}>GYMSTORE</Text>
-        <Text style={{ fontSize: 12 }}>Nota Fiscal</Text>
+        <Text style={{ fontSize: 12 }}>Resumo do Pedido</Text>
       </View>
 
       {/* Dados do Cliente */}
@@ -208,4 +208,3 @@ export const OrderInvoice = ({ order }: { order: any }) => (
       </View>
     </Page>
   </Document>
-);
