@@ -139,7 +139,7 @@ export default function DashboardHomePage() {
         </Card>
       </div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-7">
-        <div className="lg:col-span-4">
+        <div className="lg:col-span-4 hidden lg:block">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Visão Geral da Receita (Últimos 7 dias)</CardTitle>

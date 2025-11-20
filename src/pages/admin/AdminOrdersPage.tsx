@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Order } from "@/types/order";
 import { Profile } from "@/types/profile";
@@ -27,15 +27,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Eye, Search, Download } from "lucide-react";
+import { Loader2, Eye, Search } from "lucide-react";
 import { format, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import OrderDetails from "./OrderDetails";
 import { cn } from "@/lib/utils";
 import { DateRangePicker } from "@/components/admin/DateRangePicker";
 import { DateRange } from "react-day-picker";
-import { showError, showSuccess } from "@/utils/toast";
-import * as XLSX from 'xlsx';
 
 type OrderWithDetails = Order & {
   profiles: Pick<Profile, 'full_name' | 'cpf' | 'email' | 'phone'> | null;
@@ -94,60 +92,6 @@ export default function AdminOrdersPage() {
     queryFn: fetchOrders,
   });
 
-  const { mutate: exportOrders, isPending: isExporting } = useMutation({
-    mutationFn: async () => {
-        if (!orders) throw new Error("Nenhum pedido para exportar.");
-
-        const ordersToExport = orders.filter(order => {
-            const isMontesClaros = order.shipping_zip_code?.startsWith('3940');
-            return order.status === 'processing' && !isMontesClaros;
-        });
-
-        if (ordersToExport.length === 0) {
-            throw new Error("Não há pedidos externos com status 'Processando' para exportar.");
-        }
-
-        const dataForSheet = ordersToExport.map(order => {
-            let totalWeight = 0;
-            let totalHeight = 0;
-            let maxLength = 0;
-            let maxWidth = 0;
-
-            order.order_items.forEach(item => {
-                const quantity = item.quantity || 1;
-                totalWeight += (item.products.weight_kg || 0.1) * quantity;
-                totalHeight += (item.products.height_cm || 2) * quantity;
-                maxLength = Math.max(maxLength, item.products.length_cm || 16);
-                maxWidth = Math.max(maxWidth, item.products.width_cm || 11);
-            });
-
-            const declaredValue = order.total_amount - (order.shipping_cost || 0);
-
-            return {
-                'CEP DESTINO': order.shipping_zip_code,
-                'PESO (KG)': parseFloat(totalWeight.toFixed(3)),
-                'ALTURA (CM)': Math.max(totalHeight, 2),
-                'LARGURA (CM)': Math.max(maxWidth, 11),
-                'COMPRIMENTO (CM)': Math.max(maxLength, 16),
-                'AVISO DE RECEBIMENTO (AR)': 'NÃO',
-                'MÃO PRÓPRIA (MP)': 'NÃO',
-                'VALOR SEGURADO': parseFloat(declaredValue.toFixed(2)),
-            };
-        });
-
-        const worksheet = XLSX.utils.json_to_sheet(dataForSheet);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Envios");
-        XLSX.writeFile(workbook, `pedidos_melhor_envio_${new Date().toISOString().split('T')[0]}.xlsx`);
-    },
-    onSuccess: () => {
-        showSuccess("Arquivo .xlsx gerado com sucesso!");
-    },
-    onError: (error: any) => {
-        showError(error.message);
-    }
-  });
-
   const filteredOrders = useMemo(() => {
     if (!orders) return [];
     return orders.filter(order => {
@@ -182,10 +126,6 @@ export default function AdminOrdersPage() {
                 {filteredOrders ? `${filteredOrders.length} pedido(s) encontrado(s).` : 'Carregando...'}
               </CardDescription>
             </div>
-            <Button onClick={() => exportOrders()} disabled={isExporting}>
-                {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                Exportar para Melhor Envio
-            </Button>
           </div>
           <div className="flex flex-col md:flex-row items-center gap-4 pt-4">
             <div className="relative w-full md:flex-1">
