@@ -16,7 +16,8 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { showError } from "@/utils/toast";
 import { useState } from "react";
-import { Loader2, MailCheck } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { OtpForm } from "./OtpForm";
 
 const formSchema = z.object({
   email: z.string().email(),
@@ -29,7 +30,7 @@ const formSchema = z.object({
 
 export function SignUpForm() {
   const [isLoading, setIsLoading] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [emailForOtp, setEmailForOtp] = useState<string | null>(null);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -41,12 +42,10 @@ export function SignUpForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
+    // This will now send an OTP because we'll instruct the user to enable it in Supabase settings.
     const { data, error } = await supabase.auth.signUp({
       email: values.email,
       password: values.password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/login?confirmed=true`,
-      },
     });
 
     if (error) {
@@ -55,28 +54,19 @@ export function SignUpForm() {
       return;
     }
 
-    // **CRITICAL SECURITY STEP**
-    // If Supabase returns a session for the unconfirmed user, destroy it immediately.
-    // This forces the user to go through the email confirmation link.
-    if (data.session) {
-      await supabase.auth.signOut();
+    // If signUp is successful but the user is not confirmed, move to OTP step.
+    if (data.user && !data.user.email_confirmed_at) {
+      setEmailForOtp(values.email);
+    } else {
+      // This case shouldn't happen with OTP enabled, but as a fallback:
+      showError("Algo deu errado. Por favor, tente novamente.");
     }
     
-    // Now, safely show the confirmation message.
-    setIsSubmitted(true);
     setIsLoading(false);
   }
 
-  if (isSubmitted) {
-    return (
-      <div className="text-center space-y-4 py-8">
-        <MailCheck className="mx-auto h-12 w-12 text-green-500" />
-        <h3 className="text-xl font-semibold">Confirme seu E-mail</h3>
-        <p className="text-muted-foreground">
-          Enviamos um link de confirmação para o seu e-mail. Por favor, verifique sua caixa de entrada (e spam) para ativar sua conta.
-        </p>
-      </div>
-    );
+  if (emailForOtp) {
+    return <OtpForm email={emailForOtp} />;
   }
 
   return (
@@ -123,7 +113,7 @@ export function SignUpForm() {
         />
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Registrar
+          Receber código de verificação
         </Button>
       </form>
     </Form>
