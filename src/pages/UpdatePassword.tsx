@@ -20,6 +20,7 @@ import { Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Logo } from "@/components/Logo";
+import { translateSupabaseError } from "@/utils/supabaseErrorMap";
 
 const formSchema = z.object({
   password: z.string().min(6),
@@ -47,7 +48,7 @@ export default function UpdatePasswordPage() {
     });
 
     if (error) {
-      showError(error.message);
+      showError(translateSupabaseError(error.message));
     } else {
       showSuccess("Senha atualizada com sucesso! Você já pode fazer o login.");
       navigate("/login");

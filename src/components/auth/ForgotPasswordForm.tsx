@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { showError, showSuccess } from "@/utils/toast";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { translateSupabaseError } from "@/utils/supabaseErrorMap";
 
 const formSchema = z.object({
   email: z.string().email(),
@@ -38,7 +39,7 @@ export function ForgotPasswordForm({ onFinished }: { onFinished: () => void }) {
     });
 
     if (error) {
-      showError(error.message);
+      showError(translateSupabaseError(error.message));
     } else {
       showSuccess("E-mail de recuperação enviado! Verifique sua caixa de entrada.");
       onFinished();

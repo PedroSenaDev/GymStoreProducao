@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { showError, showSuccess } from "@/utils/toast";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { translateSupabaseError } from "@/utils/supabaseErrorMap";
 
 const formSchema = z.object({
   otp: z.string().min(6, "O código deve ter 6 dígitos."),
@@ -33,7 +34,7 @@ export function OtpForm({ email }: OtpFormProps) {
     });
 
     if (error) {
-      showError(error.message);
+      showError(translateSupabaseError(error.message));
     } else {
       showSuccess("Conta verificada com sucesso! Bem-vindo(a)!");
       // AuthProvider will handle the session update and redirect.

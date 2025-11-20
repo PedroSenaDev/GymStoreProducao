@@ -18,6 +18,7 @@ import { showError } from "@/utils/toast";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { OtpForm } from "./OtpForm";
+import { translateSupabaseError } from "@/utils/supabaseErrorMap";
 
 const formSchema = z.object({
   email: z.string().email(),
@@ -49,7 +50,7 @@ export function SignUpForm() {
     });
 
     if (error) {
-      showError(error.message);
+      showError(translateSupabaseError(error.message));
       setIsLoading(false);
       return;
     }

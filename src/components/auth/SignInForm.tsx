@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { showError, showSuccess } from "@/utils/toast";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { translateSupabaseError } from "@/utils/supabaseErrorMap";
 
 const formSchema = z.object({
   email: z.string().email(),
@@ -42,11 +43,7 @@ export function SignInForm() {
     });
 
     if (error) {
-      if (error.message.includes("Email not confirmed")) {
-         showError("Sua conta precisa ser confirmada. Verifique seu e-mail.");
-      } else {
-         showError("Email ou senha inválidos. Por favor, tente novamente.");
-      }
+      showError(translateSupabaseError(error.message));
       setIsLoading(false);
       return;
     }

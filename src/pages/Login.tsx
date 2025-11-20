@@ -24,6 +24,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { translateSupabaseError } from "@/utils/supabaseErrorMap";
 
 const SocialLogin = () => {
   async function signInWithGoogle() {
@@ -34,7 +35,7 @@ const SocialLogin = () => {
       },
     });
     if (error) {
-      showError(`Erro ao entrar com Google: ${error.message}`);
+      showError(`Erro ao entrar com Google: ${translateSupabaseError(error.message)}`);
     }
   }
 
