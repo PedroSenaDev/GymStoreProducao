@@ -39,7 +39,7 @@ const orderStatus = ["pending", "processing", "shipped", "delivered", "cancelled
 
 const statusTranslations: Record<typeof orderStatus[number], string> = {
   pending: "Pendente",
-  processing: "Processando",
+  processing: "Pagamento Aprovado",
   shipped: "Enviado",
   delivered: "Entregue",
   cancelled: "Cancelado",

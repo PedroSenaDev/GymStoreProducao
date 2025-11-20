@@ -37,7 +37,7 @@ const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style
 const translateStatus = (status: string): string => {
     switch (status) {
       case 'pending': return 'Pendente';
-      case 'processing': return 'Processando';
+      case 'processing': return 'Pagamento Aprovado';
       case 'shipped': return 'Enviado';
       case 'delivered': return 'Entregue';
       case 'cancelled': return 'Cancelado';
