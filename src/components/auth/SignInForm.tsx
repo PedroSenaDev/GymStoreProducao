@@ -51,7 +51,8 @@ export function SignInForm() {
       return;
     }
 
-    // Final check to ensure user object confirms the email status
+    // **CRITICAL SECURITY STEP (Redundant Check)**
+    // Final check to ensure user object confirms the email status, even if no error was thrown.
     if (data.user && !data.user.email_confirmed_at) {
       await supabase.auth.signOut(); // Ensure no session persists
       showError("Sua conta precisa ser confirmada. Verifique seu e-mail.");

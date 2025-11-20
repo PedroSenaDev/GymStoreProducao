@@ -13,7 +13,8 @@ const AuthHandler = () => {
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        // This is the new, stricter security check
+        // **CRITICAL SECURITY CHECK**
+        // This is the main gatekeeper. It ensures no unverified user can maintain a session.
         if (event === 'SIGNED_IN' && session?.user && !session.user.email_confirmed_at) {
           showError("Por favor, confirme seu e-mail antes de fazer login. Verifique sua caixa de entrada.");
           await supabase.auth.signOut(); // Immediately invalidate the unverified session

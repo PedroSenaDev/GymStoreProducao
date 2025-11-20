@@ -57,6 +57,7 @@ export function SignUpForm() {
 
     // **CRITICAL SECURITY STEP**
     // If Supabase returns a session for the unconfirmed user, destroy it immediately.
+    // This forces the user to go through the email confirmation link.
     if (data.session) {
       await supabase.auth.signOut();
     }
