@@ -23,10 +23,13 @@ serve(async (req) => {
   }
 
   try {
-    const { items, shippingCost, userId, shippingAddressId, shippingRateId, shippingRateName, deliveryTime } = await req.json();
+    const { 
+      items, shippingCost, userId, shippingAddressId, shippingRateId, shippingRateName, deliveryTime,
+      customerName, customerEmail, customerPhone 
+    } = await req.json();
 
-    if (!items || items.length === 0 || !userId || !shippingAddressId || !shippingRateId || !shippingRateName) {
-      throw new Error("Informações essenciais do pedido incompletas.");
+    if (!items || items.length === 0 || !userId || !shippingAddressId || !shippingRateId || !shippingRateName || !customerEmail) {
+      throw new Error("Informações essenciais do pedido ou cliente incompletas.");
     }
 
     // 1. Recalcular o subtotal dos produtos por segurança
@@ -45,7 +48,22 @@ serve(async (req) => {
 
     const totalAmount = subtotal + shippingCost;
 
-    // 2. Criar o PaymentIntent no Stripe
+    // 2. Encontrar ou criar o cliente na Stripe
+    let customerId;
+    const existingCustomers = await stripe.customers.list({ email: customerEmail, limit: 1 });
+
+    if (existingCustomers.data.length > 0) {
+      customerId = existingCustomers.data[0].id;
+    } else {
+      const newCustomer = await stripe.customers.create({
+        name: customerName,
+        email: customerEmail,
+        phone: customerPhone,
+      });
+      customerId = newCustomer.id;
+    }
+
+    // 3. Criar o PaymentIntent no Stripe associado ao cliente
     const essentialMetadata = {
         user_id: userId,
         shipping_address_id: shippingAddressId,
@@ -58,10 +76,12 @@ serve(async (req) => {
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(totalAmount * 100), // em centavos
       currency: 'brl',
+      customer: customerId, // Associando o cliente
+      receipt_email: customerEmail, // Garante que o recibo seja enviado
       metadata: essentialMetadata,
     });
 
-    // 3. Retornar o client_secret para o frontend
+    // 4. Retornar o client_secret para o frontend
     return new Response(JSON.stringify({ clientSecret: paymentIntent.client_secret }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
