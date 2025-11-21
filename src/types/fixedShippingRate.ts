@@ -5,4 +5,5 @@ export interface FixedShippingRate {
   price: number;
   is_active: boolean;
   created_at: string;
+  delivery_time_days: number;
 }

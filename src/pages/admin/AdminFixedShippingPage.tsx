@@ -125,6 +125,7 @@ export default function AdminFixedShippingPage() {
                   <TableHead>Nome</TableHead>
                   <TableHead>Valor Mínimo do Pedido</TableHead>
                   <TableHead>Valor do Frete</TableHead>
+                  <TableHead>Prazo de Entrega</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-[80px]"></TableHead>
                 </TableRow>
@@ -135,6 +136,7 @@ export default function AdminFixedShippingPage() {
                     <TableCell className="font-medium">{rate.label}</TableCell>
                     <TableCell>{formatCurrency(rate.min_order_value)}</TableCell>
                     <TableCell>{formatCurrency(rate.price)}</TableCell>
+                    <TableCell>{rate.delivery_time_days} dia(s)</TableCell>
                     <TableCell>
                         <Badge variant={rate.is_active ? 'default' : 'secondary'}>
                             {rate.is_active ? 'Ativa' : 'Inativa'}

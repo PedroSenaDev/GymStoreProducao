@@ -22,6 +22,7 @@ const formSchema = z.object({
   label: z.string().min(1, "O nome da taxa é obrigatório."),
   min_order_value: z.coerce.number().min(0, "Valor mínimo não pode ser negativo."),
   price: z.coerce.number().min(0, "O preço do frete não pode ser negativo."),
+  delivery_time_days: z.coerce.number().int("O prazo deve ser um número inteiro.").min(0, "O prazo não pode ser negativo."),
   is_active: z.boolean().default(true),
 });
 
@@ -38,6 +39,7 @@ export default function FixedShippingRateForm({ rate, onFinished }: FixedShippin
       label: rate?.label || "",
       min_order_value: rate?.min_order_value || 0,
       price: rate?.price || 0,
+      delivery_time_days: rate?.delivery_time_days || 1,
       is_active: rate?.is_active ?? true,
     },
   });
@@ -75,7 +77,7 @@ export default function FixedShippingRateForm({ rate, onFinished }: FixedShippin
             </FormItem>
           )}
         />
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="min_order_value"
@@ -99,6 +101,17 @@ export default function FixedShippingRateForm({ rate, onFinished }: FixedShippin
             )}
           />
         </div>
+        <FormField
+            control={form.control}
+            name="delivery_time_days"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Prazo de Entrega (dias)</FormLabel>
+                <FormControl><Input type="number" step="1" placeholder="Ex: 1" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         <FormField
           control={form.control}
           name="is_active"

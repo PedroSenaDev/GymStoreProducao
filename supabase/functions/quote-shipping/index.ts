@@ -83,7 +83,7 @@ serve(async (req) => {
             id: rate.id,
             name: rate.label,
             price: rate.price,
-            delivery_time: "N/A",
+            delivery_time: `${rate.delivery_time_days} dia(s)`,
             type: 'fixed',
             company: { name: "Entrega Local", picture: null }
           });
