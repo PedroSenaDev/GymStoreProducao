@@ -6,7 +6,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { supabase } from "@/integrations/supabase/client";
 import { showError, showSuccess } from "@/utils/toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { translateSupabaseError } from "@/utils/supabaseErrorMap";
 
@@ -20,10 +20,37 @@ interface OtpFormProps {
 
 export function OtpForm({ email }: OtpFormProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [countdown, setCountdown] = useState(90);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: { otp: "" },
   });
+
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const timer = setInterval(() => {
+      setCountdown((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [countdown]);
+
+  async function handleResendCode() {
+    setIsResending(true);
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+    });
+
+    if (error) {
+      showError(translateSupabaseError(error.message));
+    } else {
+      showSuccess("Um novo código foi enviado para o seu e-mail.");
+      setCountdown(90); // Reset timer
+    }
+    setIsResending(false);
+  }
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
@@ -78,6 +105,24 @@ export function OtpForm({ email }: OtpFormProps) {
           </Button>
         </form>
       </Form>
+      <div className="mt-6 text-sm">
+        {countdown > 0 ? (
+          <p className="text-muted-foreground">
+            Não recebeu o código? Reenviar em {Math.floor(countdown / 60)}:
+            {String(countdown % 60).padStart(2, "0")}
+          </p>
+        ) : (
+          <Button
+            variant="link"
+            className="h-auto p-0 font-semibold"
+            onClick={handleResendCode}
+            disabled={isResending}
+          >
+            {isResending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Reenviar código
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
