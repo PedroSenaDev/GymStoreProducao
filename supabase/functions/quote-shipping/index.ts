@@ -118,11 +118,15 @@ serve(async (req) => {
             if (rate.error) {
               apiErrors.push(`${rate.company.name}: ${rate.error}`);
             } else if (rate.company) {
+              // Parse the delivery time and add a 2-day buffer
+              const originalDeliveryTime = parseInt(rate.delivery_time, 10);
+              const finalDeliveryTime = !isNaN(originalDeliveryTime) ? originalDeliveryTime + 2 : rate.delivery_time;
+
               shippingOptions.push({
                 id: rate.id,
                 name: rate.name,
                 price: parseFloat(rate.price),
-                delivery_time: rate.delivery_time,
+                delivery_time: finalDeliveryTime,
                 type: 'gateway',
                 company: {
                   name: rate.company.name,
