@@ -28,7 +28,6 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
-    AlertDialogTrigger,
   } from "@/components/ui/alert-dialog";
 import { Loader2, PlusCircle, Edit, Trash2, Truck } from "lucide-react";
 import PolicyForm from "./PolicyForm";
@@ -44,6 +43,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Link } from "react-router-dom";
+import FooterSettingsForm from "./FooterSettingsForm";
 
 async function fetchPolicies(): Promise<Policy[]> {
   const { data, error } = await supabase.from("policies").select("*").not('display_area', 'eq', 'about_us').order('created_at', { ascending: false });
@@ -64,7 +64,7 @@ async function fetchSizeCharts(): Promise<SizeChart[]> {
 }
 
 export default function AdminSettingsPage() {
-  const [activeTab, setActiveTab] = useState("about");
+  const [activeTab, setActiveTab] = useState("general");
   const [isPolicyDialogOpen, setIsPolicyDialogOpen] = useState(false);
   const [isAboutUsDialogOpen, setIsAboutUsDialogOpen] = useState(false);
   const [isSizeChartDialogOpen, setIsSizeChartDialogOpen] = useState(false);
@@ -135,7 +135,7 @@ export default function AdminSettingsPage() {
                 <SelectValue placeholder="Selecione uma seção" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="about">Sobre a Loja</SelectItem>
+                <SelectItem value="general">Geral</SelectItem>
                 <SelectItem value="shipping">Frete</SelectItem>
                 <SelectItem value="size-charts">Tabelas de Medidas</SelectItem>
                 <SelectItem value="policies">Políticas</SelectItem>
@@ -143,7 +143,7 @@ export default function AdminSettingsPage() {
             </Select>
           </div>
 
-          <TabsContent value="about" className="mt-6">
+          <TabsContent value="general" className="mt-6 space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Seção "Sobre Nossa Loja"</CardTitle>
@@ -154,7 +154,7 @@ export default function AdminSettingsPage() {
                       <DialogTrigger asChild>
                           <Button>
                               <Edit className="mr-2 h-4 w-4" />
-                              Editar Seção
+                              Editar Seção Sobre
                           </Button>
                       </DialogTrigger>
                       <DialogContent>
@@ -167,6 +167,15 @@ export default function AdminSettingsPage() {
                           />
                       </DialogContent>
                   </Dialog>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Informações de Contato do Rodapé</CardTitle>
+                <CardDescription>Configure o e-mail e telefone que aparecem no rodapé do site.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <FooterSettingsForm />
               </CardContent>
             </Card>
           </TabsContent>

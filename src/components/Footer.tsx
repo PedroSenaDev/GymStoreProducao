@@ -19,11 +19,37 @@ async function fetchFooterPolicies(): Promise<Policy[]> {
   return data;
 }
 
+async function fetchFooterSettings(): Promise<Record<string, string>> {
+    const { data, error } = await supabase
+      .from("settings")
+      .select("key, value")
+      .in("key", ["footer_contact_email", "footer_contact_phone", "footer_contact_show"]);
+  
+    if (error) {
+      console.error("Error fetching footer settings:", error);
+      return {};
+    }
+  
+    return data.reduce((acc, { key, value }) => {
+      acc[key] = value;
+      return acc;
+    }, {} as Record<string, string>);
+}
+
 export const Footer = () => {
   const { data: policies } = useQuery({
     queryKey: ['footerPolicies'],
     queryFn: fetchFooterPolicies,
   });
+
+  const { data: settings } = useQuery({
+    queryKey: ['footerSettings'],
+    queryFn: fetchFooterSettings,
+  });
+
+  const showContact = settings?.footer_contact_show === 'true';
+  const contactEmail = settings?.footer_contact_email;
+  const contactPhone = settings?.footer_contact_phone;
 
   return (
     <footer className="bg-black text-gray-300 border-t border-gray-800">
@@ -61,10 +87,14 @@ export const Footer = () => {
           </div>
           <div className="text-center md:text-left">
             <h3 className="font-semibold text-white mb-4 notranslate" translate="no">Contato</h3>
-            <ul className="space-y-2 text-sm notranslate" translate="no">
-              <li>gymstoreemoc@gmail.com</li>
-              <li>(11) 99999-9999</li>
-            </ul>
+            {showContact ? (
+                <ul className="space-y-2 text-sm notranslate" translate="no">
+                    {contactEmail && <li>{contactEmail}</li>}
+                    {contactPhone && <li>{contactPhone}</li>}
+                </ul>
+            ) : (
+                <p className="text-sm">Entre em contato pela nossa página de contato.</p>
+            )}
           </div>
         </div>
         <Separator className="my-8 bg-gray-800" />
