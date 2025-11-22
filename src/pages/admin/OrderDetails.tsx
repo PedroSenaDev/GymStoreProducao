@@ -32,6 +32,20 @@ async function fetchOrderDetails(orderId: string) {
   return data;
 }
 
+async function fetchPdfSettings() {
+    const { data, error } = await supabase
+      .from("settings")
+      .select("key, value")
+      .in("key", ["footer_contact_email", "footer_contact_phone"]);
+  
+    if (error) throw error;
+  
+    return data.reduce((acc, { key, value }) => {
+      acc[key] = value;
+      return acc;
+    }, {} as Record<string, string>);
+}
+
 const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
 const translateStatus = (status: string): string => {
@@ -48,11 +62,19 @@ const translateStatus = (status: string): string => {
 export default function OrderDetails({ orderId }: { orderId: string }) {
   const [isUpdateDialogOpen, setUpdateDialogOpen] = useState(false);
 
-  const { data: order, isLoading, isError } = useQuery({
+  const { data: order, isLoading: isLoadingOrder, isError: isErrorOrder } = useQuery({
     queryKey: ["orderDetails", orderId],
     queryFn: () => fetchOrderDetails(orderId),
     enabled: !!orderId,
   });
+
+  const { data: settings, isLoading: isLoadingSettings } = useQuery({
+    queryKey: ["pdfSettings"],
+    queryFn: fetchPdfSettings,
+  });
+
+  const isLoading = isLoadingOrder || isLoadingSettings;
+  const isError = isErrorOrder;
 
   if (isLoading) {
     return <div className="flex justify-center items-center h-96"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -74,11 +96,11 @@ export default function OrderDetails({ orderId }: { orderId: string }) {
           </div>
           <div className="flex flex-wrap gap-2 self-start sm:self-auto">
             <PDFDownloadLink
-              document={<OrderInvoice order={order} />}
+              document={<OrderInvoice order={order} settings={settings} />}
               fileName={`pedido_${order.id.substring(0, 8)}.pdf`}
             >
               {({ loading }) => (
-                <Button variant="outline" size="sm" disabled={loading}>
+                <Button variant="outline" size="sm" disabled={loading || isLoadingSettings}>
                   <FileDown className="mr-2 h-4 w-4" />
                   {loading ? 'Gerando...' : 'Gerar PDF'}
                 </Button>

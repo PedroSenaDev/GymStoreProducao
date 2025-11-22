@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
 const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 const formatDateTime = (date: string) => format(new Date(date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
 
-export const OrderInvoice = ({ order }: { order: any }) => (
+export const OrderInvoice = ({ order, settings }: { order: any, settings?: Record<string, string> }) => (
   <Document>
     <Page size="A4" style={styles.page}>
       {/* Cabeçalho */}
@@ -195,8 +195,8 @@ export const OrderInvoice = ({ order }: { order: any }) => (
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Remetente</Text>
         <Text style={styles.text}>GYMSTORE</Text>
-        <Text style={styles.text}>contato@gymstore.com</Text>
-        <Text style={styles.text}>(11) 99999-9999</Text>
+        <Text style={styles.text}>{settings?.footer_contact_email || 'contato@gymstore.com'}</Text>
+        <Text style={styles.text}>{settings?.footer_contact_phone || '(11) 99999-9999'}</Text>
       </View>
 
       {/* Assinatura */}
