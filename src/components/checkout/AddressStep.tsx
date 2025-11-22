@@ -173,7 +173,7 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
               {shippingOptions.map((rate) => (
                 <Label key={rate.id} htmlFor={`rate-${rate.id}`} className="flex cursor-pointer rounded-lg border p-4 transition-colors has-[:checked]:border-primary">
                   <RadioGroupItem value={rate.id.toString()} id={`rate-${rate.id}`} className="mr-4 mt-1" />
-                  <div className="flex flex-1 items-center justify-between gap-4">
+                  <div className="flex flex-1 flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                     <div className="flex items-center gap-3">
                       {rate.company.picture ? (
                         <img src={rate.company.picture} alt={rate.company.name} className="h-6 w-auto" />
@@ -185,7 +185,7 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
                         <p className="text-xs text-muted-foreground">{rate.name}</p>
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-left sm:text-right">
                       <p className="font-bold">{rate.price === 0 ? 'Grátis' : formatCurrency(rate.price)}</p>
                       {rate.type === 'gateway' && <p className="text-xs text-muted-foreground">{rate.delivery_time} dias</p>}
                     </div>
