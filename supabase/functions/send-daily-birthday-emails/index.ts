@@ -37,12 +37,12 @@ const createEmailContent = (name: string, discount: string, siteUrl: string) => 
     <div class="header"><h1>GYMSTORE</h1></div>
     <div class="gift-icon">🎁</div>
     <h2>Parabéns, ${name}!</h2>
-    <p>Nós da GYMSTORE queremos celebrar o seu mês de aniversário com um presente especial:</p>
+    <p>Nós da GYMSTORE queremos celebrar o seu dia de aniversário com um presente especial:</p>
     <p style="font-size: 18px; font-weight: 600; color: #E53E3E;">Um desconto exclusivo de:</p>
     <div class="discount-box">${discount}% OFF</div>
     <p>Use este desconto em qualquer compra que você fizer hoje para elevar seu treino!</p>
     <a href="${siteUrl}/products" class="button">Aproveitar Meu Presente Agora</a>
-    <p style="font-size: 12px; color: #888;">O desconto será aplicado automaticamente no checkout no dia do seu aniversário.</p>
+    <p style="font-size: 12px; color: #888;">O desconto será aplicado automaticamente no checkout.</p>
     <p>Atenciosamente,<br>Equipe GYMSTORE</p>
     <div class="footer"><p>&copy; ${new Date().getFullYear()} GYMSTORE</p></div>
   </div>
@@ -65,6 +65,7 @@ serve(async (req) => {
 
   try {
     const today = new Date();
+    const currentDay = today.getDate();
     const currentMonth = today.getMonth() + 1; // Mês atual (1 a 12)
     const currentYear = today.getFullYear();
     const siteUrl = Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.vercel.app') || 'https://gymstoremoc.vercel.app';
@@ -88,7 +89,7 @@ serve(async (req) => {
       });
     }
 
-    // 2. Buscar clientes que fazem aniversário este mês e que ainda não foram notificados este ano
+    // 2. Buscar todos os perfis com data de nascimento
     const { data: profiles, error: profilesError } = await supabaseAdmin
       .from("profiles")
       .select("id, full_name, email, birth_date, last_birthday_reward_at")
@@ -103,15 +104,17 @@ serve(async (req) => {
     profiles.forEach(profile => {
       if (!profile.birth_date || !profile.email) return;
 
+      // Usamos T00:00:00 para garantir que a comparação de data seja precisa, ignorando o fuso horário
       const birthDate = new Date(`${profile.birth_date}T00:00:00`);
+      const birthDay = birthDate.getDate();
       const birthMonth = birthDate.getMonth() + 1;
       
       const lastRewardYear = profile.last_birthday_reward_at 
         ? new Date(profile.last_birthday_reward_at).getFullYear() 
         : 0;
 
-      // Verifica se é o mês de aniversário E se o e-mail ainda não foi enviado este ano
-      if (birthMonth === currentMonth && lastRewardYear < currentYear) {
+      // Verifica se é o dia e mês de aniversário HOJE E se o e-mail ainda não foi enviado este ano
+      if (birthDay === currentDay && birthMonth === currentMonth && lastRewardYear < currentYear) {
         
         const emailContent = createEmailContent(
           profile.full_name || 'Cliente', 
@@ -131,21 +134,17 @@ serve(async (req) => {
             body: JSON.stringify({
               sender: { name: 'GYMSTORE', email: 'gymstoreemoc@gmail.com' },
               to: [{ email: profile.email }],
-              subject: `🎁 Presente de Aniversário da GYMSTORE! ${discountPercentage}% OFF`,
+              subject: `🎉 Feliz Aniversário! Seu presente de ${discountPercentage}% OFF chegou!`,
               htmlContent: emailContent,
             }),
           }).then(res => {
             if (res.ok) {
               emailsSent++;
-              // 4. Atualizar o campo last_birthday_reward_at para o ano atual, 
-              // mas mantendo o dia e mês do aniversário para que o desconto no checkout funcione.
-              // NOTA: O desconto no checkout fará a atualização final para o dia exato.
-              // Aqui, apenas marcamos que o e-mail foi enviado este ano.
-              const nextRewardDate = new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate());
+              // 4. Atualizar o campo last_birthday_reward_at para o dia atual, marcando o envio do e-mail.
               updatePromises.push(
                 supabaseAdmin
                   .from('profiles')
-                  .update({ last_birthday_reward_at: nextRewardDate.toISOString() })
+                  .update({ last_birthday_reward_at: today.toISOString() })
                   .eq('id', profile.id)
               );
             } else {
@@ -164,7 +163,7 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error("Erro na função send-birthday-emails:", error);
+    console.error("Erro na função send-daily-birthday-emails:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
