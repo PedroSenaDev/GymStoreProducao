@@ -35,7 +35,8 @@ import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 import AdminOrdersPage from "./pages/admin/AdminOrdersPage";
 import AdminReportsPage from "./pages/admin/AdminReportsPage";
 import AdminStockPage from "./pages/admin/AdminStockPage";
-import AdminFixedShippingPage from "./pages/admin/AdminFixedShippingPage"; // Novo componente
+import AdminFixedShippingPage from "./pages/admin/AdminFixedShippingPage";
+import AdminBirthdaysPage from "./pages/admin/AdminBirthdaysPage";
 
 // Components
 import { StripeWrapper } from "./components/StripeWrapper";
@@ -84,10 +85,11 @@ const App = () => (
                <Route path="products/categories" element={<AdminCategoriesPage />} />
 
                <Route path="stock" element={<AdminStockPage />} />
+               <Route path="birthdays" element={<AdminBirthdaysPage />} />
                
                {/* Configurações e Frete aninhados */}
                <Route path="settings" element={<AdminSettingsPage />} />
-               <Route path="settings/shipping" element={<AdminFixedShippingPage />} /> {/* Rota atualizada */}
+               <Route path="settings/shipping" element={<AdminFixedShippingPage />} />
                
                <Route path="reports" element={<AdminReportsPage />} />
             </Route>

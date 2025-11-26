@@ -7,6 +7,7 @@ import { Link } from "react-router-dom";
 import { LogOut, LayoutDashboard, Edit, Loader2 } from "lucide-react";
 import ProfileDetailsForm from "./ProfileDetailsForm";
 import { Separator } from "@/components/ui/separator";
+import { format } from "date-fns";
 
 const ProfileInfo = ({ label, value }: { label: string, value?: string }) => (
     <div className="grid gap-1 py-3 sm:grid-cols-3 sm:gap-4">
@@ -56,6 +57,10 @@ export default function ProfileDetailsPage() {
                     <ProfileInfo label="Email" value={useSessionStore.getState().session?.user.email} />
                     <ProfileInfo label="CPF" value={profile?.cpf} />
                     <ProfileInfo label="Telefone" value={profile?.phone} />
+                    <ProfileInfo 
+                        label="Data de Nascimento" 
+                        value={profile?.birth_date ? format(new Date(`${profile.birth_date}T00:00:00`), 'dd/MM/yyyy') : '-'} 
+                    />
                 </CardContent>
                 <CardFooter className="flex flex-col-reverse sm:flex-row items-center gap-4 pt-6">
                     <div className="flex-1 w-full sm:w-auto">

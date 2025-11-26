@@ -5,4 +5,5 @@ export interface Profile {
   phone?: string;
   updated_at: string;
   isAdmin: boolean;
+  birth_date?: string | null;
 }
