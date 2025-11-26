@@ -32,7 +32,9 @@ serve(async (req) => {
       return acc;
     }, {} as Record<string, string>);
 
-    if (settings.birthday_discount_enabled !== 'true') {
+    const discountPercentage = Number(settings.birthday_discount_percentage || 0);
+
+    if (settings.birthday_discount_enabled !== 'true' || discountPercentage <= 0) {
       return new Response(JSON.stringify({ discountPercentage: 0 }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -54,19 +56,32 @@ serve(async (req) => {
     }
 
     const today = new Date();
+    // Usamos T00:00:00 para garantir que a comparação de data seja precisa, ignorando o fuso horário
     const birthday = new Date(`${profile.birth_date}T00:00:00`);
-    const isBirthday = today.getDate() === birthday.getDate() && today.getMonth() === birthday.getMonth();
+    const isBirthdayToday = today.getDate() === birthday.getDate() && today.getMonth() === birthday.getMonth();
     
     const lastRewardDate = profile.last_birthday_reward_at ? new Date(profile.last_birthday_reward_at) : null;
     const hasClaimedThisYear = lastRewardDate && lastRewardDate.getFullYear() === today.getFullYear();
 
-    if (isBirthday && !hasClaimedThisYear) {
-      return new Response(JSON.stringify({ discountPercentage: Number(settings.birthday_discount_percentage || 0) }), {
+    if (isBirthdayToday && !hasClaimedThisYear) {
+      
+      // 4. Se for elegível, aplica o desconto E MARCA o perfil como recompensado
+      const { error: updateError } = await supabaseAdmin
+        .from('profiles')
+        .update({ last_birthday_reward_at: today.toISOString() })
+        .eq('id', userId);
+
+      if (updateError) {
+        console.error("Failed to update last_birthday_reward_at:", updateError);
+        // Continua mesmo com erro de atualização, mas loga o problema
+      }
+
+      return new Response(JSON.stringify({ discountPercentage: discountPercentage }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // 4. Se não for elegível, retorna 0
+    // 5. Se não for elegível (não é aniversário ou já foi recompensado este ano)
     return new Response(JSON.stringify({ discountPercentage: 0 }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

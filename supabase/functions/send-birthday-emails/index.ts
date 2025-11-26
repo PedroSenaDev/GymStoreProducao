@@ -42,7 +42,7 @@ const createEmailContent = (name: string, discount: string, siteUrl: string) => 
     <div class="discount-box">${discount}% OFF</div>
     <p>Use este desconto em qualquer compra que você fizer hoje para elevar seu treino!</p>
     <a href="${siteUrl}/products" class="button">Aproveitar Meu Presente Agora</a>
-    <p style="font-size: 12px; color: #888;">O desconto será aplicado automaticamente no checkout.</p>
+    <p style="font-size: 12px; color: #888;">O desconto será aplicado automaticamente no checkout no dia do seu aniversário.</p>
     <p>Atenciosamente,<br>Equipe GYMSTORE</p>
     <div class="footer"><p>&copy; ${new Date().getFullYear()} GYMSTORE</p></div>
   </div>
@@ -88,7 +88,7 @@ serve(async (req) => {
       });
     }
 
-    // 2. Buscar clientes que fazem aniversário este mês e que ainda não foram recompensados este ano
+    // 2. Buscar clientes que fazem aniversário este mês e que ainda não foram notificados este ano
     const { data: profiles, error: profilesError } = await supabaseAdmin
       .from("profiles")
       .select("id, full_name, email, birth_date, last_birthday_reward_at")
@@ -137,11 +137,15 @@ serve(async (req) => {
           }).then(res => {
             if (res.ok) {
               emailsSent++;
-              // 4. Atualizar o campo last_birthday_reward_at
+              // 4. Atualizar o campo last_birthday_reward_at para o ano atual, 
+              // mas mantendo o dia e mês do aniversário para que o desconto no checkout funcione.
+              // NOTA: O desconto no checkout fará a atualização final para o dia exato.
+              // Aqui, apenas marcamos que o e-mail foi enviado este ano.
+              const nextRewardDate = new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate());
               updatePromises.push(
                 supabaseAdmin
                   .from('profiles')
-                  .update({ last_birthday_reward_at: today.toISOString() })
+                  .update({ last_birthday_reward_at: nextRewardDate.toISOString() })
                   .eq('id', profile.id)
               );
             } else {
