@@ -6,7 +6,7 @@ import { Profile } from '@/types/profile';
 const fetchProfile = async (userId: string): Promise<Profile | null> => {
   const { data: profileData, error: profileError } = await supabase
     .from('profiles')
-    .select('full_name, cpf, phone, updated_at')
+    .select('full_name, cpf, phone, updated_at, birth_date')
     .eq('id', userId)
     .single();
 
