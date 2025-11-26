@@ -1,7 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Profile } from "@/types/profile";
 import {
   Table,
   TableBody,
@@ -21,19 +20,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Loader2, Cake } from "lucide-react";
 import { format } from "date-fns";
 
-type BirthdayProfile = Pick<Profile, 'full_name' | 'phone' | 'birth_date'> & { email: string };
+// Simplificando o tipo, já que o email vem direto do profile
+type BirthdayProfile = {
+    full_name: string | null;
+    phone: string | null;
+    birth_date: string | null;
+    email: string | null;
+};
 
 async function fetchBirthdays(): Promise<BirthdayProfile[]> {
+  // Corrigindo a query para buscar o email diretamente da tabela de perfis
   const { data, error } = await supabase
     .from("profiles")
-    .select("full_name, phone, birth_date, users(email)")
+    .select("full_name, phone, birth_date, email")
     .not("birth_date", "is", null)
     .order("full_name");
 
   if (error) throw new Error(error.message);
-
-  // @ts-ignore
-  return data.map(p => ({ ...p, email: p.users.email }));
+  return data as BirthdayProfile[];
 }
 
 const months = [

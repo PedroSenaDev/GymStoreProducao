@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { WhatsAppButton } from '../WhatsAppButton';
 import { cn } from '@/lib/utils';
 import { Footer } from '../Footer';
+import { BirthdayRewardNotifier } from '../BirthdayRewardNotifier';
 
 export const PublicLayout = () => {
   const location = useLocation();
@@ -15,6 +16,7 @@ export const PublicLayout = () => {
         <Outlet />
       </main>
       <WhatsAppButton />
+      <BirthdayRewardNotifier />
       <Footer />
     </div>
   );

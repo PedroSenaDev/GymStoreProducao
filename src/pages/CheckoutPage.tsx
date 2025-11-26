@@ -33,17 +33,36 @@ export default function CheckoutPage() {
   const [isPixDialogOpen, setIsPixDialogOpen] = useState(false);
   const [shippingCost, setShippingCost] = useState(0);
   const [deliveryTime, setDeliveryTime] = useState<string | number | null>(null);
+  const [birthdayDiscount, setBirthdayDiscount] = useState(0);
   
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [isLoadingClientSecret, setIsLoadingClientSecret] = useState(false);
 
   const selectedItems = useMemo(() => items.filter(item => item.selected), [items]);
   const subtotal = useMemo(() => selectedItems.reduce((acc, item) => acc + item.price * item.quantity, 0), [selectedItems]);
-  const total = subtotal + shippingCost;
+  const discountAmount = (subtotal * birthdayDiscount) / 100;
+  const total = subtotal - discountAmount + shippingCost;
 
   const isProfileIncomplete = !profile?.full_name || !profile?.cpf;
   const isShippingSelected = selectedAddressId && selectedRate;
   const isCheckoutDisabled = !isShippingSelected || !paymentMethod || isProfileIncomplete || isLoadingProfile;
+
+  useEffect(() => {
+    const checkBirthdayDiscount = async () => {
+      if (session?.user.id) {
+        try {
+          const { data, error } = await supabase.functions.invoke('apply-birthday-discount', {
+            body: { userId: session.user.id },
+          });
+          if (error) throw error;
+          setBirthdayDiscount(data.discountPercentage || 0);
+        } catch (err) {
+          console.error("Failed to check for birthday discount:", err);
+        }
+      }
+    };
+    checkBirthdayDiscount();
+  }, [session?.user.id]);
 
   useEffect(() => {
     const createPaymentIntent = async () => {
@@ -63,10 +82,10 @@ export default function CheckoutPage() {
               shippingRateId: selectedRate.id,
               shippingRateName: selectedRate.name,
               deliveryTime: deliveryTime,
-              // Adicionando dados do cliente para a Stripe
               customerName: profile.full_name,
               customerEmail: session.user.email,
               customerPhone: profile.phone,
+              birthdayDiscount: birthdayDiscount, // Passando o desconto
             },
           });
           if (error || data.error) throw new Error(error?.message || data.error);
@@ -82,7 +101,7 @@ export default function CheckoutPage() {
       }
     };
     createPaymentIntent();
-  }, [paymentMethod, total, selectedAddressId, selectedRate, session?.user.id, profile, selectedItems, shippingCost, deliveryTime, clearNonSelectedItems, isShippingSelected]);
+  }, [paymentMethod, total, selectedAddressId, selectedRate, session?.user.id, profile, selectedItems, shippingCost, deliveryTime, clearNonSelectedItems, isShippingSelected, birthdayDiscount]);
 
   const handleFinalizeOrder = () => {
     if (isCheckoutDisabled) return;
@@ -145,7 +164,7 @@ export default function CheckoutPage() {
 
           <div className="lg:col-span-1 sticky top-28 space-y-6">
             <h2 className="text-xl font-semibold">Resumo do Pedido</h2>
-            <OrderSummary items={selectedItems} shippingCost={shippingCost} />
+            <OrderSummary items={selectedItems} shippingCost={shippingCost} discount={birthdayDiscount} />
             {isProfileIncomplete && !isLoadingProfile && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />

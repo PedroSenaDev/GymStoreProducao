@@ -7,11 +7,13 @@ const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style
 interface OrderSummaryProps {
   items: CartItem[];
   shippingCost: number;
+  discount?: number;
 }
 
-export function OrderSummary({ items, shippingCost }: OrderSummaryProps) {
+export function OrderSummary({ items, shippingCost, discount = 0 }: OrderSummaryProps) {
   const subtotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const total = subtotal + shippingCost;
+  const discountAmount = (subtotal * discount) / 100;
+  const total = subtotal - discountAmount + shippingCost;
 
   return (
     <Card>
@@ -44,6 +46,12 @@ export function OrderSummary({ items, shippingCost }: OrderSummaryProps) {
             <span className="text-muted-foreground">Subtotal</span>
             <span>{formatCurrency(subtotal)}</span>
           </div>
+          {discount > 0 && (
+            <div className="flex justify-between text-green-600">
+              <span className="font-semibold">Desconto de Aniversário ({discount}%)</span>
+              <span className="font-semibold">-{formatCurrency(discountAmount)}</span>
+            </div>
+          )}
           <div className="flex justify-between">
             <span className="text-muted-foreground">Frete</span>
             <span>{formatCurrency(shippingCost)}</span>
