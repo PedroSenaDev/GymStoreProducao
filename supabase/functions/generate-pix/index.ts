@@ -58,6 +58,7 @@ serve(async (req) => {
     const apiOptions = {
       method: 'POST',
       headers: {
+        // CORREÇÃO: Adicionando o prefixo 'Bearer '
         'Authorization': `Bearer ${ABACATE_API_KEY}`,
         'Content-Type': 'application/json'
       },
