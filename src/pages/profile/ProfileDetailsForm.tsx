@@ -18,11 +18,12 @@ import { showError, showSuccess } from "@/utils/toast";
 import { Profile } from "@/types/profile";
 import { Loader2 } from "lucide-react";
 import { isValidCPF, isValidPhone } from "@/lib/validators";
+import InputMask from "react-input-mask";
 
 const formSchema = z.object({
   full_name: z.string().min(3),
-  cpf: z.string().refine(isValidCPF, { message: "CPF inválido." }),
-  phone: z.string().refine(isValidPhone, { message: "Telefone inválido. Use (XX) XXXXX-XXXX." }),
+  cpf: z.string().refine(isValidCPF, { message: "CPF inválido. Use o formato 000.000.000-00." }),
+  phone: z.string().refine(isValidPhone, { message: "Telefone inválido. Use o formato (00) 00000-0000." }),
   birth_date: z.string()
     .min(1, "A data de nascimento é obrigatória.")
     .refine((date) => new Date(date) < new Date(), {
@@ -98,7 +99,17 @@ export default function ProfileDetailsForm({ profile, onFinished }: ProfileDetai
                         render={({ field }) => (
                             <FormItem>
                             <FormLabel>CPF</FormLabel>
-                            <FormControl><Input placeholder="000.000.000-00" {...field} /></FormControl>
+                            <FormControl>
+                                <InputMask
+                                    mask="999.999.999-99"
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    onBlur={field.onBlur}
+                                    disabled={field.disabled}
+                                >
+                                    {(inputProps: any) => <Input {...inputProps} placeholder="000.000.000-00" />}
+                                </InputMask>
+                            </FormControl>
                             <FormMessage />
                             </FormItem>
                         )}
@@ -109,7 +120,17 @@ export default function ProfileDetailsForm({ profile, onFinished }: ProfileDetai
                         render={({ field }) => (
                             <FormItem>
                             <FormLabel>Telefone</FormLabel>
-                            <FormControl><Input placeholder="(00) 00000-0000" {...field} /></FormControl>
+                            <FormControl>
+                                <InputMask
+                                    mask="(99) 99999-9999"
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    onBlur={field.onBlur}
+                                    disabled={field.disabled}
+                                >
+                                    {(inputProps: any) => <Input {...inputProps} placeholder="(00) 00000-0000" />}
+                                </InputMask>
+                            </FormControl>
                             <FormMessage />
                             </FormItem>
                         )}
