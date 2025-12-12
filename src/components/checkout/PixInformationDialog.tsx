@@ -9,7 +9,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Loader2, Copy, CheckCircle, AlertCircle } from "lucide-react";
+import { Loader2, Copy, AlertCircle } from "lucide-react";
 import { showError, showSuccess } from "@/utils/toast";
 import { useSessionStore } from "@/store/sessionStore";
 import { useProfile } from "@/hooks/useProfile";
@@ -20,6 +20,7 @@ import { CartItem } from "@/types/cart";
 import { useCartStore } from "@/store/cartStore";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Separator } from "../ui/separator";
+import { Input } from "../ui/input"; // Mantendo Input para o campo 'Copia e Cola'
 
 interface PixData {
   qr_code_url: string;
@@ -271,7 +272,7 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
       <div className="w-full space-y-2">
         <Label htmlFor="pix-code">Pix Copia e Cola</Label>
         <div className="flex items-center gap-2">
-          <input id="pix-code" value={pixData!.br_code} readOnly className="flex-1 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" />
+          <Input id="pix-code" value={pixData!.br_code} readOnly className="flex-1 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" />
           <Button size="icon" onClick={handleCopyToClipboard}><Copy className="h-4 w-4" /></Button>
         </div>
       </div>
