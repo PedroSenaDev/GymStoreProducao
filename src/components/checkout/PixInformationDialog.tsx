@@ -95,7 +95,7 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
       if (addressError) throw new Error(`Endereço de entrega não encontrado: ${addressError.message}`);
       
       const { data: orderData, error: orderError } = await supabase.from('orders').insert({
-        user_id: session.user.id, total_amount: totalAmount, status: 'processing',
+        user_id: session.user.id, total_amount: totalAmount, status: 'pending', // Status deve ser 'pending' para Pix
         shipping_address_id: selectedAddressId, payment_method: paymentMethod,
         shipping_cost: shippingCost,
         pix_charge_id: chargeId,
@@ -124,16 +124,37 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
         await supabase.from('orders').delete().eq('id', newOrderId);
         throw itemsError;
       }
+      
+      // Limpar itens do carrinho que foram comprados
+      const dbIdsToDelete = items
+        .map(item => item.dbCartItemId)
+        .filter((id): id is string => !!id);
+
+      if (dbIdsToDelete.length > 0) {
+        const { error: cartClearError } = await supabase
+            .from('cart_items')
+            .delete()
+            .in('id', dbIdsToDelete);
+        
+        if (cartClearError) {
+            console.error(`Falha ao limpar os itens comprados do carrinho do usuário ${session.user.id}:`, cartClearError);
+        }
+      }
+
       return newOrderId;
     },
-    onSuccess: () => {
-      setIsOrderConfirmed(true);
+    onSuccess: (newOrderId) => {
+      // Não definimos isOrderConfirmed aqui, pois o status 'processing' será definido pelo webhook/polling
+      // Apenas navegamos para a página de detalhes do pedido pendente
       if (pollingInterval.current) clearInterval(pollingInterval.current);
       queryClient.invalidateQueries({ queryKey: ["userOrders", session?.user.id] });
-      removeSelectedItems();
+      removeSelectedItems(); // Remove localmente
+      navigate(`/profile/orders`); // Redireciona para a lista de pedidos
+      showSuccess("Pedido criado com sucesso! Aguardando pagamento Pix.");
+      onOpenChange(false); // Fecha o modal
     },
     onError: (error: Error) => {
-      showError(`Erro ao finalizar o pedido após o pagamento: ${error.message}`);
+      showError(`Erro ao finalizar o pedido: ${error.message}`);
     },
   });
 
@@ -143,8 +164,24 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
     try {
       const { data, error } = await supabase.functions.invoke('check-pix-status', { body: { pix_charge_id: chargeId } });
       if (error || data.error) throw new Error(error?.message || data.error);
+      
+      // Se o status for pago, o webhook deve ter atualizado o pedido para 'processing'.
+      // Se o webhook falhou, o polling deve acionar a criação do pedido aqui.
       if (data.status === 'PAID' || data.status === 'CONFIRMED') {
-        createOrderAndFinalize(chargeId);
+        // Se o pagamento foi confirmado, o pedido deve ser criado.
+        // Como o webhook é mais confiável para a criação, vamos apenas fechar o modal e confiar no webhook/polling.
+        // Se o usuário clicar em "Já Paguei" e o pagamento for confirmado, o pedido será criado.
+        // No entanto, a lógica de criação do pedido deve ser movida para o `onSubmit` para criar o pedido como 'pending'
+        // e o webhook/polling deve apenas atualizar o status para 'processing'.
+        
+        // Se o pagamento foi confirmado, o pedido já deve ter sido criado como 'pending' no onSubmit.
+        // O webhook ou a função sync-pending-orders deve atualizar para 'processing'.
+        
+        // Para simplificar, se o status for pago, vamos fechar o modal e pedir para o usuário verificar a lista de pedidos.
+        showSuccess("Pagamento confirmado! Verifique o status do seu pedido em 'Meus Pedidos'.");
+        if (pollingInterval.current) clearInterval(pollingInterval.current);
+        onOpenChange(false);
+        navigate('/profile/orders');
       }
     } catch (err: any) {
       console.error("Falha ao verificar status do Pix:", err.message);
@@ -154,15 +191,11 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
   };
 
   useEffect(() => {
-    if (pixData && !isOrderConfirmed) {
-      pollingInterval.current = setInterval(() => {
-        checkPixStatus(pixData.pix_charge_id);
-      }, 5000);
-    }
+    // Remove polling logic from here, as the order creation is now in onSubmit
     return () => {
       if (pollingInterval.current) clearInterval(pollingInterval.current);
     };
-  }, [pixData, isOrderConfirmed]);
+  }, []);
 
   const handleCopyToClipboard = () => {
     if (pixData?.br_code) {
@@ -173,45 +206,48 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
 
   const handleCloseDialog = (isOpen: boolean) => {
     onOpenChange(isOpen);
-    if (!isOpen && isOrderConfirmed) {
-      navigate('/profile/orders');
-    }
+    if (pollingInterval.current) clearInterval(pollingInterval.current);
   };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (totalAmount <= 0) {
+        showError("O valor total do pedido deve ser maior que zero.");
+        return;
+    }
+    
     setIsLoading(true);
     try {
+      // 1. Gerar o QR Code na Abacate Pay
       const { data: pixGenData, error } = await supabase.functions.invoke('generate-pix', {
         body: {
           amount: totalAmount, customerName: values.name, customerEmail: values.email,
           customerMobile: values.phone, customerDocument: values.cpf,
         },
       });
+      
       if (error || pixGenData.error) throw new Error(error?.message || pixGenData.error);
+      
       setPixData(pixGenData);
+      
+      // 2. Criar o pedido no Supabase com status 'pending'
+      // O pedido será criado com o pix_charge_id para que o webhook/polling possa atualizá-lo.
+      await createOrderAndFinalize(pixGenData.pix_charge_id);
+
+      // 3. Iniciar o polling para verificar o status (fallback para o webhook)
+      if (pollingInterval.current) clearInterval(pollingInterval.current);
+      pollingInterval.current = setInterval(() => {
+        checkPixStatus(pixGenData.pix_charge_id);
+      }, 5000);
+
     } catch (err: any) {
       showError(err.message || "Erro ao gerar QR Code.");
+      if (pollingInterval.current) clearInterval(pollingInterval.current);
     } finally {
       setIsLoading(false);
     }
   }
 
   const renderContent = () => {
-    if (isOrderConfirmed) {
-      return (
-        <div className="flex flex-col items-center gap-6 py-8 text-center">
-          <CheckCircle className="h-20 w-20 text-green-500" />
-          <h3 className="text-xl font-semibold">Pagamento Confirmado!</h3>
-          <p className="text-muted-foreground">Seu pedido foi recebido e está sendo processado. Você pode acompanhar o status na área "Meus Pedidos".</p>
-          <DialogFooter className="w-full pt-4">
-            <Button onClick={() => handleCloseDialog(false)} className="w-full">
-              Ir para Meus Pedidos
-            </Button>
-          </DialogFooter>
-        </div>
-      );
-    }
-
     if (pixData) {
       return (
         <div className="flex flex-col items-center gap-6 py-4">
@@ -224,9 +260,9 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
             </div>
           </div>
           <DialogFooter className="w-full">
-            <Button onClick={() => checkPixStatus(pixData.pix_charge_id)} disabled={isCheckingStatus || isFinalizingOrder} className="w-full">
-              {(isCheckingStatus || isFinalizingOrder) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Já Paguei
+            <Button onClick={() => checkPixStatus(pixData.pix_charge_id)} disabled={isCheckingStatus} className="w-full">
+              {isCheckingStatus && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Já Paguei (Verificar Status)
             </Button>
           </DialogFooter>
         </div>
@@ -241,8 +277,8 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
           <FormField control={form.control} name="cpf" render={({ field }) => (<FormItem><FormLabel>CPF</FormLabel><FormControl><Input placeholder="000.000.000-00" {...field} /></FormControl><FormMessage /></FormItem>)} />
           <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel>Telefone</FormLabel><FormControl><Input placeholder="(00) 00000-0000" {...field} /></FormControl><FormMessage /></FormItem>)} />
           <DialogFooter>
-            <Button type="submit" disabled={isLoading} className="w-full">
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button type="submit" disabled={isLoading || isFinalizingOrder} className="w-full">
+              {(isLoading || isFinalizingOrder) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Gerar QR Code
             </Button>
           </DialogFooter>
@@ -257,7 +293,7 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
         <DialogHeader>
           <DialogTitle>Pagamento com Pix</DialogTitle>
           <DialogDescription>
-            {isOrderConfirmed ? "Sucesso!" : pixData ? "Escaneie o QR Code ou copie o código para pagar." : "Preencha seus dados para gerar o QR Code."}
+            {pixData ? "Escaneie o QR Code ou copie o código para pagar." : "Preencha seus dados para gerar o QR Code."}
           </DialogDescription>
         </DialogHeader>
         {renderContent()}
