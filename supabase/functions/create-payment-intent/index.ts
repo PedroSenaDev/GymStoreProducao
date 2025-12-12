@@ -25,7 +25,7 @@ serve(async (req) => {
   try {
     const { 
       items, shippingCost, userId, shippingAddressId, shippingRateId, shippingRateName, deliveryTime,
-      customerName, customerEmail, customerPhone 
+      customerName, customerEmail, customerPhone, birthdayDiscount // Novo parâmetro
     } = await req.json();
 
     if (!items || items.length === 0 || !userId || !shippingAddressId || !shippingRateId || !shippingRateName || !customerEmail) {
@@ -46,9 +46,19 @@ serve(async (req) => {
       return acc + (price * item.quantity);
     }, 0);
 
-    const totalAmount = subtotal + shippingCost;
+    // 2. Aplicar Desconto de Aniversário
+    const discountPercentage = Number(birthdayDiscount || 0);
+    const discountAmount = (subtotal * discountPercentage) / 100;
+    const subtotalAfterDiscount = subtotal - discountAmount;
 
-    // 2. Encontrar ou criar o cliente na Stripe
+    // 3. Calcular o Total Final
+    const totalAmount = subtotalAfterDiscount + shippingCost;
+
+    if (totalAmount <= 0) {
+        throw new Error("O valor total do pedido deve ser maior que zero.");
+    }
+
+    // 4. Encontrar ou criar o cliente na Stripe
     let customerId;
     const existingCustomers = await stripe.customers.list({ email: customerEmail, limit: 1 });
 
@@ -63,7 +73,7 @@ serve(async (req) => {
       customerId = newCustomer.id;
     }
 
-    // 3. Criar o PaymentIntent no Stripe associado ao cliente
+    // 5. Criar o PaymentIntent no Stripe associado ao cliente
     const essentialMetadata = {
         user_id: userId,
         shipping_address_id: shippingAddressId,
@@ -71,6 +81,9 @@ serve(async (req) => {
         shipping_rate_id: shippingRateId.toString(),
         shipping_rate_name: shippingRateName,
         delivery_time: deliveryTime?.toString() || 'N/A',
+        // Adicionando metadados de desconto para rastreamento
+        birthday_discount_percentage: discountPercentage.toString(),
+        subtotal_before_discount: subtotal.toFixed(2),
     };
 
     const paymentIntent = await stripe.paymentIntents.create({
@@ -81,7 +94,7 @@ serve(async (req) => {
       metadata: essentialMetadata,
     });
 
-    // 4. Retornar o client_secret para o frontend
+    // 6. Retornar o client_secret para o frontend
     return new Response(JSON.stringify({ clientSecret: paymentIntent.client_secret }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
