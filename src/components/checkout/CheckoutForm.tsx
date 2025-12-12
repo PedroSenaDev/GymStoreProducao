@@ -9,11 +9,12 @@ export default function CheckoutForm() {
   const elements = useElements();
 
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isElementReady, setIsElementReady] = useState(false); // Estado de prontidão do PaymentElement
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!stripe || !elements) {
+    if (!stripe || !elements || !isElementReady) { // Verifica se o elemento está pronto
       return;
     }
 
@@ -35,8 +36,16 @@ export default function CheckoutForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <PaymentElement />
-      <Button disabled={isProcessing || !stripe || !elements} className="w-full" type="submit">
+      <PaymentElement 
+        onChange={(event) => {
+          // O elemento está pronto quando o evento de mudança é disparado
+          // e o estado de 'complete' é verdadeiro.
+          if (event.complete) {
+            setIsElementReady(true);
+          }
+        }}
+      />
+      <Button disabled={isProcessing || !stripe || !elements || !isElementReady} className="w-full" type="submit">
         {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : `Pagar`}
       </Button>
     </form>

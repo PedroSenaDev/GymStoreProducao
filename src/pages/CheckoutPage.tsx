@@ -63,6 +63,7 @@ export default function CheckoutPage() {
         setClientSecret(null);
 
         try {
+          // Limpa itens não selecionados do DB antes de criar o pedido
           await clearNonSelectedItems();
 
           const { data, error } = await supabase.functions.invoke('create-payment-intent', {
@@ -77,14 +78,14 @@ export default function CheckoutPage() {
               customerName: profile.full_name,
               customerEmail: session.user.email,
               customerPhone: profile.phone,
-              birthdayDiscount: birthdayDiscount, // Passando o desconto
+              birthdayDiscount: birthdayDiscount,
             },
           });
           if (error || data.error) throw new Error(error?.message || data.error);
           setClientSecret(data.clientSecret);
         } catch (err: any) {
           showError(`Erro ao iniciar pagamento: ${err.message}`);
-          setPaymentMethod(null);
+          setPaymentMethod(null); // Reset payment method on failure
         } finally {
           setIsLoadingClientSecret(false);
         }
@@ -106,6 +107,11 @@ export default function CheckoutPage() {
     setShippingCost(cost);
     setSelectedRate(rateId ? { id: rateId, name: rateName } : null);
     setDeliveryTime(time);
+    // Reset client secret if shipping changes
+    setClientSecret(null);
+    if (paymentMethod === 'credit_card') {
+        setPaymentMethod(null);
+    }
   };
 
   if (!session) {
