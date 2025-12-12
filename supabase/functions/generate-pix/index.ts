@@ -16,6 +16,7 @@ serve(async (req) => {
 
   // Check for API key
   if (!ABACATE_API_KEY) {
+    console.error("ABACATE_API_KEY is missing in environment variables."); // Adicionado log para debug
     return new Response(JSON.stringify({ error: "Abacate Pay API key not configured." }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
