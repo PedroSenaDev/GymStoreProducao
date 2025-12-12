@@ -207,7 +207,10 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
         },
       });
       
-      if (error || pixGenData.error) throw new Error(error?.message || pixGenData.error);
+      if (error || pixGenData.error) {
+        console.error("Erro detalhado da Edge Function:", error?.message || pixGenData.error);
+        throw new Error(error?.message || pixGenData.error);
+      }
       
       setPixData(pixGenData);
       
