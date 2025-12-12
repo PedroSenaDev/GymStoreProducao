@@ -10,17 +10,9 @@ import { PixInformationDialog } from '@/components/checkout/PixInformationDialog
 import { useProfile } from '@/hooks/useProfile';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { loadStripe } from '@stripe/stripe-js';
-import { Elements } from '@stripe/react-stripe-js';
-import CheckoutForm from '@/components/checkout/CheckoutForm';
 import { supabase } from '@/integrations/supabase/client';
 import { showError } from '@/utils/toast';
-
-const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
-if (!stripePublishableKey) {
-  throw new Error("VITE_STRIPE_PUBLISHABLE_KEY não está definida no arquivo .env");
-}
-const stripePromise = loadStripe(stripePublishableKey);
+import { CreditCardFormWrapper } from '@/components/checkout/CreditCardFormWrapper';
 
 export default function CheckoutPage() {
   const session = useSessionStore((state) => state.session);
@@ -149,15 +141,12 @@ export default function CheckoutPage() {
               <div className={!isShippingSelected ? 'pointer-events-none opacity-50' : ''}>
                 <PaymentStep selectedPaymentMethod={paymentMethod} onPaymentMethodSelect={setPaymentMethod} />
               </div>
-              {isLoadingClientSecret && (
-                <div className="flex items-center justify-center p-8">
-                  <Loader2 className="h-8 w-8 animate-spin" />
-                </div>
-              )}
-              {paymentMethod === 'credit_card' && clientSecret && (
-                <Elements stripe={stripePromise} options={{ clientSecret }}>
-                  <CheckoutForm />
-                </Elements>
+              
+              {paymentMethod === 'credit_card' && (
+                <CreditCardFormWrapper 
+                  clientSecret={clientSecret} 
+                  isLoading={isLoadingClientSecret} 
+                />
               )}
             </div>
           </div>
