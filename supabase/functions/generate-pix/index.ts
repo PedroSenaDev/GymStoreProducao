@@ -25,10 +25,15 @@ serve(async (req) => {
 
   try {
     // Get data from client
-    const { amount, customerName, customerEmail, customerMobile, customerDocument } = await req.json()
+    const payload = await req.json()
+    const { amount, customerName, customerEmail, customerMobile, customerDocument } = payload
+
+    // Log the received payload for debugging
+    console.log("Received Pix Payload:", JSON.stringify(payload));
 
     // Validate required fields
     if (!amount || !customerName || !customerEmail || !customerMobile || !customerDocument) {
+      console.error("Missing required customer fields in payload.");
       return new Response(JSON.stringify({ error: "Missing required customer fields." }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -57,9 +62,6 @@ serve(async (req) => {
       },
       body: JSON.stringify(requestBody)
     };
-
-    // Log the request body (excluding the secret key) for debugging
-    console.log("Abacate Pay Request Body:", JSON.stringify(requestBody));
 
     // Call the Abacate Pay API
     const response = await fetch(apiUrl, apiOptions);

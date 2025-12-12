@@ -47,7 +47,7 @@ interface PixData {
 
 interface PixInformationDialogProps {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onOpenChange: (open: (boolean) => void) => void;
   totalAmount: number;
   items: CartItem[];
   selectedAddressId: string | null;
@@ -61,7 +61,6 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
   const [isLoading, setIsLoading] = useState(false);
   const [pixData, setPixData] = useState<PixData | null>(null);
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
-  const [isOrderConfirmed, setIsOrderConfirmed] = useState(false);
   const session = useSessionStore((state) => state.session);
   const { data: profile } = useProfile();
   const navigate = useNavigate();
@@ -144,8 +143,6 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
       return newOrderId;
     },
     onSuccess: (newOrderId) => {
-      // Não definimos isOrderConfirmed aqui, pois o status 'processing' será definido pelo webhook/polling
-      // Apenas navegamos para a página de detalhes do pedido pendente
       if (pollingInterval.current) clearInterval(pollingInterval.current);
       queryClient.invalidateQueries({ queryKey: ["userOrders", session?.user.id] });
       removeSelectedItems(); // Remove localmente
@@ -165,19 +162,7 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
       const { data, error } = await supabase.functions.invoke('check-pix-status', { body: { pix_charge_id: chargeId } });
       if (error || data.error) throw new Error(error?.message || data.error);
       
-      // Se o status for pago, o webhook deve ter atualizado o pedido para 'processing'.
-      // Se o webhook falhou, o polling deve acionar a criação do pedido aqui.
       if (data.status === 'PAID' || data.status === 'CONFIRMED') {
-        // Se o pagamento foi confirmado, o pedido deve ser criado.
-        // Como o webhook é mais confiável para a criação, vamos apenas fechar o modal e confiar no webhook/polling.
-        // Se o usuário clicar em "Já Paguei" e o pagamento for confirmado, o pedido será criado.
-        // No entanto, a lógica de criação do pedido deve ser movida para o `onSubmit` para criar o pedido como 'pending'
-        // e o webhook/polling deve apenas atualizar o status para 'processing'.
-        
-        // Se o pagamento foi confirmado, o pedido já deve ter sido criado como 'pending' no onSubmit.
-        // O webhook ou a função sync-pending-orders deve atualizar para 'processing'.
-        
-        // Para simplificar, se o status for pago, vamos fechar o modal e pedir para o usuário verificar a lista de pedidos.
         showSuccess("Pagamento confirmado! Verifique o status do seu pedido em 'Meus Pedidos'.");
         if (pollingInterval.current) clearInterval(pollingInterval.current);
         onOpenChange(false);
@@ -191,7 +176,6 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
   };
 
   useEffect(() => {
-    // Remove polling logic from here, as the order creation is now in onSubmit
     return () => {
       if (pollingInterval.current) clearInterval(pollingInterval.current);
     };
@@ -230,7 +214,6 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
       setPixData(pixGenData);
       
       // 2. Criar o pedido no Supabase com status 'pending'
-      // O pedido será criado com o pix_charge_id para que o webhook/polling possa atualizá-lo.
       await createOrderAndFinalize(pixGenData.pix_charge_id);
 
       // 3. Iniciar o polling para verificar o status (fallback para o webhook)
