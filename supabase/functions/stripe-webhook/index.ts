@@ -62,7 +62,7 @@ serve(async (req) => {
       
       if (addressError) throw new Error(`Endereço de entrega não encontrado: ${addressError.message}`);
 
-      // Buscar os itens do carrinho (deve conter apenas os itens selecionados)
+      // Buscar os itens do carrinho (deve conter apenas os itens selecionados, pois o frontend limpou os não selecionados)
       const { data: cartItems, error: cartError } = await supabaseAdmin
         .from('cart_items')
         .select('id, product_id, quantity, selected_size, selected_color, products(price, colors)')
@@ -84,7 +84,6 @@ serve(async (req) => {
       
       if (!cartItems || cartItems.length === 0) {
         console.error(`ERRO: Checkout Session concluída, mas carrinho do usuário ${userId} está vazio. Não é possível criar order_items.`);
-        // Retornamos 200 para a Stripe, mas logamos o erro crítico.
         return new Response("Carrinho vazio, mas pagamento recebido. Necessita revisão manual.", { status: 200 });
       }
 
@@ -153,14 +152,18 @@ serve(async (req) => {
       
       await Promise.all(stockUpdates);
 
-      // 4. Limpar o Carrinho
-      const { error: cartClearError } = await supabaseAdmin
-          .from('cart_items')
-          .delete()
-          .eq('user_id', userId);
-      
-      if (cartClearError) {
-          console.error(`Falha ao limpar o carrinho do usuário ${userId}:`, cartClearError);
+      // 4. Limpar os itens do carrinho que foram comprados
+      const cartItemIdsToDelete = cartItems.map(item => item.id);
+
+      if (cartItemIdsToDelete.length > 0) {
+        const { error: cartClearError } = await supabaseAdmin
+            .from('cart_items')
+            .delete()
+            .in('id', cartItemIdsToDelete);
+        
+        if (cartClearError) {
+            console.error(`Falha ao limpar os itens comprados do carrinho do usuário ${userId}:`, cartClearError);
+        }
       }
     }
 
