@@ -1,18 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@/lib/resolvers";
-import { z } from "@/lib/zod-pt";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -21,23 +9,17 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Loader2, Copy, CheckCircle } from "lucide-react";
+import { Loader2, Copy, CheckCircle, AlertCircle } from "lucide-react";
 import { showError, showSuccess } from "@/utils/toast";
-import { isValidCPF, isValidPhone } from "@/lib/validators";
 import { useSessionStore } from "@/store/sessionStore";
 import { useProfile } from "@/hooks/useProfile";
 import { Label } from "../ui/label";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CartItem } from "@/types/cart";
 import { useCartStore } from "@/store/cartStore";
-
-const formSchema = z.object({
-  name: z.string().min(3, "Nome completo é obrigatório."),
-  email: z.string().email("E-mail inválido."),
-  cpf: z.string().refine(isValidCPF, "CPF inválido."),
-  phone: z.string().refine(isValidPhone, "Telefone inválido."),
-});
+import { Alert, AlertDescription } from "../ui/alert";
+import { Separator } from "../ui/separator";
 
 interface PixData {
   qr_code_url: string;
@@ -57,26 +39,21 @@ interface PixInformationDialogProps {
   deliveryTime: string | number | null;
 }
 
+const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+
 export function PixInformationDialog({ open, onOpenChange, totalAmount, items, selectedAddressId, paymentMethod, shippingCost, shippingRate, deliveryTime }: PixInformationDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [pixData, setPixData] = useState<PixData | null>(null);
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
   const session = useSessionStore((state) => state.session);
-  const { data: profile } = useProfile();
+  const { data: profile, isLoading: isLoadingProfile } = useProfile();
   const navigate = useNavigate();
   const { removeSelectedItems } = useCartStore();
   const queryClient = useQueryClient();
   const pollingInterval = useRef<NodeJS.Timeout | null>(null);
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: profile?.full_name || "",
-      email: session?.user.email || "",
-      cpf: profile?.cpf || "",
-      phone: profile?.phone || "",
-    },
-  });
+  // Verifica se os dados essenciais do perfil estão completos
+  const isProfileComplete = !!profile?.full_name && !!profile?.cpf && !!profile?.phone && !!session?.user.email;
 
   const { mutate: createOrderAndFinalize, isPending: isFinalizingOrder } = useMutation({
     mutationFn: async (chargeId: string) => {
@@ -146,9 +123,7 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
       if (pollingInterval.current) clearInterval(pollingInterval.current);
       queryClient.invalidateQueries({ queryKey: ["userOrders", session?.user.id] });
       removeSelectedItems(); // Remove localmente
-      navigate(`/profile/orders`); // Redireciona para a lista de pedidos
-      showSuccess("Pedido criado com sucesso! Aguardando pagamento Pix.");
-      onOpenChange(false); // Fecha o modal
+      // Não navegamos aqui, apenas atualizamos o estado para mostrar o QR Code
     },
     onError: (error: Error) => {
       showError(`Erro ao finalizar o pedido: ${error.message}`);
@@ -193,21 +168,28 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
     if (pollingInterval.current) clearInterval(pollingInterval.current);
   };
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  async function handleGeneratePix() {
     if (totalAmount <= 0) {
         showError("O valor total do pedido deve ser maior que zero.");
+        return;
+    }
+    if (!isProfileComplete) {
+        showError("Por favor, complete seu perfil antes de gerar o Pix.");
         return;
     }
     
     setIsLoading(true);
     try {
       // 1. Gerar o QR Code na Abacate Pay
-      const amountToSend = parseFloat(totalAmount.toFixed(2)); // Fixa em 2 casas decimais
+      const amountToSend = parseFloat(totalAmount.toFixed(2));
       
       const { data: pixGenData, error } = await supabase.functions.invoke('generate-pix', {
         body: {
-          amount: amountToSend, customerName: values.name, customerEmail: values.email,
-          customerMobile: values.phone, customerDocument: values.cpf,
+          amount: amountToSend, 
+          customerName: profile?.full_name, 
+          customerEmail: session?.user.email,
+          customerMobile: profile?.phone, 
+          customerDocument: profile?.cpf,
         },
       });
       
@@ -232,45 +214,75 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
     }
   }
 
-  const renderContent = () => {
-    if (pixData) {
-      return (
-        <div className="flex flex-col items-center gap-6 py-4">
-          <img src={pixData.qr_code_url} alt="QR Code Pix" className="w-56 h-56 rounded-lg" />
-          <div className="w-full space-y-2">
-            <Label htmlFor="pix-code">Pix Copia e Cola</Label>
-            <div className="flex items-center gap-2">
-              <Input id="pix-code" value={pixData.br_code} readOnly className="flex-1" />
-              <Button size="icon" onClick={handleCopyToClipboard}><Copy className="h-4 w-4" /></Button>
+  const renderProfileConfirmation = () => (
+    <div className="space-y-4 py-4">
+        <Alert variant="default">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+                O Pix será gerado usando os dados abaixo. Certifique-se de que estão corretos.
+            </AlertDescription>
+        </Alert>
+        <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="space-y-1">
+                <Label className="text-muted-foreground">Nome</Label>
+                <p className="font-medium">{profile?.full_name || '-'}</p>
             </div>
-          </div>
-          <DialogFooter className="w-full">
-            <Button onClick={() => checkPixStatus(pixData.pix_charge_id)} disabled={isCheckingStatus} className="w-full">
-              {isCheckingStatus && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Já Paguei (Verificar Status)
-            </Button>
-          </DialogFooter>
+            <div className="space-y-1">
+                <Label className="text-muted-foreground">CPF</Label>
+                <p className="font-medium">{profile?.cpf || '-'}</p>
+            </div>
+            <div className="space-y-1">
+                <Label className="text-muted-foreground">Telefone</Label>
+                <p className="font-medium">{profile?.phone || '-'}</p>
+            </div>
+            <div className="space-y-1">
+                <Label className="text-muted-foreground">Email</Label>
+                <p className="font-medium">{session?.user.email || '-'}</p>
+            </div>
         </div>
-      );
-    }
+        
+        {!isProfileComplete && (
+            <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                    Dados incompletos. Por favor, <Link to="/profile/details" className="font-semibold underline">complete seu perfil</Link> (Nome, CPF e Telefone) para gerar o Pix.
+                </AlertDescription>
+            </Alert>
+        )}
 
-    return (
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-          <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nome Completo</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-          <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>)} />
-          <FormField control={form.control} name="cpf" render={({ field }) => (<FormItem><FormLabel>CPF</FormLabel><FormControl><Input placeholder="000.000.000-00" {...field} /></FormControl><FormMessage /></FormItem>)} />
-          <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel>Telefone</FormLabel><FormControl><Input placeholder="(00) 00000-0000" {...field} /></FormControl><FormMessage /></FormItem>)} />
-          <DialogFooter>
-            <Button type="submit" disabled={isLoading || isFinalizingOrder} className="w-full">
-              {(isLoading || isFinalizingOrder) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Gerar QR Code
+        <Separator />
+
+        <DialogFooter>
+            <Button 
+                onClick={handleGeneratePix} 
+                disabled={!isProfileComplete || isLoading || isFinalizingOrder || isLoadingProfile} 
+                className="w-full"
+            >
+                {(isLoading || isFinalizingOrder || isLoadingProfile) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Gerar QR Code de {formatCurrency(totalAmount)}
             </Button>
-          </DialogFooter>
-        </form>
-      </Form>
-    );
-  };
+        </DialogFooter>
+    </div>
+  );
+
+  const renderPixDetails = () => (
+    <div className="flex flex-col items-center gap-6 py-4">
+      <img src={pixData!.qr_code_url} alt="QR Code Pix" className="w-56 h-56 rounded-lg" />
+      <div className="w-full space-y-2">
+        <Label htmlFor="pix-code">Pix Copia e Cola</Label>
+        <div className="flex items-center gap-2">
+          <input id="pix-code" value={pixData!.br_code} readOnly className="flex-1 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" />
+          <Button size="icon" onClick={handleCopyToClipboard}><Copy className="h-4 w-4" /></Button>
+        </div>
+      </div>
+      <DialogFooter className="w-full">
+        <Button onClick={() => checkPixStatus(pixData!.pix_charge_id)} disabled={isCheckingStatus} className="w-full">
+          {isCheckingStatus && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Já Paguei (Verificar Status)
+        </Button>
+      </DialogFooter>
+    </div>
+  );
 
   return (
     <Dialog open={open} onOpenChange={handleCloseDialog}>
@@ -278,10 +290,10 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
         <DialogHeader>
           <DialogTitle>Pagamento com Pix</DialogTitle>
           <DialogDescription>
-            {pixData ? "Escaneie o QR Code ou copie o código para pagar." : "Preencha seus dados para gerar o QR Code."}
+            {pixData ? "Escaneie o QR Code ou copie o código para pagar." : "Confirme seus dados para gerar o Pix."}
           </DialogDescription>
         </DialogHeader>
-        {renderContent()}
+        {pixData ? renderPixDetails() : renderProfileConfirmation()}
       </DialogContent>
     </Dialog>
   );
