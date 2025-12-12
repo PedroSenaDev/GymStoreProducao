@@ -16,7 +16,7 @@ serve(async (req) => {
 
   // Check for API key
   if (!ABACATE_API_KEY) {
-    console.error("ABACATE_API_KEY is missing in environment variables."); // Adicionado log para debug
+    console.error("ABACATE_API_KEY is missing in environment variables.");
     return new Response(JSON.stringify({ error: "Abacate Pay API key not configured." }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -37,13 +37,7 @@ serve(async (req) => {
 
     // Prepare the request for the correct Abacate Pay API endpoint
     const apiUrl = 'https://api.abacatepay.com/v1/pixQrCode/create';
-    const apiOptions = {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${ABACATE_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
+    const requestBody = {
         amount: Math.round(amount * 100), // Amount in cents
         expiresIn: 3600, // 1 hour expiration
         description: "Pagamento do pedido - GYMSTORE",
@@ -53,8 +47,19 @@ serve(async (req) => {
           email: customerEmail,
           taxId: customerDocument.replace(/\D/g, ''), // Remove non-digits
         },
-      })
     };
+
+    const apiOptions = {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${ABACATE_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    };
+
+    // Log the request body (excluding the secret key) for debugging
+    console.log("Abacate Pay Request Body:", JSON.stringify(requestBody));
 
     // Call the Abacate Pay API
     const response = await fetch(apiUrl, apiOptions);
@@ -62,14 +67,20 @@ serve(async (req) => {
 
     // Handle API errors
     if (!response.ok || responseData.error) {
-      console.error("Abacate Pay API Error:", responseData);
-      throw new Error(responseData.error?.message || "Failed to generate Pix charge.");
+      console.error("Abacate Pay API Error Response:", responseData);
+      // Retorna uma mensagem de erro mais específica da API externa
+      const errorMessage = responseData.error?.message || responseData.message || "Failed to generate Pix charge.";
+      return new Response(JSON.stringify({ error: errorMessage }), {
+        status: response.status || 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Extract the necessary data from the successful response
     const { id: pixChargeId, brCode, brCodeBase64 } = responseData.data;
 
     if (!pixChargeId || !brCode || !brCodeBase64) {
+        console.error("Pix details missing in successful Abacate Pay response:", responseData);
         throw new Error("Pix details not found in Abacate Pay response.");
     }
 
