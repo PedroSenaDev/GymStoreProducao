@@ -13,12 +13,8 @@ interface StripeWrapperProps {
 }
 
 export const StripeWrapper: React.FC<StripeWrapperProps> = ({ children }) => {
-  // O clientSecret não é necessário aqui, pois o PaymentStatusPage o recupera da URL.
-  // Passamos um objeto vazio para options, pois o clientSecret é opcional para o retrievePaymentIntent.
-  const options = {}; 
-
   return (
-    <Elements stripe={stripePromise} options={options}>
+    <Elements stripe={stripePromise}>
       {children}
     </Elements>
   );
