@@ -38,7 +38,7 @@ import AdminStockPage from "./pages/admin/AdminStockPage";
 import AdminFixedShippingPage from "./pages/admin/AdminFixedShippingPage";
 
 // Components
-import { StripeWrapper } from "./components/StripeWrapper";
+// import { StripeWrapper } from "./components/StripeWrapper"; // Removido
 
 const queryClient = new QueryClient();
 
@@ -71,7 +71,7 @@ const App = () => (
             {/* Auth & Payment Status Routes (no layout) */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/update-password" element={<UpdatePasswordPage />} />
-            <Route path="/payment-status" element={<StripeWrapper><PaymentStatusPage /></StripeWrapper>} />
+            <Route path="/payment-status" element={<PaymentStatusPage />} />
 
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminDashboardLayout />}>

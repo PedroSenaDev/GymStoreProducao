@@ -12,7 +12,6 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { showError } from '@/utils/toast';
-import { CreditCardFormWrapper } from '@/components/checkout/CreditCardFormWrapper';
 
 export default function CheckoutPage() {
   const session = useSessionStore((state) => state.session);
@@ -27,8 +26,7 @@ export default function CheckoutPage() {
   const [deliveryTime, setDeliveryTime] = useState<string | number | null>(null);
   const [birthdayDiscount, setBirthdayDiscount] = useState(0);
   
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [isLoadingClientSecret, setIsLoadingClientSecret] = useState(false);
+  const [isProcessingCard, setIsProcessingCard] = useState(false);
 
   const selectedItems = useMemo(() => items.filter(item => item.selected), [items]);
   const subtotal = useMemo(() => selectedItems.reduce((acc, item) => acc + item.price * item.quantity, 0), [selectedItems]);
@@ -56,50 +54,54 @@ export default function CheckoutPage() {
     checkBirthdayDiscount();
   }, [session?.user.id]);
 
-  useEffect(() => {
-    const createPaymentIntent = async () => {
-      if (paymentMethod === 'credit_card' && total > 0 && isShippingSelected && session?.user.id && profile) {
-        setIsLoadingClientSecret(true);
-        setClientSecret(null);
-
-        try {
-          // Limpa itens não selecionados do DB antes de criar o pedido
-          await clearNonSelectedItems();
-
-          const { data, error } = await supabase.functions.invoke('create-payment-intent', {
-            body: {
-              items: selectedItems,
-              shippingAddressId: selectedAddressId,
-              userId: session.user.id,
-              shippingCost,
-              shippingRateId: selectedRate.id,
-              shippingRateName: selectedRate.name,
-              deliveryTime: deliveryTime,
-              customerName: profile.full_name,
-              customerEmail: session.user.email,
-              customerPhone: profile.phone,
-              birthdayDiscount: birthdayDiscount,
-            },
-          });
-          if (error || data.error) throw new Error(error?.message || data.error);
-          setClientSecret(data.clientSecret);
-        } catch (err: any) {
-          showError(`Erro ao iniciar pagamento: ${err.message}`);
-          setPaymentMethod(null); // Reset payment method on failure
-        } finally {
-          setIsLoadingClientSecret(false);
-        }
-      } else {
-        setClientSecret(null);
-      }
-    };
-    createPaymentIntent();
-  }, [paymentMethod, total, selectedAddressId, selectedRate, session?.user.id, profile, selectedItems, shippingCost, deliveryTime, clearNonSelectedItems, isShippingSelected, birthdayDiscount]);
-
-  const handleFinalizeOrder = () => {
+  const handleFinalizeOrder = async () => {
     if (isCheckoutDisabled) return;
+    
     if (paymentMethod === 'pix') {
       setIsPixDialogOpen(true);
+      return;
+    }
+
+    if (paymentMethod === 'credit_card') {
+        if (!session?.user.id || !profile) {
+            showError("Sessão de usuário ou perfil incompleto.");
+            return;
+        }
+        
+        setIsProcessingCard(true);
+        try {
+            // 1. Limpa itens não selecionados do DB antes de criar o pedido
+            await clearNonSelectedItems();
+
+            // 2. Chamar a função Edge para criar a Checkout Session
+            const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+                body: {
+                    items: selectedItems,
+                    shippingAddressId: selectedAddressId,
+                    userId: session.user.id,
+                    shippingCost,
+                    shippingRateId: selectedRate.id,
+                    shippingRateName: selectedRate.name,
+                    deliveryTime: deliveryTime,
+                    customerEmail: session.user.email,
+                    birthdayDiscount: birthdayDiscount,
+                },
+            });
+            
+            if (error || data.error) throw new Error(error?.message || data.error);
+
+            // 3. Redirecionar para a página de checkout da Stripe
+            if (data.sessionUrl) {
+                window.location.href = data.sessionUrl;
+            } else {
+                throw new Error("URL de sessão não recebida.");
+            }
+
+        } catch (err: any) {
+            showError(`Erro ao iniciar pagamento: ${err.message}`);
+        } finally {
+            setIsProcessingCard(false);
+        }
     }
   };
 
@@ -107,11 +109,8 @@ export default function CheckoutPage() {
     setShippingCost(cost);
     setSelectedRate(rateId ? { id: rateId, name: rateName } : null);
     setDeliveryTime(time);
-    // Reset client secret if shipping changes
-    setClientSecret(null);
-    if (paymentMethod === 'credit_card') {
-        setPaymentMethod(null);
-    }
+    // Reset payment method if shipping changes
+    setPaymentMethod(null);
   };
 
   if (!session) {
@@ -147,13 +146,6 @@ export default function CheckoutPage() {
               <div className={!isShippingSelected ? 'pointer-events-none opacity-50' : ''}>
                 <PaymentStep selectedPaymentMethod={paymentMethod} onPaymentMethodSelect={setPaymentMethod} />
               </div>
-              
-              {paymentMethod === 'credit_card' && (
-                <CreditCardFormWrapper 
-                  clientSecret={clientSecret} 
-                  isLoading={isLoadingClientSecret} 
-                />
-              )}
             </div>
           </div>
 
@@ -168,16 +160,17 @@ export default function CheckoutPage() {
                 </AlertDescription>
               </Alert>
             )}
-            {paymentMethod !== 'credit_card' && (
-              <Button
-                size="lg"
-                className="w-full"
-                onClick={handleFinalizeOrder}
-                disabled={isCheckoutDisabled}
-              >
-                Finalizar Pedido
-              </Button>
-            )}
+            <Button
+              size="lg"
+              className="w-full"
+              onClick={handleFinalizeOrder}
+              disabled={isCheckoutDisabled || isProcessingCard}
+            >
+              {isProcessingCard && paymentMethod === 'credit_card' ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              {paymentMethod === 'credit_card' ? 'Ir para Pagamento Seguro' : 'Finalizar Pedido'}
+            </Button>
           </div>
         </div>
       </div>

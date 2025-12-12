@@ -1,54 +1,105 @@
 import { useEffect, useState } from 'react';
-import { useStripe } from '@stripe/react-stripe-js';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { useCartStore } from '@/store/cartStore';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { supabase } from '@/integrations/supabase/client';
+import { showError } from '@/utils/toast';
 
 export default function PaymentStatusPage() {
-  const stripe = useStripe();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [message, setMessage] = useState<string | null>(null);
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
-  // Removendo useCartStore para evitar limpeza duplicada
+  const [orderId, setOrderId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!stripe) {
+    const sessionId = searchParams.get('session_id');
+
+    if (!sessionId) {
+      // Se não houver session_id, verifica se há algum erro de auth ou redireciona
+      if (searchParams.get('error')) {
+        showError("Ocorreu um erro durante o pagamento. Tente novamente.");
+        setStatus('error');
+      } else {
+        navigate('/');
+      }
       return;
     }
 
-    const clientSecret = new URLSearchParams(window.location.search).get(
-      'payment_intent_client_secret'
-    );
+    const checkSessionStatus = async () => {
+      setMessage('Aguarde enquanto confirmamos seu pagamento...');
+      
+      try {
+        // 1. Verificar o status da sessão na Stripe (via Edge Function)
+        const { data: sessionData, error: sessionError } = await supabase.functions.invoke('retrieve-checkout-session', {
+          body: { sessionId },
+        });
 
-    if (!clientSecret) {
-      navigate('/');
-      return;
-    }
+        if (sessionError || sessionData.error) {
+          throw new Error(sessionError?.message || sessionData.error);
+        }
 
-    stripe.retrievePaymentIntent(clientSecret).then(({ paymentIntent }) => {
-      switch (paymentIntent?.status) {
-        case 'succeeded':
-          setMessage('Pagamento aprovado com sucesso! Seu pedido está sendo processado.');
-          setStatus('success');
-          // A limpeza do carrinho e a criação do pedido são feitas pelo webhook do Stripe.
-          break;
-        case 'processing':
-          setMessage('Seu pagamento está sendo processado. Você será notificado quando for concluído.');
-          setStatus('loading');
-          break;
-        case 'requires_payment_method':
+        const paymentStatus = sessionData.status; // 'paid', 'unpaid', 'no_payment_required'
+        const paymentIntentId = sessionData.paymentIntentId;
+
+        if (paymentStatus === 'paid') {
+          // 2. Se pago, verificar se o pedido já foi criado pelo webhook
+          // O webhook deve ter criado o pedido usando o paymentIntentId
+          const { data: orderData, error: orderFetchError } = await supabase
+            .from('orders')
+            .select('id, status')
+            .eq('stripe_payment_intent_id', paymentIntentId)
+            .maybeSingle();
+
+          if (orderFetchError) throw orderFetchError;
+
+          if (orderData) {
+            setMessage('Pagamento aprovado com sucesso! Seu pedido está sendo processado.');
+            setStatus('success');
+            setOrderId(orderData.id);
+          } else {
+            // O pagamento foi aprovado, mas o webhook ainda não criou o pedido.
+            // Isso é comum. Vamos esperar um pouco.
+            setMessage('Pagamento aprovado. Aguardando confirmação final do pedido...');
+            
+            // Implementar um polling simples para esperar o webhook
+            const pollOrder = setInterval(async () => {
+                const { data: polledOrder } = await supabase
+                    .from('orders')
+                    .select('id, status')
+                    .eq('stripe_payment_intent_id', paymentIntentId)
+                    .maybeSingle();
+                
+                if (polledOrder) {
+                    clearInterval(pollOrder);
+                    setMessage('Pedido confirmado e processado!');
+                    setStatus('success');
+                    setOrderId(polledOrder.id);
+                }
+            }, 2000); 
+            
+            // Limpar o polling ao desmontar
+            return () => clearInterval(pollOrder);
+          }
+        } else if (paymentStatus === 'unpaid') {
           setMessage('Falha no pagamento. Por favor, tente outro método.');
           setStatus('error');
-          break;
-        default:
-          setMessage('Algo deu errado.');
+        } else {
+          setMessage('Status de pagamento desconhecido ou pendente.');
           setStatus('error');
-          break;
+        }
+
+      } catch (error: any) {
+        console.error("Erro ao verificar status do pagamento:", error);
+        showError(error.message || 'Ocorreu um erro inesperado ao verificar o status do pagamento.');
+        setMessage('Ocorreu um erro ao verificar o status do pagamento.');
+        setStatus('error');
       }
-    });
-  }, [stripe, navigate]);
+    };
+
+    checkSessionStatus();
+  }, [searchParams, navigate]);
 
   const renderContent = () => {
     switch (status) {
@@ -59,7 +110,7 @@ export default function PaymentStatusPage() {
             <CardTitle>Pagamento Aprovado!</CardTitle>
             <CardDescription>{message}</CardDescription>
             <Button asChild className="mt-6">
-              <Link to="/profile/orders">Ver Meus Pedidos</Link>
+              <Link to={orderId ? `/profile/orders` : "/profile/orders"}>Ver Meus Pedidos</Link>
             </Button>
           </>
         );
