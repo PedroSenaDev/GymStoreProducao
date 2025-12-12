@@ -179,6 +179,17 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
         return;
     }
     
+    // Extrair dados do perfil com segurança
+    const customerName = profile?.full_name;
+    const customerEmail = session?.user.email;
+    const customerMobile = profile?.phone;
+    const customerDocument = profile?.cpf;
+
+    if (!customerName || !customerEmail || !customerMobile || !customerDocument) {
+        showError("Dados do perfil incompletos. Por favor, complete seu perfil.");
+        return;
+    }
+
     setIsLoading(true);
     try {
       // 1. Gerar o QR Code na Abacate Pay
@@ -187,10 +198,10 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
       const { data: pixGenData, error } = await supabase.functions.invoke('generate-pix', {
         body: {
           amount: amountToSend, 
-          customerName: profile?.full_name, 
-          customerEmail: session?.user.email,
-          customerMobile: profile?.phone, 
-          customerDocument: profile?.cpf,
+          customerName, 
+          customerEmail,
+          customerMobile, 
+          customerDocument,
         },
       });
       
