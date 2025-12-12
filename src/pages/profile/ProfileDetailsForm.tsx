@@ -53,8 +53,8 @@ export default function ProfileDetailsForm({ profile, onFinished }: ProfileDetai
         .from("profiles")
         .update({
           full_name: values.full_name,
-          cpf: values.cpf,
-          phone: values.phone,
+          cpf: values.cpf, // Mantendo a máscara para o Pix
+          phone: values.phone, // Mantendo a máscara para o Pix
           birth_date: values.birth_date,
         })
         .eq("id", profile.id);

@@ -49,9 +49,9 @@ serve(async (req) => {
         description: "Pagamento do pedido - GYMSTORE",
         customer: {
           name: customerName,
-          cellphone: customerMobile.replace(/\D/g, ''), // Clean phone number
+          cellphone: customerMobile, // ENVIANDO COM MÁSCARA
           email: customerEmail,
-          taxId: customerDocument.replace(/\D/g, ''), // Clean CPF/CNPJ
+          taxId: customerDocument, // ENVIANDO COM MÁSCARA
         },
     };
 
