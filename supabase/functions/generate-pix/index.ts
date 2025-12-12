@@ -34,6 +34,7 @@ serve(async (req) => {
     // Validate required fields
     if (!amount || !customerName || !customerEmail || !customerMobile || !customerDocument) {
       console.error("Missing required customer fields in payload.");
+      console.error(`Validation check: amount=${!!amount}, name=${!!customerName}, email=${!!customerEmail}, mobile=${!!customerMobile}, document=${!!customerDocument}`);
       return new Response(JSON.stringify({ error: "Missing required customer fields." }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
