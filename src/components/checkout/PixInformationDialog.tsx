@@ -170,12 +170,13 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
   };
 
   async function handleGeneratePix() {
+    // 1. Validação de valor e perfil
     if (totalAmount <= 0) {
         showError("O valor total do pedido deve ser maior que zero.");
         return;
     }
     if (!isProfileComplete) {
-        showError("Por favor, complete seu perfil antes de gerar o Pix.");
+        showError("Por favor, complete seu perfil (Nome, CPF, Telefone e Email) antes de gerar o Pix.");
         return;
     }
     
@@ -185,6 +186,7 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
     const customerMobile = profile?.phone;
     const customerDocument = profile?.cpf;
 
+    // Revalidação (redundante, mas garante que o TS entenda que os campos não são nulos)
     if (!customerName || !customerEmail || !customerMobile || !customerDocument) {
         showError("Dados do perfil incompletos. Por favor, complete seu perfil.");
         return;
@@ -192,7 +194,7 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
 
     setIsLoading(true);
     try {
-      // 1. Gerar o QR Code na Abacate Pay
+      // 2. Gerar o QR Code na Abacate Pay
       const amountToSend = parseFloat(totalAmount.toFixed(2));
       
       const { data: pixGenData, error } = await supabase.functions.invoke('generate-pix', {
@@ -209,10 +211,10 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
       
       setPixData(pixGenData);
       
-      // 2. Criar o pedido no Supabase com status 'pending'
+      // 3. Criar o pedido no Supabase com status 'pending'
       await createOrderAndFinalize(pixGenData.pix_charge_id);
 
-      // 3. Iniciar o polling para verificar o status (fallback para o webhook)
+      // 4. Iniciar o polling para verificar o status (fallback para o webhook)
       if (pollingInterval.current) clearInterval(pollingInterval.current);
       pollingInterval.current = setInterval(() => {
         checkPixStatus(pixGenData.pix_charge_id);
