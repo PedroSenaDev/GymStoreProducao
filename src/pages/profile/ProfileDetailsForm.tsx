@@ -50,12 +50,16 @@ export default function ProfileDetailsForm({ profile, onFinished }: ProfileDetai
 
   const { mutate, isPending } = useMutation({
     mutationFn: async (values: z.infer<typeof formSchema>) => {
+      // Limpa CPF e Telefone antes de salvar no banco de dados
+      const cleanedCpf = values.cpf.replace(/[^\d]/g, "");
+      const cleanedPhone = values.phone.replace(/[^\d]/g, "");
+
       const { error } = await supabase
         .from("profiles")
         .update({
           full_name: values.full_name,
-          cpf: values.cpf,
-          phone: values.phone,
+          cpf: cleanedCpf, // Salva sem máscara
+          phone: cleanedPhone, // Salva sem máscara
           birth_date: values.birth_date,
         })
         .eq("id", profile.id);

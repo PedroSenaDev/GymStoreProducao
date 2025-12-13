@@ -69,15 +69,8 @@ export default function PixCustomerForm({ profile, session, onGeneratePix, isGen
               <FormItem>
                 <FormLabel>CPF</FormLabel>
                 <FormControl>
-                  <InputMask
-                    mask="999.999.999-99"
-                    value={field.value}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    disabled={field.disabled}
-                  >
-                    {(inputProps: any) => <Input {...inputProps} placeholder="000.000.000-00" />}
-                  </InputMask>
+                  {/* Removido InputMask para garantir que o valor enviado seja apenas dígitos */}
+                  <Input placeholder="000.000.000-00" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
