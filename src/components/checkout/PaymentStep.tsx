@@ -25,7 +25,7 @@ export function PaymentStep({ selectedPaymentMethod, onPaymentMethodSelect }: Pa
             <div className="flex-1">
               <div className="flex items-center gap-3">
                 <QrCode className="h-6 w-6" />
-                <span className="font-semibold">Pix (Pagamento Instantâneo)</span>
+                <span className="font-semibold">Pix (Pagamento Instantâneo - Abacate Pay)</span>
               </div>
             </div>
           </Label>
@@ -37,7 +37,7 @@ export function PaymentStep({ selectedPaymentMethod, onPaymentMethodSelect }: Pa
             <div className="flex-1">
               <div className="flex items-center gap-3">
                 <CreditCard className="h-6 w-6" />
-                <span className="font-semibold">Cartão de Crédito</span>
+                <span className="font-semibold">Cartão de Crédito (Stripe)</span>
               </div>
             </div>
           </Label>

@@ -6,16 +6,15 @@ import { Button } from '@/components/ui/button';
 import { AddressStep } from '@/components/checkout/AddressStep';
 import { PaymentStep } from '@/components/checkout/PaymentStep';
 import { OrderSummary } from '@/components/checkout/OrderSummary';
-import { PixInformationDialog } from '@/components/checkout/PixInformationDialog';
 import { useProfile } from '@/hooks/useProfile';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
-import { showError } from '@/utils/toast';
+import { showError, showSuccess } from '@/utils/toast';
 
 export default function CheckoutPage() {
   const session = useSessionStore((state) => state.session);
-  const { items, clearNonSelectedItems } = useCartStore();
+  const { items, clearNonSelectedItems, removeSelectedItems } = useCartStore();
   const { data: profile, isLoading: isLoadingProfile } = useProfile();
   
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
@@ -25,8 +24,7 @@ export default function CheckoutPage() {
   const [deliveryTime, setDeliveryTime] = useState<string | number | null>(null);
   const [birthdayDiscount, setBirthdayDiscount] = useState(0);
   
-  const [isProcessingCard, setIsProcessingCard] = useState(false);
-  const [isPixDialogOpen, setIsPixDialogOpen] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const selectedItems = useMemo(() => items.filter(item => item.selected), [items]);
   const subtotal = useMemo(() => selectedItems.reduce((acc, item) => acc + item.price * item.quantity, 0), [selectedItems]);
@@ -54,54 +52,103 @@ export default function CheckoutPage() {
     checkBirthdayDiscount();
   }, [session?.user.id]);
 
-  const handleFinalizeOrder = async () => {
-    if (isCheckoutDisabled) return;
-    
-    if (paymentMethod === 'pix') {
-        setIsPixDialogOpen(true);
+  const handleAbacatePayCheckout = async () => {
+    if (!session?.user.id || !profile || !session.user.email) {
+        showError("Sessão de usuário ou perfil incompleto.");
         return;
     }
 
-    if (paymentMethod === 'credit_card') {
-        if (!session?.user.id || !profile) {
-            showError("Sessão de usuário ou perfil incompleto.");
-            return;
-        }
+    setIsProcessingPayment(true);
+    try {
+        // 1. Limpa itens não selecionados do DB antes de criar o pedido
+        await clearNonSelectedItems();
+
+        // 2. Chamar a função Edge para criar a cobrança na Abacate Pay e o pedido pendente no Supabase
+        const { data, error } = await supabase.functions.invoke('create-abacate-billing', {
+            body: {
+                items: selectedItems,
+                shippingAddressId: selectedAddressId,
+                userId: session.user.id,
+                shippingCost,
+                shippingRateId: selectedRate!.id,
+                shippingRateName: selectedRate!.name,
+                deliveryTime: deliveryTime,
+                birthdayDiscount: birthdayDiscount,
+                // Customer details from profile (required by Abacate Pay)
+                customerName: profile.full_name,
+                customerEmail: session.user.email,
+                customerMobile: profile.phone,
+                customerDocument: profile.cpf,
+            },
+        });
         
-        setIsProcessingCard(true);
-        try {
-            // 1. Limpa itens não selecionados do DB antes de criar o pedido
-            await clearNonSelectedItems();
+        if (error || data.error) throw new Error(error?.message || data.error);
 
-            // 2. Chamar a função Edge para criar a Checkout Session
-            const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-                body: {
-                    items: selectedItems,
-                    shippingAddressId: selectedAddressId,
-                    userId: session.user.id,
-                    shippingCost,
-                    shippingRateId: selectedRate.id,
-                    shippingRateName: selectedRate.name,
-                    deliveryTime: deliveryTime,
-                    customerEmail: session.user.email,
-                    birthdayDiscount: birthdayDiscount,
-                },
-            });
-            
-            if (error || data.error) throw new Error(error?.message || data.error);
-
-            // 3. Redirecionar para a página de checkout da Stripe
-            if (data.sessionUrl) {
-                window.location.href = data.sessionUrl;
-            } else {
-                throw new Error("URL de sessão não recebida.");
-            }
-
-        } catch (err: any) {
-            showError(`Erro ao iniciar pagamento: ${err.message}`);
-        } finally {
-            setIsProcessingCard(false);
+        // 3. Redirecionar para a página de checkout da Abacate Pay
+        if (data.billingUrl) {
+            // Limpa o carrinho localmente (apenas os itens selecionados)
+            removeSelectedItems();
+            window.location.href = data.billingUrl;
+        } else {
+            throw new Error("URL de cobrança não recebida.");
         }
+
+    } catch (err: any) {
+        showError(`Erro ao iniciar pagamento: ${err.message}`);
+    } finally {
+        setIsProcessingPayment(false);
+    }
+  };
+
+  const handleStripeCheckout = async () => {
+    if (!session?.user.id || !profile) {
+        showError("Sessão de usuário ou perfil incompleto.");
+        return;
+    }
+    
+    setIsProcessingPayment(true);
+    try {
+        // 1. Limpa itens não selecionados do DB antes de criar a sessão Stripe
+        await clearNonSelectedItems();
+
+        // 2. Chamar a função Edge para criar a Checkout Session
+        const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+            body: {
+                items: selectedItems,
+                shippingAddressId: selectedAddressId,
+                userId: session.user.id,
+                shippingCost,
+                shippingRateId: selectedRate!.id,
+                shippingRateName: selectedRate!.name,
+                deliveryTime: deliveryTime,
+                customerEmail: session.user.email,
+                birthdayDiscount: birthdayDiscount,
+            },
+        });
+        
+        if (error || data.error) throw new Error(error?.message || data.error);
+
+        // 3. Redirecionar para a página de checkout da Stripe
+        if (data.sessionUrl) {
+            window.location.href = data.sessionUrl;
+        } else {
+            throw new Error("URL de sessão não recebida.");
+        }
+
+    } catch (err: any) {
+        showError(`Erro ao iniciar pagamento: ${err.message}`);
+    } finally {
+        setIsProcessingPayment(false);
+    }
+  };
+
+  const handleFinalizeOrder = () => {
+    if (isCheckoutDisabled) return;
+
+    if (paymentMethod === 'pix') {
+        handleAbacatePayCheckout();
+    } else if (paymentMethod === 'credit_card') {
+        handleStripeCheckout();
     }
   };
 
@@ -162,29 +209,16 @@ export default function CheckoutPage() {
               size="lg"
               className="w-full"
               onClick={handleFinalizeOrder}
-              disabled={isCheckoutDisabled || isProcessingCard}
+              disabled={isCheckoutDisabled || isProcessingPayment}
             >
-              {isProcessingCard ? (
+              {isProcessingPayment ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : null}
-              {paymentMethod === 'pix' ? 'Gerar Pix e Finalizar' : 'Ir para Pagamento Seguro'}
+              {paymentMethod === 'pix' ? 'Ir para Pagamento Pix (Abacate Pay)' : 'Ir para Pagamento Seguro (Cartão)'}
             </Button>
           </div>
         </div>
       </div>
-      
-      {/* Diálogo Pix */}
-      <PixInformationDialog
-        open={isPixDialogOpen}
-        onOpenChange={setIsPixDialogOpen}
-        totalAmount={total}
-        items={selectedItems}
-        selectedAddressId={selectedAddressId}
-        paymentMethod={paymentMethod}
-        shippingCost={shippingCost}
-        shippingRate={selectedRate}
-        deliveryTime={deliveryTime}
-      />
     </div>
   );
 }

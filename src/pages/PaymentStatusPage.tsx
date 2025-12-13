@@ -1,23 +1,25 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { showError } from '@/utils/toast';
+import { useCartStore } from '@/store/cartStore'; // Import useCartStore
 
 export default function PaymentStatusPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [message, setMessage] = useState<string | null>(null);
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'pending'>('loading');
   const [orderId, setOrderId] = useState<string | null>(null);
+  const { clearCart } = useCartStore(); // Get clearCart function
 
   useEffect(() => {
     const sessionId = searchParams.get('session_id');
+    const abacateOrderId = searchParams.get('abacate_order_id');
 
-    if (!sessionId) {
-      // Se não houver session_id, verifica se há algum erro de auth ou redireciona
+    if (!sessionId && !abacateOrderId) {
       if (searchParams.get('error')) {
         showError("Ocorreu um erro durante o pagamento. Tente novamente.");
         setStatus('error');
@@ -27,8 +29,9 @@ export default function PaymentStatusPage() {
       return;
     }
 
-    const checkSessionStatus = async () => {
-      setMessage('Aguarde enquanto confirmamos seu pagamento...');
+    // --- Stripe Flow ---
+    const checkStripeSessionStatus = async (sessionId: string) => {
+      setMessage('Aguarde enquanto confirmamos seu pagamento via Stripe...');
       
       try {
         // 1. Verificar o status da sessão na Stripe (via Edge Function)
@@ -45,7 +48,6 @@ export default function PaymentStatusPage() {
 
         if (paymentStatus === 'paid') {
           // 2. Se pago, verificar se o pedido já foi criado pelo webhook
-          // O webhook deve ter criado o pedido usando o paymentIntentId
           const { data: orderData, error: orderFetchError } = await supabase
             .from('orders')
             .select('id, status')
@@ -58,12 +60,12 @@ export default function PaymentStatusPage() {
             setMessage('Pagamento aprovado com sucesso! Seu pedido está sendo processado.');
             setStatus('success');
             setOrderId(orderData.id);
+            // O webhook deve ter limpado o carrinho, mas limpamos o estado local.
+            clearCart(); 
           } else {
-            // O pagamento foi aprovado, mas o webhook ainda não criou o pedido.
-            // Isso é comum. Vamos esperar um pouco.
+            // Polling para esperar o webhook
             setMessage('Pagamento aprovado. Aguardando confirmação final do pedido...');
             
-            // Implementar um polling simples para esperar o webhook
             const pollOrder = setInterval(async () => {
                 const { data: polledOrder } = await supabase
                     .from('orders')
@@ -76,10 +78,10 @@ export default function PaymentStatusPage() {
                     setMessage('Pedido confirmado e processado!');
                     setStatus('success');
                     setOrderId(polledOrder.id);
+                    clearCart();
                 }
             }, 2000); 
             
-            // Limpar o polling ao desmontar
             return () => clearInterval(pollOrder);
           }
         } else if (paymentStatus === 'unpaid') {
@@ -91,15 +93,79 @@ export default function PaymentStatusPage() {
         }
 
       } catch (error: any) {
-        console.error("Erro ao verificar status do pagamento:", error);
+        console.error("Erro ao verificar status do pagamento Stripe:", error);
         showError(error.message || 'Ocorreu um erro inesperado ao verificar o status do pagamento.');
         setMessage('Ocorreu um erro ao verificar o status do pagamento.');
         setStatus('error');
       }
     };
 
-    checkSessionStatus();
-  }, [searchParams, navigate]);
+    // --- Abacate Pay Hosted Checkout Flow ---
+    const checkAbacatePayStatus = async (orderId: string) => {
+        setMessage('Aguarde enquanto verificamos o status do seu pedido...');
+        setOrderId(orderId);
+
+        try {
+            // 1. Buscar o status do pedido no Supabase
+            const { data: orderData, error: orderFetchError } = await supabase
+                .from('orders')
+                .select('status')
+                .eq('id', orderId)
+                .single();
+
+            if (orderFetchError) throw orderFetchError;
+
+            const orderStatus = orderData.status;
+
+            if (orderStatus === 'processing') {
+                // O webhook da Abacate Pay funcionou e atualizou o status
+                setMessage('Pagamento Pix aprovado! Seu pedido está sendo processado.');
+                setStatus('success');
+                clearCart(); // Clear local cart (already cleared selected items in checkout, but ensures full cleanup)
+            } else if (orderStatus === 'pending') {
+                // O pagamento ainda está pendente de confirmação (comum para Pix)
+                setMessage('Seu pedido foi registrado e está aguardando a confirmação do pagamento Pix. Isso pode levar alguns minutos.');
+                setStatus('pending');
+                
+                // Iniciar polling para verificar se o webhook atualiza o status
+                const pollOrder = setInterval(async () => {
+                    const { data: polledOrder } = await supabase
+                        .from('orders')
+                        .select('status')
+                        .eq('id', orderId)
+                        .single();
+                    
+                    if (polledOrder?.status === 'processing') {
+                        clearInterval(pollOrder);
+                        setMessage('Pagamento Pix aprovado! Seu pedido está sendo processado.');
+                        setStatus('success');
+                        clearCart();
+                    }
+                }, 5000); 
+
+                return () => clearInterval(pollOrder);
+
+            } else {
+                // Status inesperado (e.g., cancelled)
+                setMessage('O status do seu pedido é inesperado. Por favor, verifique a página de pedidos.');
+                setStatus('error');
+            }
+
+        } catch (error: any) {
+            console.error("Erro ao verificar status do pagamento Abacate Pay:", error);
+            showError('Ocorreu um erro ao verificar o status do pedido. Verifique a página de pedidos.');
+            setMessage('Ocorreu um erro ao verificar o status do pedido.');
+            setStatus('error');
+        }
+    };
+
+    if (sessionId) {
+        checkStripeSessionStatus(sessionId);
+    } else if (abacateOrderId) {
+        checkAbacatePayStatus(abacateOrderId);
+    }
+
+  }, [searchParams, navigate, clearCart]);
 
   const renderContent = () => {
     switch (status) {
@@ -110,10 +176,21 @@ export default function PaymentStatusPage() {
             <CardTitle>Pagamento Aprovado!</CardTitle>
             <CardDescription>{message}</CardDescription>
             <Button asChild className="mt-6">
-              <Link to={orderId ? `/profile/orders` : "/profile/orders"}>Ver Meus Pedidos</Link>
+              <Link to="/profile/orders">Ver Meus Pedidos</Link>
             </Button>
           </>
         );
+      case 'pending':
+        return (
+            <>
+              <Clock className="h-16 w-16 text-yellow-500" />
+              <CardTitle>Pagamento Pendente</CardTitle>
+              <CardDescription>{message}</CardDescription>
+              <Button asChild variant="outline" className="mt-6">
+                <Link to="/profile/orders">Acompanhar Pedido</Link>
+              </Button>
+            </>
+          );
       case 'error':
         return (
           <>
