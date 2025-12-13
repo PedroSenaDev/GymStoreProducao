@@ -57,7 +57,7 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
   const isProfileComplete = !!profile?.full_name && !!profile?.cpf && !!profile?.phone && !!session?.user.email;
 
   // Função para criar o pedido no Supabase com status 'pending'
-  const createPendingOrder = useMutation({
+  const { mutateAsync: createPendingOrder, isPending: isFinalizingOrder } = useMutation({
     mutationFn: async (chargeId: string) => {
       if (!session?.user.id || !selectedAddressId || !paymentMethod || items.length === 0 || !shippingRate) {
         throw new Error("Dados do pedido incompletos para finalização.");
@@ -121,7 +121,7 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
   });
 
   const checkPixStatus = async (chargeId: string) => {
-    if (createPendingOrder.isPending) return; // Não verifica se ainda está criando o pedido
+    if (isFinalizingOrder) return;
     setIsCheckingStatus(true);
     try {
       const { data, error } = await supabase.functions.invoke('check-pix-status', { body: { pix_charge_id: chargeId } });
@@ -198,10 +198,10 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
         throw new Error(error?.message || pixGenData.error);
       }
       
-      setPixData(pixGenData);
-      
       // 2. Criar o pedido no Supabase com status 'pending'
-      await createPendingOrder.mutateAsync(pixGenData.pix_charge_id);
+      await createPendingOrder(pixGenData.pix_charge_id);
+      
+      setPixData(pixGenData);
 
       // 3. Iniciar o polling para verificar o status (fallback para o webhook)
       if (pollingInterval.current) clearInterval(pollingInterval.current);
@@ -258,10 +258,10 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
         <DialogFooter>
             <Button 
                 onClick={handleGeneratePix} 
-                disabled={!isProfileComplete || isLoading || createPendingOrder.isPending || isLoadingProfile} 
+                disabled={!isProfileComplete || isLoading || isFinalizingOrder || isLoadingProfile} 
                 className="w-full"
             >
-                {(isLoading || createPendingOrder.isPending || isLoadingProfile) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {(isLoading || isFinalizingOrder || isLoadingProfile) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Gerar QR Code de {formatCurrency(totalAmount)}
             </Button>
         </DialogFooter>

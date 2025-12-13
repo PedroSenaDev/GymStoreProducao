@@ -28,20 +28,27 @@ serve(async (req) => {
     const payload = await req.json()
     const { amount, customerName, customerEmail, customerMobile, customerDocument } = payload
 
-    // Log the received payload for debugging
-    console.log("Received Pix Payload:", JSON.stringify(payload));
-
-    // Validate required fields
+    // 1. Validação e Limpeza dos dados
     if (!amount || !customerName || !customerEmail || !customerMobile || !customerDocument) {
       console.error("Missing required customer fields in payload.");
-      console.error(`Validation check: amount=${!!amount}, name=${!!customerName}, email=${!!customerEmail}, mobile=${!!customerMobile}, document=${!!customerDocument}`);
       return new Response(JSON.stringify({ error: "Missing required customer fields." }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Prepare the request for the correct Abacate Pay API endpoint
+    // Limpar CPF/CNPJ e Telefone, mantendo apenas dígitos
+    const cleanedDocument = customerDocument.replace(/[^\d]/g, '');
+    const cleanedMobile = customerMobile.replace(/[^\d]/g, '');
+
+    if (cleanedDocument.length < 11 || cleanedMobile.length < 10) {
+        return new Response(JSON.stringify({ error: "CPF/CNPJ ou Telefone inválido após limpeza." }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+    }
+
+    // 2. Preparar o request para a Abacate Pay API
     const apiUrl = 'https://api.abacatepay.com/v1/pixQrCode/create';
     const requestBody = {
         amount: Math.round(amount * 100), // Amount in cents
@@ -49,30 +56,28 @@ serve(async (req) => {
         description: "Pagamento do pedido - GYMSTORE",
         customer: {
           name: customerName,
-          cellphone: customerMobile, // ENVIANDO COM MÁSCARA
+          cellphone: cleanedMobile, // Enviando APENAS dígitos
           email: customerEmail,
-          taxId: customerDocument, // ENVIANDO COM MÁSCARA
+          taxId: cleanedDocument, // Enviando APENAS dígitos
         },
     };
 
     const apiOptions = {
       method: 'POST',
       headers: {
-        // CORREÇÃO: Adicionando o prefixo 'Bearer '
         'Authorization': `Bearer ${ABACATE_API_KEY}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(requestBody)
     };
 
-    // Call the Abacate Pay API
+    // 3. Chamar a Abacate Pay API
     const response = await fetch(apiUrl, apiOptions);
     const responseData = await response.json();
 
-    // Handle API errors
+    // 4. Tratar erros da API
     if (!response.ok || responseData.error) {
       console.error("Abacate Pay API Error Response:", responseData);
-      // Retorna uma mensagem de erro mais específica da API externa
       const errorMessage = responseData.error?.message || responseData.message || "Failed to generate Pix charge.";
       return new Response(JSON.stringify({ error: errorMessage }), {
         status: response.status || 500,
@@ -80,7 +85,7 @@ serve(async (req) => {
       });
     }
 
-    // Extract the necessary data from the successful response
+    // 5. Extrair e retornar dados de sucesso
     const { id: pixChargeId, brCode, brCodeBase64 } = responseData.data;
 
     if (!pixChargeId || !brCode || !brCodeBase64) {
@@ -88,10 +93,8 @@ serve(async (req) => {
         throw new Error("Pix details not found in Abacate Pay response.");
     }
 
-    // The base64 string needs the data URI prefix to be used directly in an <img> tag
     const qrCodeUrl = `data:image/png;base64,${brCodeBase64}`;
 
-    // Send the data back to the client in the expected format
     return new Response(JSON.stringify({ 
         pix_charge_id: pixChargeId,
         br_code: brCode,
