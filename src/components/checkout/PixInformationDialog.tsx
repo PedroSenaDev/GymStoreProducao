@@ -138,7 +138,7 @@ export function PixInformationDialog({
     try {
       const { data, error } = await supabase.functions.invoke('check-pix-status', {
         body: {
-          pix_charge_id: chargeId
+          pixChargeId: chargeId // AGORA USANDO CAMELCASE
         }
       });
 
