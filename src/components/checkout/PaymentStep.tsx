@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { CreditCard } from "lucide-react";
+import { CreditCard, QrCode } from "lucide-react";
 
 interface PaymentStepProps {
   selectedPaymentMethod: string | null;
@@ -17,7 +17,18 @@ export function PaymentStep({ selectedPaymentMethod, onPaymentMethodSelect }: Pa
           onValueChange={onPaymentMethodSelect}
           className="space-y-4"
         >
-          {/* Removida a opção Pix */}
+          <Label
+            htmlFor="payment-pix"
+            className="flex cursor-pointer rounded-lg border p-4 transition-colors has-[:checked]:border-primary"
+          >
+            <RadioGroupItem value="pix" id="payment-pix" className="mr-4 mt-1" />
+            <div className="flex-1">
+              <div className="flex items-center gap-3">
+                <QrCode className="h-6 w-6" />
+                <span className="font-semibold">Pix (Pagamento Instantâneo)</span>
+              </div>
+            </div>
+          </Label>
           <Label
             htmlFor="payment-card"
             className="flex cursor-pointer rounded-lg border p-4 transition-colors has-[:checked]:border-primary"
@@ -28,7 +39,6 @@ export function PaymentStep({ selectedPaymentMethod, onPaymentMethodSelect }: Pa
                 <CreditCard className="h-6 w-6" />
                 <span className="font-semibold">Cartão de Crédito</span>
               </div>
-              {/* O formulário real do cartão será renderizado pelo Stripe PaymentElement no CheckoutPage */}
             </div>
           </Label>
         </RadioGroup>

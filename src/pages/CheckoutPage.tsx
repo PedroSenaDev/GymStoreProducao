@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { AddressStep } from '@/components/checkout/AddressStep';
 import { PaymentStep } from '@/components/checkout/PaymentStep';
 import { OrderSummary } from '@/components/checkout/OrderSummary';
+import { PixInformationDialog } from '@/components/checkout/PixInformationDialog';
 import { useProfile } from '@/hooks/useProfile';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -19,21 +20,22 @@ export default function CheckoutPage() {
   
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [selectedRate, setSelectedRate] = useState<{ id: string | number; name: string; } | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<string | null>('credit_card'); // Definido como padrão
+  const [paymentMethod, setPaymentMethod] = useState<string | null>('pix'); // Pix como padrão
   const [shippingCost, setShippingCost] = useState(0);
   const [deliveryTime, setDeliveryTime] = useState<string | number | null>(null);
   const [birthdayDiscount, setBirthdayDiscount] = useState(0);
   
   const [isProcessingCard, setIsProcessingCard] = useState(false);
+  const [isPixDialogOpen, setIsPixDialogOpen] = useState(false);
 
   const selectedItems = useMemo(() => items.filter(item => item.selected), [items]);
   const subtotal = useMemo(() => selectedItems.reduce((acc, item) => acc + item.price * item.quantity, 0), [selectedItems]);
   const discountAmount = (subtotal * birthdayDiscount) / 100;
   const total = subtotal - discountAmount + shippingCost;
 
-  const isProfileIncomplete = !profile?.full_name || !profile?.cpf;
+  const isProfileIncomplete = !profile?.full_name || !profile?.cpf || !profile?.phone;
   const isShippingSelected = selectedAddressId && selectedRate;
-  const isCheckoutDisabled = !isShippingSelected || isProfileIncomplete || isLoadingProfile;
+  const isCheckoutDisabled = !isShippingSelected || isProfileIncomplete || isLoadingProfile || !paymentMethod;
 
   useEffect(() => {
     const checkBirthdayDiscount = async () => {
@@ -55,7 +57,11 @@ export default function CheckoutPage() {
   const handleFinalizeOrder = async () => {
     if (isCheckoutDisabled) return;
     
-    // O único método de pagamento restante é 'credit_card'
+    if (paymentMethod === 'pix') {
+        setIsPixDialogOpen(true);
+        return;
+    }
+
     if (paymentMethod === 'credit_card') {
         if (!session?.user.id || !profile) {
             showError("Sessão de usuário ou perfil incompleto.");
@@ -103,7 +109,6 @@ export default function CheckoutPage() {
     setShippingCost(cost);
     setSelectedRate(rateId ? { id: rateId, name: rateName } : null);
     setDeliveryTime(time);
-    // Não precisa resetar o método de pagamento, pois só há um.
   };
 
   if (!session) {
@@ -149,7 +154,7 @@ export default function CheckoutPage() {
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  Por favor, <a href="/profile/details" className="font-semibold underline">complete seu perfil</a> (nome e CPF) para continuar.
+                  Por favor, <a href="/profile/details" className="font-semibold underline">complete seu perfil</a> (nome, CPF e telefone) para continuar.
                 </AlertDescription>
               </Alert>
             )}
@@ -162,11 +167,24 @@ export default function CheckoutPage() {
               {isProcessingCard ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : null}
-              Ir para Pagamento Seguro
+              {paymentMethod === 'pix' ? 'Gerar Pix e Finalizar' : 'Ir para Pagamento Seguro'}
             </Button>
           </div>
         </div>
       </div>
+      
+      {/* Diálogo Pix */}
+      <PixInformationDialog
+        open={isPixDialogOpen}
+        onOpenChange={setIsPixDialogOpen}
+        totalAmount={total}
+        items={selectedItems}
+        selectedAddressId={selectedAddressId}
+        paymentMethod={paymentMethod}
+        shippingCost={shippingCost}
+        shippingRate={selectedRate}
+        deliveryTime={deliveryTime}
+      />
     </div>
   );
 }
