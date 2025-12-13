@@ -36,7 +36,6 @@ serve(async (req) => {
 
     // Validação de campos obrigatórios
     if (!amount || !customerName || !customerEmail || !customerMobile || !customerDocument) {
-      console.error("Missing required customer fields in payload:", payload);
       return new Response(JSON.stringify({
         error: "Missing required customer fields."
       }), {
@@ -67,8 +66,6 @@ serve(async (req) => {
         taxId: cleanedTaxId,
       }
     };
-    
-    console.log("Request Body sent to Abacate Pay:", requestBody);
 
     const apiOptions = {
       method: 'POST',
@@ -81,8 +78,6 @@ serve(async (req) => {
 
     const response = await fetch(apiUrl, apiOptions);
     const responseData = await response.json();
-    
-    console.log("Response received from Abacate Pay:", responseData);
 
     if (!response.ok || responseData.error) {
       console.error("Abacate Pay API Error Response:", responseData);
@@ -99,24 +94,23 @@ serve(async (req) => {
     }
 
     const {
-      id, // Renomeado de pixChargeId para id
+      id: pixChargeId,
       brCode,
       brCodeBase64,
       expiresAt
     } = responseData.data;
 
-    if (!id || !brCode || !brCodeBase64) {
+    if (!pixChargeId || !brCode || !brCodeBase64) {
       throw new Error("Pix details not found in Abacate Pay response.");
     }
 
-    // O frontend espera o QR Code como URL base64
     const qrCodeUrl = `data:image/png;base64,${brCodeBase64}`;
 
     return new Response(JSON.stringify({
-      id: id, // Usando 'id' para o ID da cobrança
-      brCode: brCode,
-      qrCodeUrl: qrCodeUrl, // Usando 'qrCodeUrl' para a URL base64
-      expiresAt: expiresAt
+      pix_charge_id: pixChargeId,
+      br_code: brCode,
+      qr_code_url: qrCodeUrl,
+      expires_at: expiresAt
     }), {
       headers: {
         ...corsHeaders,

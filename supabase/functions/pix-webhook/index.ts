@@ -24,17 +24,15 @@ serve(async (req) => {
 
     const eventType = body.event;
     const status = body.data?.status; // Ex: PAID, PENDING, EXPIRED
-    const chargeId = body.data?.id;
-    // O externalId agora vem do campo metadata que enviamos na criação da cobrança
-    const orderId = body.data?.metadata?.orderId; 
-    const userId = body.data?.metadata?.userId;
+    const pixChargeId = body.data?.id;
+    const externalId = body.data?.metadata?.externalId; // ID do pedido no Supabase
 
-    if (eventType === 'billing_updated' && status === 'PAID' && orderId && userId) {
-        // 2. Buscar o pedido correspondente usando o orderId
+    if (eventType === 'pix_charge_updated' && status === 'PAID' && externalId) {
+        // 2. Buscar o pedido correspondente usando o externalId (ID do pedido)
         const { data: order, error: fetchError } = await supabaseAdmin
             .from('orders')
             .select('id, user_id, status')
-            .eq('id', orderId)
+            .eq('id', externalId)
             .maybeSingle();
 
         if (fetchError) throw new Error(`Erro ao buscar pedido: ${fetchError.message}`);
@@ -43,12 +41,12 @@ serve(async (req) => {
             // 3. Atualizar o status do pedido para 'processing'
             const { error: updateError } = await supabaseAdmin
                 .from('orders')
-                .update({ status: 'processing', pix_charge_id: chargeId })
+                .update({ status: 'processing', pix_charge_id: pixChargeId })
                 .eq('id', order.id);
 
             if (updateError) throw new Error(`Erro ao atualizar status do pedido: ${updateError.message}`);
             
-            console.log(`Pedido ${order.id} atualizado para 'processing' via webhook Pix (Abacate Pay Billing).`);
+            console.log(`Pedido ${order.id} atualizado para 'processing' via webhook Pix.`);
 
             // 4. Decrementar Estoque
             const { data: orderItems, error: itemsError } = await supabaseAdmin
@@ -69,14 +67,14 @@ serve(async (req) => {
                 console.log(`Estoque decrementado para pedido ${order.id}.`);
             }
 
-            // 5. Limpar o carrinho (todos os itens do usuário, pois o pedido foi criado com base nos selecionados)
+            // 5. Limpar o carrinho (itens selecionados)
             const { error: cartClearError } = await supabaseAdmin
                 .from('cart_items')
                 .delete()
-                .eq('user_id', userId); // Usamos o userId do metadata
-
+                .eq('user_id', order.user_id);
+            
             if (cartClearError) {
-                console.error(`Falha ao limpar o carrinho do usuário ${userId}:`, cartClearError);
+                console.error(`Falha ao limpar o carrinho do usuário ${order.user_id}:`, cartClearError);
             }
         }
     }

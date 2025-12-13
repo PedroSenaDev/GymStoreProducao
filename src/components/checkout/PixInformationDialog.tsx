@@ -15,13 +15,13 @@ import { Separator } from "../ui/separator";
 import { Input } from "../ui/input";
 import PixCustomerForm, { PixCustomerFormValues } from "./PixCustomerForm";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "../ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface PixData {
-  qrCodeUrl: string; // Alterado de qr_code_url
-  brCode: string; // Alterado de br_code
-  id: string; // Alterado de pix_charge_id
-  expiresAt: string; // Alterado de expires_at
+  qr_code_url: string;
+  br_code: string;
+  pix_charge_id: string;
+  expires_at: string;
 }
 
 interface PixInformationDialogProps {
@@ -54,7 +54,6 @@ export function PixInformationDialog({
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [isCopied, setIsCopied] = useState(false);
-  const [pixGenerationError, setPixGenerationError] = useState<string | null>(null);
   const session = useSessionStore((state) => state.session);
   const { data: profile, isLoading: isLoadingProfile } = useProfile();
   const navigate = useNavigate();
@@ -138,7 +137,7 @@ export function PixInformationDialog({
     try {
       const { data, error } = await supabase.functions.invoke('check-pix-status', {
         body: {
-          pixChargeId: chargeId // AGORA USANDO CAMELCASE
+          pix_charge_id: chargeId
         }
       });
 
@@ -159,8 +158,8 @@ export function PixInformationDialog({
 
   useEffect(() => {
     // Iniciar contador regressivo quando pixData for definido
-    if (pixData?.expiresAt) {
-      const expirationTime = new Date(pixData.expiresAt).getTime(); // Usando expiresAt
+    if (pixData?.expires_at) {
+      const expirationTime = new Date(pixData.expires_at).getTime();
       const now = new Date().getTime();
       const initialTimeLeft = Math.max(0, Math.floor((expirationTime - now) / 1000));
       setTimeLeft(initialTimeLeft);
@@ -170,8 +169,6 @@ export function PixInformationDialog({
           setTimeLeft(prev => {
             if (prev === null || prev <= 1) {
               if (countdownInterval.current) clearInterval(countdownInterval.current);
-              // Se o tempo acabar, para o polling
-              if (pollingInterval.current) clearInterval(pollingInterval.current);
               return 0;
             }
             return prev - 1;
@@ -187,8 +184,8 @@ export function PixInformationDialog({
   }, [pixData]);
 
   const handleCopyToClipboard = () => {
-    if (pixData?.brCode) { // Usando brCode
-      navigator.clipboard.writeText(pixData.brCode);
+    if (pixData?.br_code) {
+      navigator.clipboard.writeText(pixData.br_code);
       setIsCopied(true);
       showSuccess("Código Pix copiado!");
       
@@ -201,12 +198,6 @@ export function PixInformationDialog({
     onOpenChange(isOpen);
     if (pollingInterval.current) clearInterval(pollingInterval.current);
     if (countdownInterval.current) clearInterval(countdownInterval.current);
-    // Resetar o estado do Pix ao fechar
-    if (!isOpen) {
-        setPixData(null);
-        setTimeLeft(null);
-        setPixGenerationError(null); // Limpa o erro ao fechar
-    }
   };
 
   async function handleGeneratePix(values: PixCustomerFormValues) {
@@ -216,13 +207,11 @@ export function PixInformationDialog({
     }
 
     setIsLoadingPix(true);
-    setPixGenerationError(null); // Limpa erros anteriores
     let orderId: string | null = null;
 
     try {
       // 1. Gerar o QR Code na Abacate Pay
       const amountToSend = parseFloat(totalAmount.toFixed(2));
-      
       const { data: pixGenData, error } = await supabase.functions.invoke('generate-pix', {
         body: {
           amount: amountToSend,
@@ -235,17 +224,18 @@ export function PixInformationDialog({
 
       if (error || pixGenData.error) {
         console.error("Erro detalhado da Edge Function:", error?.message || pixGenData.error);
-        throw new Error(error?.message || pixGenData.error || "Falha desconhecida ao gerar Pix.");
+        throw new Error(error?.message || pixGenData.error);
       }
-      
+
+      const pixChargeId = pixGenData.pix_charge_id;
+
       // 2. Criar o pedido no Supabase com status 'pending' e o pix_charge_id
-      // Usando pixGenData.id (novo nome)
-      orderId = await createPendingOrder(pixGenData.id);
+      orderId = await createPendingOrder(pixChargeId);
 
       // 3. Atualizar o Pix na Abacate Pay com o externalId (ID do pedido)
       const { error: updateError } = await supabase.functions.invoke('update-pix-external-id', {
         body: {
-          pixChargeId: pixGenData.id, // Usando pixGenData.id
+          pixChargeId: pixChargeId,
           externalId: orderId,
         }
       });
@@ -256,29 +246,25 @@ export function PixInformationDialog({
       }
 
       setPixData({
-        qrCodeUrl: pixGenData.qrCodeUrl, // Usando qrCodeUrl
-        brCode: pixGenData.brCode, // Usando brCode
-        id: pixGenData.id, // Usando id
-        expiresAt: pixGenData.expiresAt || new Date(Date.now() + 3600000).toISOString() // Usando expiresAt
+        qr_code_url: pixGenData.qr_code_url,
+        br_code: pixGenData.br_code,
+        pix_charge_id: pixGenData.pix_charge_id,
+        expires_at: pixGenData.expires_at || new Date(Date.now() + 3600000).toISOString() // 1 hora padrão
       });
 
       // 4. Iniciar o polling para verificar o status (fallback para o webhook)
       if (pollingInterval.current) clearInterval(pollingInterval.current);
       pollingInterval.current = setInterval(() => {
-        checkPixStatus(pixGenData.id); // Usando pixGenData.id
+        checkPixStatus(pixGenData.pix_charge_id);
       }, 5000);
     } catch (err: any) {
-      const errorMessage = err.message || "Erro desconhecido ao gerar QR Code.";
-      setPixGenerationError(errorMessage); // Define o erro para exibição
-      showError(errorMessage);
-      
+      showError(err.message || "Erro ao gerar QR Code.");
       // Se falhar após criar o pedido, tentamos cancelar o pedido pendente
       if (orderId) {
         await supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId);
         queryClient.invalidateQueries({ queryKey: ["userOrders", session?.user.id] });
       }
       if (pollingInterval.current) clearInterval(pollingInterval.current);
-      setPixData(null); // Garante que o estado seja limpo em caso de erro
     } finally {
       setIsLoadingPix(false);
     }
@@ -301,9 +287,9 @@ export function PixInformationDialog({
 
       <Card className="border-2 border-dashed">
         <CardContent className="p-6 flex flex-col items-center">
-          {pixData?.qrCodeUrl ? ( // Usando qrCodeUrl
+          {pixData?.qr_code_url ? (
             <img 
-              src={pixData.qrCodeUrl} 
+              src={pixData.qr_code_url} 
               alt="QR Code Pix" 
               className="w-48 h-48 rounded-lg"
             />
@@ -328,7 +314,7 @@ export function PixInformationDialog({
           <div className="flex gap-2">
             <Input 
               id="pix-code" 
-              value={pixData?.brCode || ''} // Usando brCode
+              value={pixData?.br_code || ''} 
               readOnly 
               className="flex-1"
             />
@@ -352,7 +338,7 @@ export function PixInformationDialog({
 
       <DialogFooter className="flex flex-col gap-2">
         <Button 
-          onClick={() => pixData && checkPixStatus(pixData.id)} // Usando pixData.id
+          onClick={() => pixData && checkPixStatus(pixData.pix_charge_id)} 
           disabled={isCheckingStatus}
           className="w-full"
         >
@@ -372,15 +358,7 @@ export function PixInformationDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleCloseDialog}>
-      <DialogContent 
-        className="sm:max-w-md max-h-[90vh] overflow-y-auto"
-        // Impede o fechamento ao clicar fora se o Pix já foi gerado
-        onInteractOutside={(e) => {
-            if (pixData) {
-                e.preventDefault();
-            }
-        }}
-      >
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Pagamento com Pix</DialogTitle>
           <DialogDescription>
@@ -398,14 +376,6 @@ export function PixInformationDialog({
           renderPixDetails()
         ) : (
           <div className="space-y-4 py-4">
-            {pixGenerationError && (
-                <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                        Falha ao gerar Pix: {pixGenerationError}
-                    </AlertDescription>
-                </Alert>
-            )}
             <Alert variant="default">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>

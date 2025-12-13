@@ -19,8 +19,7 @@ import { Session } from "@supabase/supabase-js";
 
 const formSchema = z.object({
   full_name: z.string().min(3, "O nome completo é obrigatório."),
-  // A validação agora aceita o formato com máscara, mas a função isValidCPF verifica apenas os dígitos.
-  cpf: z.string().refine(isValidCPF, { message: "CPF inválido. Use o formato 000.000.000-00." }),
+  cpf: z.string().refine(isValidCPF, { message: "CPF inválido. Digite 11 dígitos (apenas números)." }),
   phone: z.string().refine(isValidPhone, { message: "Telefone inválido. Use o formato (00) 00000-0000." }),
   email: z.string().email("E-mail inválido."),
 });
@@ -70,15 +69,8 @@ export default function PixCustomerForm({ profile, session, onGeneratePix, isGen
               <FormItem>
                 <FormLabel>CPF</FormLabel>
                 <FormControl>
-                  <InputMask
-                    mask="999.999.999-99"
-                    value={field.value}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    disabled={field.disabled}
-                  >
-                    {(inputProps: any) => <Input {...inputProps} placeholder="000.000.000-00" />}
-                  </InputMask>
+                  {/* Removido InputMask para garantir que o valor enviado seja apenas dígitos */}
+                  <Input placeholder="Apenas 11 dígitos" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
