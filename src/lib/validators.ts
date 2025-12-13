@@ -1,11 +1,15 @@
 // Basic CPF validation (checks for format 000.000.000-00)
 export const isValidCPF = (cpf: string): boolean => {
-  const cpfRegex = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/;
-  if (!cpfRegex.test(cpf)) return false;
-  
-  // Checks for repeated digits (e.g., 111.111.111-11)
   const cleaned = cpf.replace(/[^\d]/g, "");
+  
+  // 1. Check if it has 11 digits
+  if (cleaned.length !== 11) return false;
+
+  // 2. Checks for repeated digits (e.g., 11111111111)
   if (/^(\d)\1+$/.test(cleaned)) return false; 
+  
+  // Note: We skip the full complex CPF algorithm check for simplicity, 
+  // relying on length and repetition checks for basic validation.
   
   return true;
 };
