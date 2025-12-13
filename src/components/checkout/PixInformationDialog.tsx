@@ -1,15 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Loader2, Copy, AlertCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, } from "@/components/ui/dialog";
+import { Loader2, Copy, AlertCircle, Check } from "lucide-react";
 import { showError, showSuccess } from "@/utils/toast";
 import { useSessionStore } from "@/store/sessionStore";
 import { useProfile } from "@/hooks/useProfile";
@@ -21,11 +14,14 @@ import { Alert, AlertDescription } from "../ui/alert";
 import { Separator } from "../ui/separator";
 import { Input } from "../ui/input";
 import PixCustomerForm, { PixCustomerFormValues } from "./PixCustomerForm";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface PixData {
   qr_code_url: string;
   br_code: string;
   pix_charge_id: string;
+  expires_at: string;
 }
 
 interface PixInformationDialogProps {
@@ -42,16 +38,29 @@ interface PixInformationDialogProps {
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
-export function PixInformationDialog({ open, onOpenChange, totalAmount, items, selectedAddressId, paymentMethod, shippingCost, shippingRate, deliveryTime }: PixInformationDialogProps) {
+export function PixInformationDialog({
+  open,
+  onOpenChange,
+  totalAmount,
+  items,
+  selectedAddressId,
+  paymentMethod,
+  shippingCost,
+  shippingRate,
+  deliveryTime
+}: PixInformationDialogProps) {
   const [isLoadingPix, setIsLoadingPix] = useState(false);
   const [pixData, setPixData] = useState<PixData | null>(null);
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [isCopied, setIsCopied] = useState(false);
   const session = useSessionStore((state) => state.session);
   const { data: profile, isLoading: isLoadingProfile } = useProfile();
   const navigate = useNavigate();
   const { removeSelectedItems } = useCartStore();
   const queryClient = useQueryClient();
   const pollingInterval = useRef<NodeJS.Timeout | null>(null);
+  const countdownInterval = useRef<NodeJS.Timeout | null>(null);
 
   // Função para criar o pedido no Supabase com status 'pending'
   const { mutateAsync: createPendingOrder, isPending: isFinalizingOrder } = useMutation({
@@ -66,15 +75,17 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
         .select('*')
         .eq('id', selectedAddressId)
         .single();
-      
       if (addressError) throw new Error(`Endereço de entrega não encontrado: ${addressError.message}`);
-      
+
       // 2. Criar o Pedido (Status 'pending')
       const { data: orderData, error: orderError } = await supabase.from('orders').insert({
-        user_id: session.user.id, total_amount: totalAmount, status: 'pending',
-        shipping_address_id: selectedAddressId, payment_method: paymentMethod,
+        user_id: session.user.id,
+        total_amount: totalAmount,
+        status: 'pending',
+        shipping_address_id: selectedAddressId,
+        payment_method: paymentMethod,
         shipping_cost: shippingCost,
-        pix_charge_id: chargeId, // Adicionamos o chargeId aqui
+        pix_charge_id: chargeId,
         shipping_service_id: shippingRate.id.toString(),
         shipping_service_name: shippingRate.name,
         delivery_time: deliveryTime?.toString(),
@@ -87,26 +98,29 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
         shipping_state: address.state,
         shipping_zip_code: address.zip_code,
       }).select('id').single();
+
       if (orderError) throw orderError;
-      
       const newOrderId = orderData.id;
-      
+
       // 3. Criar os Itens do Pedido
       const orderItems = items.map(item => ({
-        order_id: newOrderId, product_id: item.id, quantity: item.quantity,
-        price: item.price, selected_size: item.selectedSize, selected_color: item.selectedColor,
+        order_id: newOrderId,
+        product_id: item.id,
+        quantity: item.quantity,
+        price: item.price,
+        selected_size: item.selectedSize,
+        selected_color: item.selectedColor,
       }));
-      
+
       const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
       if (itemsError) {
         // Se falhar, tentamos reverter o pedido
         await supabase.from('orders').delete().eq('id', newOrderId);
         throw itemsError;
       }
-      
+
       // 4. Limpar itens do carrinho que foram selecionados (apenas localmente)
       removeSelectedItems();
-
       return newOrderId;
     },
     onSuccess: () => {
@@ -121,9 +135,14 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
     if (isFinalizingOrder) return;
     setIsCheckingStatus(true);
     try {
-      const { data, error } = await supabase.functions.invoke('check-pix-status', { body: { pix_charge_id: chargeId } });
+      const { data, error } = await supabase.functions.invoke('check-pix-status', {
+        body: {
+          pix_charge_id: chargeId
+        }
+      });
+
       if (error || data.error) throw new Error(error?.message || data.error);
-      
+
       if (data.status === 'PAID' || data.status === 'CONFIRMED') {
         showSuccess("Pagamento confirmado! Seu pedido está sendo processado.");
         if (pollingInterval.current) clearInterval(pollingInterval.current);
@@ -138,58 +157,81 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
   };
 
   useEffect(() => {
+    // Iniciar contador regressivo quando pixData for definido
+    if (pixData?.expires_at) {
+      const expirationTime = new Date(pixData.expires_at).getTime();
+      const now = new Date().getTime();
+      const initialTimeLeft = Math.max(0, Math.floor((expirationTime - now) / 1000));
+      setTimeLeft(initialTimeLeft);
+
+      if (initialTimeLeft > 0) {
+        countdownInterval.current = setInterval(() => {
+          setTimeLeft(prev => {
+            if (prev === null || prev <= 1) {
+              if (countdownInterval.current) clearInterval(countdownInterval.current);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      }
+    }
+
     return () => {
+      if (countdownInterval.current) clearInterval(countdownInterval.current);
       if (pollingInterval.current) clearInterval(pollingInterval.current);
     };
-  }, []);
+  }, [pixData]);
 
   const handleCopyToClipboard = () => {
     if (pixData?.br_code) {
       navigator.clipboard.writeText(pixData.br_code);
+      setIsCopied(true);
       showSuccess("Código Pix copiado!");
+      
+      // Resetar o estado de copiado após 2 segundos
+      setTimeout(() => setIsCopied(false), 2000);
     }
   };
 
   const handleCloseDialog = (isOpen: boolean) => {
     onOpenChange(isOpen);
     if (pollingInterval.current) clearInterval(pollingInterval.current);
+    if (countdownInterval.current) clearInterval(countdownInterval.current);
   };
 
   async function handleGeneratePix(values: PixCustomerFormValues) {
     if (totalAmount <= 0) {
-        showError("O valor total do pedido deve ser maior que zero.");
-        return;
+      showError("O valor total do pedido deve ser maior que zero.");
+      return;
     }
-    
+
     setIsLoadingPix(true);
     let orderId: string | null = null;
 
     try {
       // 1. Gerar o QR Code na Abacate Pay
       const amountToSend = parseFloat(totalAmount.toFixed(2));
-      
       const { data: pixGenData, error } = await supabase.functions.invoke('generate-pix', {
         body: {
-          amount: amountToSend, 
-          customerName: values.full_name, 
+          amount: amountToSend,
+          customerName: values.full_name,
           customerEmail: values.email,
-          customerMobile: values.phone, 
+          customerMobile: values.phone,
           customerDocument: values.cpf,
-          externalId: 'temp_id', // Usamos um ID temporário para satisfazer a validação inicial
-        },
+        }
       });
-      
+
       if (error || pixGenData.error) {
         console.error("Erro detalhado da Edge Function:", error?.message || pixGenData.error);
         throw new Error(error?.message || pixGenData.error);
       }
-      
+
       const pixChargeId = pixGenData.pix_charge_id;
 
       // 2. Criar o pedido no Supabase com status 'pending' e o pix_charge_id
-      // O ID do pedido (orderId) será usado como externalId na Abacate Pay (via webhook)
       orderId = await createPendingOrder(pixChargeId);
-      
+
       // 3. Atualizar o Pix na Abacate Pay com o externalId (ID do pedido)
       const { error: updateError } = await supabase.functions.invoke('update-pix-external-id', {
         body: {
@@ -203,14 +245,18 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
         // Não é um erro crítico para o usuário, mas logamos.
       }
 
-      setPixData(pixGenData);
+      setPixData({
+        qr_code_url: pixGenData.qr_code_url,
+        br_code: pixGenData.br_code,
+        pix_charge_id: pixGenData.pix_charge_id,
+        expires_at: pixGenData.expires_at || new Date(Date.now() + 3600000).toISOString() // 1 hora padrão
+      });
 
       // 4. Iniciar o polling para verificar o status (fallback para o webhook)
       if (pollingInterval.current) clearInterval(pollingInterval.current);
       pollingInterval.current = setInterval(() => {
         checkPixStatus(pixGenData.pix_charge_id);
       }, 5000);
-
     } catch (err: any) {
       showError(err.message || "Erro ao gerar QR Code.");
       // Se falhar após criar o pedido, tentamos cancelar o pedido pendente
@@ -224,20 +270,87 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
     }
   }
 
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const renderPixDetails = () => (
-    <div className="flex flex-col items-center gap-6 py-4">
-      <img src={pixData!.qr_code_url} alt="QR Code Pix" className="w-56 h-56 rounded-lg" />
-      <div className="w-full space-y-2">
-        <Label htmlFor="pix-code">Pix Copia e Cola</Label>
-        <div className="flex items-center gap-2">
-          <Input id="pix-code" value={pixData!.br_code} readOnly className="flex-1 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" />
-          <Button size="icon" onClick={handleCopyToClipboard}><Copy className="h-4 w-4" /></Button>
+    <div className="space-y-6 py-4">
+      <div className="text-center">
+        <h3 className="text-lg font-semibold">Escaneie o QR Code</h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          Abra seu app de pagamentos e escaneie o código abaixo
+        </p>
+      </div>
+
+      <Card className="border-2 border-dashed">
+        <CardContent className="p-6 flex flex-col items-center">
+          {pixData?.qr_code_url ? (
+            <img 
+              src={pixData.qr_code_url} 
+              alt="QR Code Pix" 
+              className="w-48 h-48 rounded-lg"
+            />
+          ) : (
+            <div className="w-48 h-48 flex items-center justify-center bg-muted rounded-lg">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="space-y-4">
+        <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+          <span className="text-sm font-medium">Tempo restante:</span>
+          <span className={`text-lg font-bold ${timeLeft !== null && timeLeft < 300 ? 'text-destructive' : 'text-primary'}`}>
+            {timeLeft !== null ? formatTime(timeLeft) : '--:--'}
+          </span>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="pix-code">Código Pix (Copia e Cola)</Label>
+          <div className="flex gap-2">
+            <Input 
+              id="pix-code" 
+              value={pixData?.br_code || ''} 
+              readOnly 
+              className="flex-1"
+            />
+            <Button 
+              size="icon" 
+              onClick={handleCopyToClipboard}
+              disabled={isCopied}
+            >
+              {isCopied ? (
+                <Check className="h-4 w-4 text-green-500" />
+              ) : (
+                <Copy className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Cole este código no seu app bancário para pagar
+          </p>
         </div>
       </div>
-      <DialogFooter className="w-full">
-        <Button onClick={() => checkPixStatus(pixData!.pix_charge_id)} disabled={isCheckingStatus} className="w-full">
+
+      <DialogFooter className="flex flex-col gap-2">
+        <Button 
+          onClick={() => pixData && checkPixStatus(pixData.pix_charge_id)} 
+          disabled={isCheckingStatus}
+          className="w-full"
+        >
           {isCheckingStatus && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Já Paguei (Verificar Status)
+        </Button>
+        <Button 
+          variant="outline" 
+          onClick={() => handleCloseDialog(false)}
+          className="w-full"
+        >
+          Cancelar Pedido
         </Button>
       </DialogFooter>
     </div>
@@ -245,34 +358,38 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
 
   return (
     <Dialog open={open} onOpenChange={handleCloseDialog}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Pagamento com Pix</DialogTitle>
           <DialogDescription>
-            {pixData ? "Escaneie o QR Code ou copie o código para pagar." : "Confirme seus dados para gerar o Pix."}
+            {pixData 
+              ? "Complete seu pagamento escaneando o QR Code ou copiando o código" 
+              : "Confirme seus dados para gerar o Pix"}
           </DialogDescription>
         </DialogHeader>
         
         {isLoadingProfile ? (
-            <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin" /></div>
+          <div className="flex justify-center items-center h-40">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
         ) : pixData ? (
-            renderPixDetails()
+          renderPixDetails()
         ) : (
-            <div className="space-y-4 py-4">
-                <Alert variant="default">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                        O Pix exige que o nome, CPF e telefone estejam preenchidos corretamente.
-                    </AlertDescription>
-                </Alert>
-                <PixCustomerForm 
-                    profile={profile} 
-                    session={session}
-                    onGeneratePix={handleGeneratePix}
-                    isGenerating={isLoadingPix || isFinalizingOrder}
-                    totalAmount={totalAmount}
-                />
-            </div>
+          <div className="space-y-4 py-4">
+            <Alert variant="default">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                O Pix exige que o nome, CPF e telefone estejam preenchidos corretamente.
+              </AlertDescription>
+            </Alert>
+            <PixCustomerForm 
+              profile={profile} 
+              session={session} 
+              onGeneratePix={handleGeneratePix} 
+              isGenerating={isLoadingPix || isFinalizingOrder}
+              totalAmount={totalAmount}
+            />
+          </div>
         )}
       </DialogContent>
     </Dialog>
