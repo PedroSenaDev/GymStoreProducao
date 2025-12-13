@@ -36,6 +36,7 @@ serve(async (req) => {
 
     // Validação de campos obrigatórios
     if (!amount || !customerName || !customerEmail || !customerMobile || !customerDocument) {
+      console.error("Missing required customer fields in payload:", payload);
       return new Response(JSON.stringify({
         error: "Missing required customer fields."
       }), {
@@ -66,6 +67,8 @@ serve(async (req) => {
         taxId: cleanedTaxId,
       }
     };
+    
+    console.log("Request Body sent to Abacate Pay:", requestBody);
 
     const apiOptions = {
       method: 'POST',
@@ -78,6 +81,8 @@ serve(async (req) => {
 
     const response = await fetch(apiUrl, apiOptions);
     const responseData = await response.json();
+    
+    console.log("Response received from Abacate Pay:", responseData);
 
     if (!response.ok || responseData.error) {
       console.error("Abacate Pay API Error Response:", responseData);

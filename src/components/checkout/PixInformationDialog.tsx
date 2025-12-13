@@ -54,6 +54,7 @@ export function PixInformationDialog({
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [isCopied, setIsCopied] = useState(false);
+  const [pixGenerationError, setPixGenerationError] = useState<string | null>(null); // Novo estado de erro
   const session = useSessionStore((state) => state.session);
   const { data: profile, isLoading: isLoadingProfile } = useProfile();
   const navigate = useNavigate();
@@ -162,7 +163,7 @@ export function PixInformationDialog({
       const expirationTime = new Date(pixData.expires_at).getTime();
       const now = new Date().getTime();
       const initialTimeLeft = Math.max(0, Math.floor((expirationTime - now) / 1000));
-      setTimeLeft(initialTimeLeft);
+      setTimeLeft(initialTimeTimeLeft);
 
       if (initialTimeLeft > 0) {
         countdownInterval.current = setInterval(() => {
@@ -204,6 +205,7 @@ export function PixInformationDialog({
     if (!isOpen) {
         setPixData(null);
         setTimeLeft(null);
+        setPixGenerationError(null); // Limpa o erro ao fechar
     }
   };
 
@@ -214,11 +216,22 @@ export function PixInformationDialog({
     }
 
     setIsLoadingPix(true);
+    setPixGenerationError(null); // Limpa erros anteriores
     let orderId: string | null = null;
 
     try {
       // 1. Gerar o QR Code na Abacate Pay
       const amountToSend = parseFloat(totalAmount.toFixed(2));
+      
+      // Log para verificar os dados enviados
+      console.log("Dados enviados para generate-pix:", {
+        amount: amountToSend,
+        customerName: values.full_name,
+        customerEmail: values.email,
+        customerMobile: values.phone,
+        customerDocument: values.cpf,
+      });
+
       const { data: pixGenData, error } = await supabase.functions.invoke('generate-pix', {
         body: {
           amount: amountToSend,
@@ -231,8 +244,11 @@ export function PixInformationDialog({
 
       if (error || pixGenData.error) {
         console.error("Erro detalhado da Edge Function:", error?.message || pixGenData.error);
-        throw new Error(error?.message || pixGenData.error);
+        throw new Error(error?.message || pixGenData.error || "Falha desconhecida ao gerar Pix.");
       }
+      
+      // Log para verificar a resposta
+      console.log("Resposta de generate-pix:", pixGenData);
 
       const pixChargeId = pixGenData.pix_charge_id;
 
@@ -265,7 +281,10 @@ export function PixInformationDialog({
         checkPixStatus(pixGenData.pix_charge_id);
       }, 5000);
     } catch (err: any) {
-      showError(err.message || "Erro ao gerar QR Code.");
+      const errorMessage = err.message || "Erro desconhecido ao gerar QR Code.";
+      setPixGenerationError(errorMessage); // Define o erro para exibição
+      showError(errorMessage);
+      
       // Se falhar após criar o pedido, tentamos cancelar o pedido pendente
       if (orderId) {
         await supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId);
@@ -392,6 +411,14 @@ export function PixInformationDialog({
           renderPixDetails()
         ) : (
           <div className="space-y-4 py-4">
+            {pixGenerationError && (
+                <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                        Falha ao gerar Pix: {pixGenerationError}
+                    </AlertDescription>
+                </Alert>
+            )}
             <Alert variant="default">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
