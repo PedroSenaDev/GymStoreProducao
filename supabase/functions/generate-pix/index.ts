@@ -24,8 +24,8 @@ serve(async (req) => {
     const { amount, customerName, customerEmail, customerMobile, customerDocument, externalId } = payload
 
     // Validação de campos obrigatórios
-    if (!amount || !customerName || !customerEmail || !customerMobile || !customerDocument || !externalId) {
-      return new Response(JSON.stringify({ error: "Missing required customer fields or externalId." }), {
+    if (!amount || !customerName || !customerEmail || !customerMobile || !customerDocument) {
+      return new Response(JSON.stringify({ error: "Missing required customer fields." }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -48,9 +48,6 @@ serve(async (req) => {
           cellphone: cleanedCellphone,
           email: customerEmail,
           taxId: cleanedTaxId,
-        },
-        metadata: {
-            externalId: externalId
         }
     };
 
