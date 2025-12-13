@@ -31,17 +31,10 @@ serve(async (req) => {
       });
     }
 
-    // Limpar CPF/CNPJ e Telefone, mantendo apenas dígitos
-    const cleanedDocument = customerDocument.replace(/[^\d]/g, '');
-    const cleanedMobile = customerMobile.replace(/[^\d]/g, '');
-
-    // Validação adicional: Abacate Pay exige CPF/CNPJ válido
-    if (cleanedDocument.length < 11 || cleanedDocument.length > 14) {
-        return new Response(JSON.stringify({ error: "CPF/CNPJ inválido. Deve ter 11 ou 14 dígitos." }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-    }
+    // **IMPORTANTE:** A Abacate Pay exige taxId e cellphone COM MÁSCARA.
+    // Usamos os valores brutos (customerDocument = CPF, customerMobile = Telefone)
+    const taxId = customerDocument;
+    const cellphone = customerMobile;
 
     const apiUrl = 'https://api.abacatepay.com/v1/pixQrCode/create';
     const requestBody = {
@@ -50,9 +43,9 @@ serve(async (req) => {
         description: "Pagamento do pedido - GYMSTORE",
         customer: {
           name: customerName,
-          cellphone: cleanedMobile,
+          cellphone: cellphone,
           email: customerEmail,
-          taxId: cleanedDocument, // Passando o CPF/CNPJ limpo
+          taxId: taxId,
         },
         metadata: {
             externalId: externalId
