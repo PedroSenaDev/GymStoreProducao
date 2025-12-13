@@ -21,9 +21,9 @@ serve(async (req) => {
 
   try {
     const payload = await req.json()
-    const { amount, customerName, customerEmail, customerMobile, customerDocument, externalId } = payload
+    const { amount, customerName, customerEmail, customerMobile, customerDocument } = payload // Removido externalId da desestruturação
 
-    // Validação de campos obrigatórios
+    // Validação de campos obrigatórios (externalId não é mais obrigatório aqui)
     if (!amount || !customerName || !customerEmail || !customerMobile || !customerDocument) {
       return new Response(JSON.stringify({ error: "Missing required customer fields." }), {
         status: 400,
@@ -32,6 +32,7 @@ serve(async (req) => {
     }
 
     // CRÍTICO: Formatação do amount para centavos (inteiro)
+    // Garante que 0.5 se torne 50, 19.90 se torne 1990, etc.
     const amountInCents = Math.round(Number(amount) * 100);
     
     // CRÍTICO: Limpeza de CPF e Telefone (remover máscaras)
