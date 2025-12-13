@@ -23,6 +23,7 @@ serve(async (req) => {
     const payload = await req.json()
     const { amount, customerName, customerEmail, customerMobile, customerDocument, externalId } = payload
 
+    // O externalId é necessário para o webhook, mas pode ser um placeholder inicial.
     if (!amount || !customerName || !customerEmail || !customerMobile || !customerDocument || !externalId) {
       return new Response(JSON.stringify({ error: "Missing required customer fields or externalId." }), {
         status: 400,

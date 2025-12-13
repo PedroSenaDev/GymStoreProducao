@@ -73,12 +73,11 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
       if (addressError) throw new Error(`Endereço de entrega não encontrado: ${addressError.message}`);
       
       // 2. Criar o Pedido (Status 'pending')
-      // Nota: pix_charge_id será adicionado depois que o Pix for gerado, ou no webhook.
       const { data: orderData, error: orderError } = await supabase.from('orders').insert({
         user_id: session.user.id, total_amount: totalAmount, status: 'pending',
         shipping_address_id: selectedAddressId, payment_method: paymentMethod,
         shipping_cost: shippingCost,
-        pix_charge_id: chargeId,
+        pix_charge_id: chargeId, // Adicionamos o chargeId aqui
         shipping_service_id: shippingRate.id.toString(),
         shipping_service_name: shippingRate.name,
         delivery_time: deliveryTime?.toString(),
@@ -108,8 +107,7 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
         throw itemsError;
       }
       
-      // 4. Limpar itens do carrinho que foram selecionados (apenas localmente, o webhook limpa do DB)
-      // Nota: A limpeza do DB é feita no webhook, mas removemos localmente para atualizar a UI
+      // 4. Limpar itens do carrinho que foram selecionados (apenas localmente)
       removeSelectedItems();
 
       return newOrderId;
@@ -182,7 +180,6 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
 
     setIsLoading(true);
     let orderId: string | null = null;
-    let pixChargeId: string | null = null;
 
     try {
       // 1. Gerar o QR Code na Abacate Pay
@@ -195,7 +192,7 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
           customerEmail,
           customerMobile, 
           customerDocument,
-          // Não passamos externalId aqui, pois ele será o ID do pedido que criaremos em seguida.
+          externalId: 'temp_id', // Usamos um ID temporário para satisfazer a validação inicial
         },
       });
       
@@ -204,11 +201,11 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
         throw new Error(error?.message || pixGenData.error);
       }
       
-      pixChargeId = pixGenData.pix_charge_id;
+      const pixChargeId = pixGenData.pix_charge_id;
 
       // 2. Criar o pedido no Supabase com status 'pending' e o pix_charge_id
       // O ID do pedido (orderId) será usado como externalId na Abacate Pay (via webhook)
-      orderId = await createPendingOrder.mutateAsync(pixChargeId);
+      orderId = await createPendingOrder(pixChargeId);
       
       // 3. Atualizar o Pix na Abacate Pay com o externalId (ID do pedido)
       // Isso é necessário para que o webhook saiba qual pedido atualizar.
