@@ -31,30 +31,35 @@ serve(async (req) => {
       });
     }
 
-    // **IMPORTANTE:** A Abacate Pay exige taxId e cellphone COM MÁSCARA.
-    // Usamos os valores brutos (customerDocument = CPF, customerMobile = Telefone)
-    const taxId = customerDocument;
-    const cellphone = customerMobile;
+    // CRÍTICO: Formatação do amount para centavos (inteiro)
+    const amountInCents = Math.round(Number(amount) * 100);
+    
+    // CRÍTICO: Limpeza de CPF e Telefone (remover máscaras)
+    const cleanedTaxId = customerDocument.replace(/[^\d]/g, "");
+    const cleanedCellphone = customerMobile.replace(/[^\d]/g, "");
 
     const apiUrl = 'https://api.abacatepay.com/v1/pixQrCode/create';
     const requestBody = {
-        amount: Math.round(amount * 100), // Amount in cents
-        expiresIn: 3600, // 1 hour expiration
+        amount: amountInCents,
+        expiresIn: 3600, // 1 hour expiration (Obrigatório)
         description: "Pagamento do pedido - GYMSTORE",
         customer: {
           name: customerName,
-          cellphone: cellphone,
+          cellphone: cleanedCellphone,
           email: customerEmail,
-          taxId: taxId,
+          taxId: cleanedTaxId,
         },
         metadata: {
             externalId: externalId
         }
     };
 
+    console.log("PAYLOAD ABACATE:", requestBody); // Debug obrigatório
+
     const apiOptions = {
       method: 'POST',
       headers: {
+        // CRÍTICO: Adicionar o prefixo Bearer
         'Authorization': `Bearer ${ABACATE_API_KEY}`,
         'Content-Type': 'application/json'
       },
@@ -63,6 +68,9 @@ serve(async (req) => {
 
     const response = await fetch(apiUrl, apiOptions);
     const responseData = await response.json();
+
+    console.log("STATUS ABACATE:", response.status); // Debug obrigatório
+    console.log("RESPOSTA ABACATE:", JSON.stringify(responseData)); // Debug obrigatório
 
     if (!response.ok || responseData.error) {
       console.error("Abacate Pay API Error Response:", responseData);

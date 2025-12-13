@@ -38,6 +38,7 @@ serve(async (req) => {
     const apiOptions = {
       method: 'POST',
       headers: {
+        // CRÍTICO: Adicionar o prefixo Bearer
         'Authorization': `Bearer ${ABACATE_API_KEY}`,
         'Content-Type': 'application/json'
       },
@@ -47,9 +48,8 @@ serve(async (req) => {
     const response = await fetch(apiUrl, apiOptions);
     const responseData = await response.json();
 
-    if (!response.ok && response.status !== 404) { // 404 pode ocorrer se o Pix expirar, mas queremos logar outros erros
+    if (!response.ok && response.status !== 404) {
       console.error("Abacate Pay Update API Error Response:", responseData);
-      // Não lançamos erro 500 para o cliente, apenas logamos
     }
 
     return new Response(JSON.stringify({ success: true }), {

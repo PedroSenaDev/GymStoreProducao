@@ -28,6 +28,7 @@ serve(async (req) => {
     const apiOptions = {
       method: 'GET',
       headers: {
+        // CRÍTICO: Adicionar o prefixo Bearer
         'Authorization': `Bearer ${ABACATE_API_KEY}`,
         'Content-Type': 'application/json'
       },
