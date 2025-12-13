@@ -159,7 +159,7 @@ serve(async (req) => {
         frequency: "ONE_TIME",
         methods: ["PIX"], // Usando PIX conforme exemplo. Se precisar de cartão, o usuário deve atualizar.
         products: abacateProducts,
-        returnUrl: `${baseAppUrl}/checkout`,
+        returnUrl: `${baseAppUrl}/checkout`, // URL base completo
         completionUrl: `${baseAppUrl}/payment-status?abacate_order_id=${orderId}`, // Usamos o ID do pedido como externalId
         customer: {
             name: customerName,
