@@ -15,7 +15,7 @@ import { Separator } from "../ui/separator";
 import { Input } from "../ui/input";
 import PixCustomerForm, { PixCustomerFormValues } from "./PixCustomerForm";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "../ui/card";
 
 interface PixData {
   qr_code_url: string;
@@ -169,6 +169,8 @@ export function PixInformationDialog({
           setTimeLeft(prev => {
             if (prev === null || prev <= 1) {
               if (countdownInterval.current) clearInterval(countdownInterval.current);
+              // Se o tempo acabar, para o polling
+              if (pollingInterval.current) clearInterval(pollingInterval.current);
               return 0;
             }
             return prev - 1;
@@ -198,6 +200,11 @@ export function PixInformationDialog({
     onOpenChange(isOpen);
     if (pollingInterval.current) clearInterval(pollingInterval.current);
     if (countdownInterval.current) clearInterval(countdownInterval.current);
+    // Resetar o estado do Pix ao fechar
+    if (!isOpen) {
+        setPixData(null);
+        setTimeLeft(null);
+    }
   };
 
   async function handleGeneratePix(values: PixCustomerFormValues) {
@@ -265,6 +272,7 @@ export function PixInformationDialog({
         queryClient.invalidateQueries({ queryKey: ["userOrders", session?.user.id] });
       }
       if (pollingInterval.current) clearInterval(pollingInterval.current);
+      setPixData(null); // Garante que o estado seja limpo em caso de erro
     } finally {
       setIsLoadingPix(false);
     }
@@ -358,7 +366,15 @@ export function PixInformationDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleCloseDialog}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent 
+        className="sm:max-w-md max-h-[90vh] overflow-y-auto"
+        // Impede o fechamento ao clicar fora se o Pix já foi gerado
+        onInteractOutside={(e) => {
+            if (pixData) {
+                e.preventDefault();
+            }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Pagamento com Pix</DialogTitle>
           <DialogDescription>
