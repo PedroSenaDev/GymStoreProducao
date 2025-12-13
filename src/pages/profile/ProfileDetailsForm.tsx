@@ -18,6 +18,7 @@ import { showError, showSuccess } from "@/utils/toast";
 import { Profile } from "@/types/profile";
 import { Loader2 } from "lucide-react";
 import { isValidCPF, isValidPhone } from "@/lib/validators";
+import InputMask from 'react-input-mask';
 
 const formSchema = z.object({
   full_name: z.string().min(3),
@@ -98,7 +99,17 @@ export default function ProfileDetailsForm({ profile, onFinished }: ProfileDetai
                         render={({ field }) => (
                             <FormItem>
                             <FormLabel>CPF</FormLabel>
-                            <FormControl><Input placeholder="000.000.000-00" {...field} /></FormControl>
+                            <FormControl>
+                                <InputMask
+                                    mask="999.999.999-99"
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    onBlur={field.onBlur}
+                                    disabled={field.disabled}
+                                >
+                                    {(inputProps: any) => <Input {...inputProps} placeholder="000.000.000-00" />}
+                                </InputMask>
+                            </FormControl>
                             <FormMessage />
                             </FormItem>
                         )}
@@ -109,7 +120,17 @@ export default function ProfileDetailsForm({ profile, onFinished }: ProfileDetai
                         render={({ field }) => (
                             <FormItem>
                             <FormLabel>Telefone</FormLabel>
-                            <FormControl><Input placeholder="(00) 00000-0000" {...field} /></FormControl>
+                            <FormControl>
+                                <InputMask
+                                    mask="(99) 99999-9999"
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    onBlur={field.onBlur}
+                                    disabled={field.disabled}
+                                >
+                                    {(inputProps: any) => <Input {...inputProps} placeholder="(00) 00000-0000" />}
+                                </InputMask>
+                            </FormControl>
                             <FormMessage />
                             </FormItem>
                         )}
