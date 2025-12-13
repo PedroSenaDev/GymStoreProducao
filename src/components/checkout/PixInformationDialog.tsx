@@ -58,7 +58,7 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
 
   // Função para criar o pedido no Supabase com status 'pending'
   const { mutateAsync: createPendingOrder, isPending: isFinalizingOrder } = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (chargeId: string) => {
       if (!session?.user.id || !selectedAddressId || !paymentMethod || items.length === 0 || !shippingRate) {
         throw new Error("Dados do pedido incompletos para finalização.");
       }
@@ -78,6 +78,7 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
         user_id: session.user.id, total_amount: totalAmount, status: 'pending',
         shipping_address_id: selectedAddressId, payment_method: paymentMethod,
         shipping_cost: shippingCost,
+        pix_charge_id: chargeId,
         shipping_service_id: shippingRate.id.toString(),
         shipping_service_name: shippingRate.name,
         delivery_time: deliveryTime?.toString(),
@@ -107,7 +108,8 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
         throw itemsError;
       }
       
-      // 4. Limpar itens do carrinho que foram selecionados (apenas localmente)
+      // 4. Limpar itens do carrinho que foram selecionados (apenas localmente, o webhook limpa do DB)
+      // Nota: A limpeza do DB é feita no webhook, mas removemos localmente para atualizar a UI
       removeSelectedItems();
 
       return newOrderId;
@@ -180,12 +182,10 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
 
     setIsLoading(true);
     let orderId: string | null = null;
+    let pixChargeId: string | null = null;
 
     try {
-      // 1. Criar o pedido no Supabase com status 'pending' para obter o ID (externalId)
-      orderId = await createPendingOrder.mutateAsync();
-
-      // 2. Gerar o QR Code na Abacate Pay usando o ID do pedido como externalId
+      // 1. Gerar o QR Code na Abacate Pay
       const amountToSend = parseFloat(totalAmount.toFixed(2));
       
       const { data: pixGenData, error } = await supabase.functions.invoke('generate-pix', {
@@ -195,7 +195,7 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
           customerEmail,
           customerMobile, 
           customerDocument,
-          externalId: orderId,
+          // Não passamos externalId aqui, pois ele será o ID do pedido que criaremos em seguida.
         },
       });
       
@@ -204,14 +204,30 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
         throw new Error(error?.message || pixGenData.error);
       }
       
-      // 3. Atualizar o pedido com o pix_charge_id
-      const { error: updateError } = await supabase.from('orders')
-        .update({ pix_charge_id: pixGenData.pix_charge_id })
-        .eq('id', orderId);
+      pixChargeId = pixGenData.pix_charge_id;
+
+      // 2. Criar o pedido no Supabase com status 'pending' e o pix_charge_id
+      // O ID do pedido (orderId) será usado como externalId na Abacate Pay (via webhook)
+      orderId = await createPendingOrder.mutateAsync(pixChargeId);
       
-      if (updateError) {
-        console.error("Erro ao atualizar order com pix_charge_id:", updateError);
-        // Não é crítico, mas logamos
+      // 3. Atualizar o Pix na Abacate Pay com o externalId (ID do pedido)
+      // Isso é necessário para que o webhook saiba qual pedido atualizar.
+      const updatePixResponse = await fetch('https://api.abacatepay.com/v1/pixQrCode/update', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${ABACATE_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          id: pixChargeId,
+          metadata: { externalId: orderId }
+        })
+      });
+
+      if (!updatePixResponse.ok) {
+        const updateErrorData = await updatePixResponse.json();
+        console.error("Erro ao atualizar Pix com externalId:", updateErrorData);
+        // Não é um erro crítico para o usuário, mas logamos.
       }
 
       setPixData(pixGenData);
