@@ -166,8 +166,16 @@ serve(async (req) => {
             cellphone: customerMobile.replace(/[^\d]/g, ""),
             email: customerEmail,
             taxId: customerDocument.replace(/[^\d]/g, ""),
+        },
+        metadata: {
+            orderId: orderId,
+            userId: userId,
         }
     };
+
+    // --- LOGGING THE REQUEST BODY ---
+    console.log("Abacate Pay Request Body:", requestBody);
+    // --------------------------------
 
     const apiOptions = {
         method: 'POST',
