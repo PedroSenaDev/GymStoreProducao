@@ -53,7 +53,8 @@ serve(async (req) => {
     
     const abacateProducts = items.map((item: any) => {
       const productDetails = productMap.get(item.id);
-      const price = productDetails?.price || 0;
+      // Garante que o preço é um número e usa 0 se for inválido
+      const price = Number(productDetails?.price) || 0; 
       subtotal += (price * item.quantity);
 
       // Price must be in cents (R$ 1.00 = 100)
@@ -83,13 +84,14 @@ serve(async (req) => {
     }
 
     // 3. Adicionar Custo de Envio (como um item de linha)
-    if (shippingCost > 0) {
+    const finalShippingCost = Number(shippingCost) || 0;
+    if (finalShippingCost > 0) {
         abacateProducts.push({
             externalId: 'shipping-cost',
             name: `Frete: ${shippingRateName}`,
             description: `Prazo: ${deliveryTime} dias`,
             quantity: 1,
-            price: Math.round(shippingCost * 100), // Valor em centavos
+            price: Math.round(finalShippingCost * 100), // Valor em centavos
         });
     }
 
@@ -103,7 +105,7 @@ serve(async (req) => {
     
     if (addressError) throw new Error(`Endereço de entrega não encontrado: ${addressError.message}`);
 
-    const totalAmount = subtotal - discountAmount + shippingCost;
+    const totalAmount = subtotal - discountAmount + finalShippingCost;
 
     const { data: orderData, error: orderError } = await supabaseAdmin
         .from('orders')
@@ -113,7 +115,7 @@ serve(async (req) => {
             status: 'pending',
             shipping_address_id: shippingAddressId,
             payment_method: 'abacate_pay_hosted', // Novo método
-            shipping_cost: shippingCost,
+            shipping_cost: finalShippingCost,
             shipping_service_id: shippingRateId.toString(),
             shipping_service_name: shippingRateName,
             delivery_time: deliveryTime?.toString() || 'N/A',
@@ -142,7 +144,7 @@ serve(async (req) => {
             order_id: orderId,
             product_id: item.id,
             quantity: item.quantity,
-            price: productDetails?.price || 0,
+            price: Number(productDetails?.price) || 0,
             selected_size: item.selectedSize,
             selected_color: selectedColorObject,
         };
