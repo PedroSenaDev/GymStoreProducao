@@ -23,7 +23,8 @@ serve(async (req) => {
     const { pix_charge_id } = await req.json();
     if (!pix_charge_id) throw new Error("Pix Charge ID is required.");
 
-    const apiUrl = `https://api.abacatepay.com/v1/pixQrCode/status/${pix_charge_id}`;
+    // URL atualizada para o endpoint correto de verificação de status
+    const apiUrl = `https://api.abacatepay.com/v1/pixQrCode/check?id=${pix_charge_id}`;
 
     const apiOptions = {
       method: 'GET',
