@@ -20,7 +20,7 @@ import { CartItem } from "@/types/cart";
 import { useCartStore } from "@/store/cartStore";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Separator } from "../ui/separator";
-import { Input } from "../ui/input"; // Mantendo Input para o campo 'Copia e Cola'
+import { Input } from "../ui/input";
 
 interface PixData {
   qr_code_url: string;
@@ -56,13 +56,14 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
   // Verifica se os dados essenciais do perfil estão completos
   const isProfileComplete = !!profile?.full_name && !!profile?.cpf && !!profile?.phone && !!session?.user.email;
 
-  const { mutate: createOrderAndFinalize, isPending: isFinalizingOrder } = useMutation({
+  // Função para criar o pedido no Supabase com status 'pending'
+  const createPendingOrder = useMutation({
     mutationFn: async (chargeId: string) => {
       if (!session?.user.id || !selectedAddressId || !paymentMethod || items.length === 0 || !shippingRate) {
         throw new Error("Dados do pedido incompletos para finalização.");
       }
 
-      // Buscar o endereço completo para fazer o snapshot
+      // 1. Buscar o endereço completo para fazer o snapshot
       const { data: address, error: addressError } = await supabase
         .from('addresses')
         .select('*')
@@ -71,8 +72,9 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
       
       if (addressError) throw new Error(`Endereço de entrega não encontrado: ${addressError.message}`);
       
+      // 2. Criar o Pedido (Status 'pending')
       const { data: orderData, error: orderError } = await supabase.from('orders').insert({
-        user_id: session.user.id, total_amount: totalAmount, status: 'pending', // Status deve ser 'pending' para Pix
+        user_id: session.user.id, total_amount: totalAmount, status: 'pending',
         shipping_address_id: selectedAddressId, payment_method: paymentMethod,
         shipping_cost: shippingCost,
         pix_charge_id: chargeId,
@@ -91,6 +93,8 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
       if (orderError) throw orderError;
       
       const newOrderId = orderData.id;
+      
+      // 3. Criar os Itens do Pedido
       const orderItems = items.map(item => ({
         order_id: newOrderId, product_id: item.id, quantity: item.quantity,
         price: item.price, selected_size: item.selectedSize, selected_color: item.selectedColor,
@@ -98,33 +102,18 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
       
       const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
       if (itemsError) {
+        // Se falhar, tentamos reverter o pedido
         await supabase.from('orders').delete().eq('id', newOrderId);
         throw itemsError;
       }
       
-      // Limpar itens do carrinho que foram comprados
-      const dbIdsToDelete = items
-        .map(item => item.dbCartItemId)
-        .filter((id): id is string => !!id);
-
-      if (dbIdsToDelete.length > 0) {
-        const { error: cartClearError } = await supabase
-            .from('cart_items')
-            .delete()
-            .in('id', dbIdsToDelete);
-        
-        if (cartClearError) {
-            console.error(`Falha ao limpar os itens comprados do carrinho do usuário ${session.user.id}:`, cartClearError);
-        }
-      }
+      // 4. Limpar itens do carrinho que foram selecionados (apenas localmente, o webhook limpa do DB)
+      removeSelectedItems();
 
       return newOrderId;
     },
     onSuccess: () => {
-      if (pollingInterval.current) clearInterval(pollingInterval.current);
       queryClient.invalidateQueries({ queryKey: ["userOrders", session?.user.id] });
-      removeSelectedItems(); // Remove localmente
-      // Não navegamos aqui, apenas atualizamos o estado para mostrar o QR Code
     },
     onError: (error: Error) => {
       showError(`Erro ao finalizar o pedido: ${error.message}`);
@@ -132,14 +121,14 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
   });
 
   const checkPixStatus = async (chargeId: string) => {
-    if (isCheckingStatus || isFinalizingOrder) return;
+    if (createPendingOrder.isPending) return; // Não verifica se ainda está criando o pedido
     setIsCheckingStatus(true);
     try {
       const { data, error } = await supabase.functions.invoke('check-pix-status', { body: { pix_charge_id: chargeId } });
       if (error || data.error) throw new Error(error?.message || data.error);
       
       if (data.status === 'PAID' || data.status === 'CONFIRMED') {
-        showSuccess("Pagamento confirmado! Verifique o status do seu pedido em 'Meus Pedidos'.");
+        showSuccess("Pagamento confirmado! Seu pedido está sendo processado.");
         if (pollingInterval.current) clearInterval(pollingInterval.current);
         onOpenChange(false);
         navigate('/profile/orders');
@@ -170,7 +159,6 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
   };
 
   async function handleGeneratePix() {
-    // 1. Validação de valor e perfil
     if (totalAmount <= 0) {
         showError("O valor total do pedido deve ser maior que zero.");
         return;
@@ -180,13 +168,11 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
         return;
     }
     
-    // Extrair dados do perfil com segurança
     const customerName = profile?.full_name;
     const customerEmail = session?.user.email;
     const customerMobile = profile?.phone;
     const customerDocument = profile?.cpf;
 
-    // Revalidação (redundante, mas garante que o TS entenda que os campos não são nulos)
     if (!customerName || !customerEmail || !customerMobile || !customerDocument) {
         showError("Dados do perfil incompletos. Por favor, complete seu perfil.");
         return;
@@ -194,7 +180,7 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
 
     setIsLoading(true);
     try {
-      // 2. Gerar o QR Code na Abacate Pay
+      // 1. Gerar o QR Code na Abacate Pay
       const amountToSend = parseFloat(totalAmount.toFixed(2));
       
       const { data: pixGenData, error } = await supabase.functions.invoke('generate-pix', {
@@ -214,10 +200,10 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
       
       setPixData(pixGenData);
       
-      // 3. Criar o pedido no Supabase com status 'pending'
-      await createOrderAndFinalize(pixGenData.pix_charge_id);
+      // 2. Criar o pedido no Supabase com status 'pending'
+      await createPendingOrder.mutateAsync(pixGenData.pix_charge_id);
 
-      // 4. Iniciar o polling para verificar o status (fallback para o webhook)
+      // 3. Iniciar o polling para verificar o status (fallback para o webhook)
       if (pollingInterval.current) clearInterval(pollingInterval.current);
       pollingInterval.current = setInterval(() => {
         checkPixStatus(pixGenData.pix_charge_id);
@@ -272,10 +258,10 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
         <DialogFooter>
             <Button 
                 onClick={handleGeneratePix} 
-                disabled={!isProfileComplete || isLoading || isFinalizingOrder || isLoadingProfile} 
+                disabled={!isProfileComplete || isLoading || createPendingOrder.isPending || isLoadingProfile} 
                 className="w-full"
             >
-                {(isLoading || isFinalizingOrder || isLoadingProfile) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {(isLoading || createPendingOrder.isPending || isLoadingProfile) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Gerar QR Code de {formatCurrency(totalAmount)}
             </Button>
         </DialogFooter>
