@@ -9,6 +9,7 @@ const corsHeaders = {
 const ABACATE_API_KEY = Deno.env.get("ABACATE_API_KEY")
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')
+const APP_BASE_URL = Deno.env.get('APP_BASE_URL') // Novo Secret
 
 const supabaseAdmin = createClient(
   SUPABASE_URL ?? '',
@@ -26,6 +27,8 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
+  
+  const baseAppUrl = APP_BASE_URL || 'https://gymstoremoc.vercel.app'; // Fallback para o Vercel
 
   try {
     const { 
@@ -153,8 +156,6 @@ serve(async (req) => {
     }
 
     // 6. Chamar a API Abacate Pay
-    const baseAppUrl = Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.vercel.app') || 'https://gymstoremoc.vercel.app';
-
     const requestBody = {
         frequency: "ONE_TIME",
         methods: ["PIX"], // Usando PIX conforme exemplo. Se precisar de cartão, o usuário deve atualizar.

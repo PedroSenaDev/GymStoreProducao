@@ -17,10 +17,14 @@ const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 )
 
+const APP_BASE_URL = Deno.env.get('APP_BASE_URL') // Novo Secret
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
+
+  const baseAppUrl = APP_BASE_URL || 'https://gymstoremoc.vercel.app'; // Fallback para o Vercel
 
   try {
     const { 
@@ -102,9 +106,9 @@ serve(async (req) => {
       mode: 'payment',
       line_items: lineItems,
       customer_email: customerEmail,
-      // Usamos o URL do Vercel para o redirecionamento
-      success_url: `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.vercel.app') || 'https://gymstoremoc.vercel.app'}/payment-status?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.vercel.app') || 'https://gymstoremoc.vercel.app'}/checkout`,
+      // Usamos o URL base configurado
+      success_url: `${baseAppUrl}/payment-status?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseAppUrl}/checkout`,
       metadata: {
         user_id: userId,
         shipping_address_id: shippingAddressId,
