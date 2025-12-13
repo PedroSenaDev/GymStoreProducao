@@ -23,7 +23,7 @@ serve(async (req) => {
     const payload = await req.json()
     const { amount, customerName, customerEmail, customerMobile, customerDocument, externalId } = payload
 
-    // O externalId é necessário para o webhook, mas pode ser um placeholder inicial.
+    // Validação de campos obrigatórios
     if (!amount || !customerName || !customerEmail || !customerMobile || !customerDocument || !externalId) {
       return new Response(JSON.stringify({ error: "Missing required customer fields or externalId." }), {
         status: 400,
@@ -35,6 +35,14 @@ serve(async (req) => {
     const cleanedDocument = customerDocument.replace(/[^\d]/g, '');
     const cleanedMobile = customerMobile.replace(/[^\d]/g, '');
 
+    // Validação adicional: Abacate Pay exige CPF/CNPJ válido
+    if (cleanedDocument.length < 11 || cleanedDocument.length > 14) {
+        return new Response(JSON.stringify({ error: "CPF/CNPJ inválido. Deve ter 11 ou 14 dígitos." }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+    }
+
     const apiUrl = 'https://api.abacatepay.com/v1/pixQrCode/create';
     const requestBody = {
         amount: Math.round(amount * 100), // Amount in cents
@@ -44,10 +52,10 @@ serve(async (req) => {
           name: customerName,
           cellphone: cleanedMobile,
           email: customerEmail,
-          taxId: cleanedDocument,
+          taxId: cleanedDocument, // Passando o CPF/CNPJ limpo
         },
         metadata: {
-            externalId: externalId // Usamos o ID do pedido pendente como externalId
+            externalId: externalId
         }
     };
 
