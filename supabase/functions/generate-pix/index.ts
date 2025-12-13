@@ -99,23 +99,24 @@ serve(async (req) => {
     }
 
     const {
-      id: pixChargeId,
+      id, // Renomeado de pixChargeId para id
       brCode,
       brCodeBase64,
       expiresAt
     } = responseData.data;
 
-    if (!pixChargeId || !brCode || !brCodeBase64) {
+    if (!id || !brCode || !brCodeBase64) {
       throw new Error("Pix details not found in Abacate Pay response.");
     }
 
+    // O frontend espera o QR Code como URL base64
     const qrCodeUrl = `data:image/png;base64,${brCodeBase64}`;
 
     return new Response(JSON.stringify({
-      pix_charge_id: pixChargeId,
-      br_code: brCode,
-      qr_code_url: qrCodeUrl,
-      expires_at: expiresAt
+      id: id, // Usando 'id' para o ID da cobrança
+      brCode: brCode,
+      qrCodeUrl: qrCodeUrl, // Usando 'qrCodeUrl' para a URL base64
+      expiresAt: expiresAt
     }), {
       headers: {
         ...corsHeaders,
