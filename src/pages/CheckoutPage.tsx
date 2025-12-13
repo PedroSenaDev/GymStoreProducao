@@ -84,11 +84,11 @@ export default function CheckoutPage() {
         
         if (error || data.error) throw new Error(error?.message || data.error);
 
-        // 3. Redirecionar para a página de checkout da Abacate Pay
+        // 3. Redirecionar para a página de checkout da Abacate Pay em uma NOVA ABA
         if (data.billingUrl) {
             // Limpa o carrinho localmente (apenas os itens selecionados)
             removeSelectedItems();
-            window.location.href = data.billingUrl;
+            window.open(data.billingUrl, '_blank'); // ABRIR EM NOVA ABA
         } else {
             throw new Error("URL de cobrança não recebida.");
         }
@@ -128,9 +128,9 @@ export default function CheckoutPage() {
         
         if (error || data.error) throw new Error(error?.message || data.error);
 
-        // 3. Redirecionar para a página de checkout da Stripe
+        // 3. Redirecionar para a página de checkout da Stripe em uma NOVA ABA
         if (data.sessionUrl) {
-            window.location.href = data.sessionUrl;
+            window.open(data.sessionUrl, '_blank'); // ABRIR EM NOVA ABA
         } else {
             throw new Error("URL de sessão não recebida.");
         }
