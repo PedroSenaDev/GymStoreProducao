@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { AddressStep } from '@/components/checkout/AddressStep';
 import { PaymentStep } from '@/components/checkout/PaymentStep';
 import { OrderSummary } from '@/components/checkout/OrderSummary';
-import { PixInformationDialog } from '@/components/checkout/PixInformationDialog';
 import { useProfile } from '@/hooks/useProfile';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -20,8 +19,7 @@ export default function CheckoutPage() {
   
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [selectedRate, setSelectedRate] = useState<{ id: string | number; name: string; } | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
-  const [isPixDialogOpen, setIsPixDialogOpen] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<string | null>('credit_card'); // Definido como padrão
   const [shippingCost, setShippingCost] = useState(0);
   const [deliveryTime, setDeliveryTime] = useState<string | number | null>(null);
   const [birthdayDiscount, setBirthdayDiscount] = useState(0);
@@ -35,7 +33,7 @@ export default function CheckoutPage() {
 
   const isProfileIncomplete = !profile?.full_name || !profile?.cpf;
   const isShippingSelected = selectedAddressId && selectedRate;
-  const isCheckoutDisabled = !isShippingSelected || !paymentMethod || isProfileIncomplete || isLoadingProfile;
+  const isCheckoutDisabled = !isShippingSelected || isProfileIncomplete || isLoadingProfile;
 
   useEffect(() => {
     const checkBirthdayDiscount = async () => {
@@ -57,11 +55,7 @@ export default function CheckoutPage() {
   const handleFinalizeOrder = async () => {
     if (isCheckoutDisabled) return;
     
-    if (paymentMethod === 'pix') {
-      setIsPixDialogOpen(true);
-      return;
-    }
-
+    // O único método de pagamento restante é 'credit_card'
     if (paymentMethod === 'credit_card') {
         if (!session?.user.id || !profile) {
             showError("Sessão de usuário ou perfil incompleto.");
@@ -109,15 +103,14 @@ export default function CheckoutPage() {
     setShippingCost(cost);
     setSelectedRate(rateId ? { id: rateId, name: rateName } : null);
     setDeliveryTime(time);
-    // Reset payment method if shipping changes
-    setPaymentMethod(null);
+    // Não precisa resetar o método de pagamento, pois só há um.
   };
 
   if (!session) {
     return <Navigate to="/login" replace />;
   }
 
-  if (selectedItems.length === 0 && !isPixDialogOpen) {
+  if (selectedItems.length === 0) {
     return <Navigate to="/products" replace />;
   }
 
@@ -134,7 +127,7 @@ export default function CheckoutPage() {
               onShippingChange={handleShippingChange}
             />
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold">3. Método de Pagamento</h2>
+              <h2 className="text-xl font-semibold">2. Método de Pagamento</h2>
               {!isShippingSelected && (
                 <Alert variant="default">
                   <AlertCircle className="h-4 w-4" />
@@ -166,25 +159,14 @@ export default function CheckoutPage() {
               onClick={handleFinalizeOrder}
               disabled={isCheckoutDisabled || isProcessingCard}
             >
-              {isProcessingCard && paymentMethod === 'credit_card' ? (
+              {isProcessingCard ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : null}
-              {paymentMethod === 'credit_card' ? 'Ir para Pagamento Seguro' : 'Finalizar Pedido'}
+              Ir para Pagamento Seguro
             </Button>
           </div>
         </div>
       </div>
-      <PixInformationDialog
-        open={isPixDialogOpen}
-        onOpenChange={setIsPixDialogOpen}
-        totalAmount={total}
-        items={selectedItems}
-        selectedAddressId={selectedAddressId}
-        paymentMethod={paymentMethod}
-        shippingCost={shippingCost}
-        shippingRate={selectedRate}
-        deliveryTime={deliveryTime}
-      />
     </div>
   );
 }
