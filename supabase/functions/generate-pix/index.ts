@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
 
-// NOTE: The ABACATE_API_KEY secret must be set in your Supabase project settings.
 const ABACATE_API_KEY = Deno.env.get("ABACATE_API_KEY")
 
 const corsHeaders = {
@@ -9,14 +8,11 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight request
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
-  // Check for API key
   if (!ABACATE_API_KEY) {
-    console.error("ABACATE_API_KEY is missing in environment variables.");
     return new Response(JSON.stringify({ error: "Abacate Pay API key not configured." }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -24,31 +20,20 @@ serve(async (req) => {
   }
 
   try {
-    // Get data from client
     const payload = await req.json()
     const { amount, customerName, customerEmail, customerMobile, customerDocument } = payload
 
-    // 1. Validação e Limpeza dos dados
     if (!amount || !customerName || !customerEmail || !customerMobile || !customerDocument) {
-      console.error("Missing required customer fields in payload.");
       return new Response(JSON.stringify({ error: "Missing required customer fields." }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Limpar CPF/CNPJ e Telefone, mantendo apenas dígitos
+    // A Abacate Pay espera apenas dígitos para taxId e cellphone
     const cleanedDocument = customerDocument.replace(/[^\d]/g, '');
     const cleanedMobile = customerMobile.replace(/[^\d]/g, '');
 
-    if (cleanedDocument.length < 11 || cleanedMobile.length < 10) {
-        return new Response(JSON.stringify({ error: "CPF/CNPJ ou Telefone inválido após limpeza." }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-    }
-
-    // 2. Preparar o request para a Abacate Pay API
     const apiUrl = 'https://api.abacatepay.com/v1/pixQrCode/create';
     const requestBody = {
         amount: Math.round(amount * 100), // Amount in cents
@@ -56,9 +41,9 @@ serve(async (req) => {
         description: "Pagamento do pedido - GYMSTORE",
         customer: {
           name: customerName,
-          cellphone: cleanedMobile, // Enviando APENAS dígitos
+          cellphone: cleanedMobile,
           email: customerEmail,
-          taxId: cleanedDocument, // Enviando APENAS dígitos
+          taxId: cleanedDocument,
         },
     };
 
@@ -71,11 +56,9 @@ serve(async (req) => {
       body: JSON.stringify(requestBody)
     };
 
-    // 3. Chamar a Abacate Pay API
     const response = await fetch(apiUrl, apiOptions);
     const responseData = await response.json();
 
-    // 4. Tratar erros da API
     if (!response.ok || responseData.error) {
       console.error("Abacate Pay API Error Response:", responseData);
       const errorMessage = responseData.error?.message || responseData.message || "Failed to generate Pix charge.";
@@ -85,11 +68,9 @@ serve(async (req) => {
       });
     }
 
-    // 5. Extrair e retornar dados de sucesso
     const { id: pixChargeId, brCode, brCodeBase64 } = responseData.data;
 
     if (!pixChargeId || !brCode || !brCodeBase64) {
-        console.error("Pix details missing in successful Abacate Pay response:", responseData);
         throw new Error("Pix details not found in Abacate Pay response.");
     }
 

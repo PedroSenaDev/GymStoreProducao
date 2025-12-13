@@ -108,6 +108,7 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
       }
       
       // 4. Limpar itens do carrinho que foram selecionados (apenas localmente, o webhook limpa do DB)
+      // Nota: A limpeza do DB é feita no webhook, mas removemos localmente para atualizar a UI
       removeSelectedItems();
 
       return newOrderId;
@@ -199,7 +200,7 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
       }
       
       // 2. Criar o pedido no Supabase com status 'pending'
-      await createPendingOrder(pixGenData.pix_charge_id);
+      await createPendingOrder.mutateAsync(pixGenData.pix_charge_id);
       
       setPixData(pixGenData);
 
