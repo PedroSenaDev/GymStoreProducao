@@ -13,14 +13,14 @@ import { Loader2, Copy, AlertCircle } from "lucide-react";
 import { showError, showSuccess } from "@/utils/toast";
 import { useSessionStore } from "@/store/sessionStore";
 import { useProfile } from "@/hooks/useProfile";
-import { Label } from "../ui/label";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CartItem } from "@/types/cart";
 import { useCartStore } from "@/store/cartStore";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Separator } from "../ui/separator";
 import { Input } from "../ui/input";
+import PixCustomerForm, { PixCustomerFormValues } from "./PixCustomerForm";
 
 interface PixData {
   qr_code_url: string;
@@ -43,7 +43,7 @@ interface PixInformationDialogProps {
 const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
 export function PixInformationDialog({ open, onOpenChange, totalAmount, items, selectedAddressId, paymentMethod, shippingCost, shippingRate, deliveryTime }: PixInformationDialogProps) {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingPix, setIsLoadingPix] = useState(false);
   const [pixData, setPixData] = useState<PixData | null>(null);
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
   const session = useSessionStore((state) => state.session);
@@ -52,9 +52,6 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
   const { removeSelectedItems } = useCartStore();
   const queryClient = useQueryClient();
   const pollingInterval = useRef<NodeJS.Timeout | null>(null);
-
-  // Verifica se os dados essenciais do perfil estão completos
-  const isProfileComplete = !!profile?.full_name && !!profile?.cpf && !!profile?.phone && !!session?.user.email;
 
   // Função para criar o pedido no Supabase com status 'pending'
   const { mutateAsync: createPendingOrder, isPending: isFinalizingOrder } = useMutation({
@@ -158,27 +155,13 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
     if (pollingInterval.current) clearInterval(pollingInterval.current);
   };
 
-  async function handleGeneratePix() {
+  async function handleGeneratePix(values: PixCustomerFormValues) {
     if (totalAmount <= 0) {
         showError("O valor total do pedido deve ser maior que zero.");
         return;
     }
-    if (!isProfileComplete) {
-        showError("Por favor, complete seu perfil (Nome, CPF, Telefone e Email) antes de gerar o Pix.");
-        return;
-    }
     
-    const customerName = profile?.full_name;
-    const customerEmail = session?.user.email;
-    const customerMobile = profile?.phone;
-    const customerDocument = profile?.cpf;
-
-    if (!customerName || !customerEmail || !customerMobile || !customerDocument) {
-        showError("Dados do perfil incompletos. Por favor, complete seu perfil.");
-        return;
-    }
-
-    setIsLoading(true);
+    setIsLoadingPix(true);
     let orderId: string | null = null;
 
     try {
@@ -188,10 +171,10 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
       const { data: pixGenData, error } = await supabase.functions.invoke('generate-pix', {
         body: {
           amount: amountToSend, 
-          customerName, 
-          customerEmail,
-          customerMobile, 
-          customerDocument,
+          customerName: values.full_name, 
+          customerEmail: values.email,
+          customerMobile: values.phone, 
+          customerDocument: values.cpf,
           externalId: 'temp_id', // Usamos um ID temporário para satisfazer a validação inicial
         },
       });
@@ -208,22 +191,15 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
       orderId = await createPendingOrder(pixChargeId);
       
       // 3. Atualizar o Pix na Abacate Pay com o externalId (ID do pedido)
-      // Isso é necessário para que o webhook saiba qual pedido atualizar.
-      const updatePixResponse = await fetch('https://api.abacatepay.com/v1/pixQrCode/update', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${ABACATE_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          id: pixChargeId,
-          metadata: { externalId: orderId }
-        })
+      const { error: updateError } = await supabase.functions.invoke('update-pix-external-id', {
+        body: {
+          pixChargeId: pixChargeId,
+          externalId: orderId,
+        }
       });
 
-      if (!updatePixResponse.ok) {
-        const updateErrorData = await updatePixResponse.json();
-        console.error("Erro ao atualizar Pix com externalId:", updateErrorData);
+      if (updateError) {
+        console.error("Erro ao atualizar Pix com externalId:", updateError.message);
         // Não é um erro crítico para o usuário, mas logamos.
       }
 
@@ -244,60 +220,9 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
       }
       if (pollingInterval.current) clearInterval(pollingInterval.current);
     } finally {
-      setIsLoading(false);
+      setIsLoadingPix(false);
     }
   }
-
-  const renderProfileConfirmation = () => (
-    <div className="space-y-4 py-4">
-        <Alert variant="default">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-                O Pix será gerado usando os dados abaixo. Certifique-se de que estão corretos.
-            </AlertDescription>
-        </Alert>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-            <div className="space-y-1">
-                <Label className="text-muted-foreground">Nome</Label>
-                <p className="font-medium">{profile?.full_name || '-'}</p>
-            </div>
-            <div className="space-y-1">
-                <Label className="text-muted-foreground">CPF</Label>
-                <p className="font-medium">{profile?.cpf || '-'}</p>
-            </div>
-            <div className="space-y-1">
-                <Label className="text-muted-foreground">Telefone</Label>
-                <p className="font-medium">{profile?.phone || '-'}</p>
-            </div>
-            <div className="space-y-1">
-                <Label className="text-muted-foreground">Email</Label>
-                <p className="font-medium">{session?.user.email || '-'}</p>
-            </div>
-        </div>
-        
-        {!isProfileComplete && (
-            <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                    Dados incompletos. Por favor, <Link to="/profile/details" className="font-semibold underline">complete seu perfil</Link> (Nome, CPF e Telefone) para gerar o Pix.
-                </AlertDescription>
-            </Alert>
-        )}
-
-        <Separator />
-
-        <DialogFooter>
-            <Button 
-                onClick={handleGeneratePix} 
-                disabled={!isProfileComplete || isLoading || isFinalizingOrder || isLoadingProfile} 
-                className="w-full"
-            >
-                {(isLoading || isFinalizingOrder || isLoadingProfile) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Gerar QR Code de {formatCurrency(totalAmount)}
-            </Button>
-        </DialogFooter>
-    </div>
-  );
 
   const renderPixDetails = () => (
     <div className="flex flex-col items-center gap-6 py-4">
@@ -327,7 +252,28 @@ export function PixInformationDialog({ open, onOpenChange, totalAmount, items, s
             {pixData ? "Escaneie o QR Code ou copie o código para pagar." : "Confirme seus dados para gerar o Pix."}
           </DialogDescription>
         </DialogHeader>
-        {pixData ? renderPixDetails() : renderProfileConfirmation()}
+        
+        {isLoadingProfile ? (
+            <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin" /></div>
+        ) : pixData ? (
+            renderPixDetails()
+        ) : (
+            <div className="space-y-4 py-4">
+                <Alert variant="default">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                        O Pix exige que o nome, CPF e telefone estejam preenchidos corretamente.
+                    </AlertDescription>
+                </Alert>
+                <PixCustomerForm 
+                    profile={profile} 
+                    session={session}
+                    onGeneratePix={handleGeneratePix}
+                    isGenerating={isLoadingPix || isFinalizingOrder}
+                    totalAmount={totalAmount}
+                />
+            </div>
+        )}
       </DialogContent>
     </Dialog>
   );
