@@ -54,7 +54,8 @@ export default function FooterSettingsForm() {
     values: {
       email: settings?.footer_contact_email || "",
       phone: settings?.footer_contact_phone || "",
-      show: settings?.footer_contact_show === 'true' ?? true,
+      // Corrigido: Se settings for null/undefined, o fallback é true
+      show: settings?.footer_contact_show === 'true' || true,
     },
   });
 

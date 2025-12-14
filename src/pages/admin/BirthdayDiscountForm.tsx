@@ -51,7 +51,8 @@ export default function BirthdayDiscountForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     values: {
-      enabled: settings?.birthday_discount_enabled === 'true' ?? false,
+      // Corrigido: Se settings for null/undefined, usa um objeto vazio para evitar erro, e o fallback é false
+      enabled: settings?.birthday_discount_enabled === 'true' || false,
       percentage: Number(settings?.birthday_discount_percentage || 0),
     },
   });
