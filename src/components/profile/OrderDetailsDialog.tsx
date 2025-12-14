@@ -35,7 +35,7 @@ const translateStatus = (status: string): string => {
 const translatePaymentMethod = (method: string | undefined): string => {
     switch (method) {
         case 'pix': return 'Pix';
-        case 'credit_card': return 'Cartão';
+        case 'credit_card': return 'Cartão de Crédito';
         default: return 'N/A';
     }
 };
