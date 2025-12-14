@@ -220,7 +220,7 @@ export default function CheckoutPage() {
               {isProcessingPayment ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : null}
-              {paymentMethod === 'pix' ? 'Ir para Pagamento Pix (Abacate Pay)' : 'Ir para Pagamento Seguro (Cartão)'}
+              {paymentMethod === 'pix' ? 'Pagar com Pix' : 'Pagar com Cartão'}
             </Button>
           </div>
         </div>
