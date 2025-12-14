@@ -1,21 +1,17 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+
   "rewrites": [
     {
       "source": "/(.*)",
       "destination": "/index.html"
     }
   ],
+
   "build": {
     "env": {
       "VITE_SUPABASE_URL": "govitvhzzzccdrxcfjrp",
       "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdvdml0dmh6enpjY2RyeGNmanJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyNjcwNzgsImV4cCI6MjA3Njg0MzA3OH0.TiWliaQuz9OFo1lwSh8oOlryVmncLjiaayHiXSzunUQ"
     }
-  },
-  "routes": [
-    {
-      "src": "/[^.]+",
-      "dest": "/index.html"
-    }
-  ]
+  }
 }
