@@ -9,7 +9,7 @@ const corsHeaders = {
 const ABACATE_API_KEY = Deno.env.get("ABACATE_API_KEY")
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')
-const APP_BASE_URL = Deno.env.get('APP_BASE_URL') // Novo Secret
+const APP_BASE_URL = Deno.env.get('APP_BASE_URL')
 
 const supabaseAdmin = createClient(
   SUPABASE_URL ?? '',
@@ -28,7 +28,7 @@ serve(async (req) => {
     });
   }
   
-  const baseAppUrl = APP_BASE_URL || 'https://gymstoremoc.vercel.app'; // Fallback para o Vercel
+  const baseAppUrl = APP_BASE_URL || 'https://gymstoremoc.vercel.app';
 
   try {
     const { 
@@ -53,11 +53,9 @@ serve(async (req) => {
     
     const abacateProducts = items.map((item: any) => {
       const productDetails = productMap.get(item.id);
-      // Garante que o preço é um número e usa 0 se for inválido
       const price = Number(productDetails?.price) || 0; 
       subtotal += (price * item.quantity);
 
-      // Price must be in cents (R$ 1.00 = 100)
       const priceInCents = Math.round(price * 100);
 
       return {
@@ -69,7 +67,7 @@ serve(async (req) => {
       };
     });
 
-    // 2. Aplicar Desconto de Aniversário (como um item de linha negativo)
+    // 2. Aplicar Desconto de Aniversário
     const discountPercentage = Number(birthdayDiscount || 0);
     const discountAmount = (subtotal * discountPercentage) / 100;
     
@@ -79,11 +77,11 @@ serve(async (req) => {
             name: `Desconto de Aniversário (${discountPercentage}%)`,
             description: 'Desconto aplicado no checkout',
             quantity: 1,
-            price: -Math.round(discountAmount * 100), // Valor negativo em centavos
+            price: -Math.round(discountAmount * 100),
         });
     }
 
-    // 3. Adicionar Custo de Envio (como um item de linha)
+    // 3. Adicionar Custo de Envio
     const finalShippingCost = Number(shippingCost) || 0;
     if (finalShippingCost > 0) {
         abacateProducts.push({
@@ -91,12 +89,11 @@ serve(async (req) => {
             name: `Frete: ${shippingRateName}`,
             description: `Prazo: ${deliveryTime} dias`,
             quantity: 1,
-            price: Math.round(finalShippingCost * 100), // Valor em centavos
+            price: Math.round(finalShippingCost * 100),
         });
     }
 
-    // 4. Criar o Pedido Pendente no Supabase (Snapshot)
-    // Buscar o endereço completo para fazer o snapshot
+    // 4. Preparar metadados para o Webhook (incluindo o snapshot do endereço)
     const { data: address, error: addressError } = await supabaseAdmin
         .from('addresses')
         .select('*')
@@ -107,41 +104,14 @@ serve(async (req) => {
 
     const totalAmount = subtotal - discountAmount + finalShippingCost;
 
-    const { data: orderData, error: orderError } = await supabaseAdmin
-        .from('orders')
-        .insert({
-            user_id: userId,
-            total_amount: totalAmount,
-            status: 'pending',
-            shipping_address_id: shippingAddressId,
-            payment_method: 'abacate_pay_hosted', // Novo método
-            shipping_cost: finalShippingCost,
-            shipping_service_id: shippingRateId.toString(),
-            shipping_service_name: shippingRateName,
-            delivery_time: deliveryTime?.toString() || 'N/A',
-            // Snapshot do endereço
-            shipping_street: address.street,
-            shipping_number: address.number,
-            shipping_complement: address.complement,
-            shipping_neighborhood: address.neighborhood,
-            shipping_city: address.city,
-            shipping_state: address.state,
-            shipping_zip_code: address.zip_code,
-        })
-        .select('id')
-        .single();
-    
-    if (orderError) throw orderError;
-    const orderId = orderData.id;
-
-    // 5. Criar os Itens do Pedido (Snapshot)
-    const orderItemsPayload = items.map((item: any) => {
+    // 5. Criar um payload de itens serializado para o metadata do Abacate Pay
+    // Isso é necessário porque não podemos criar o pedido no Supabase ainda.
+    const itemsPayload = items.map((item: any) => {
         const productDetails = productMap.get(item.id);
         const productColors = productDetails?.colors || [];
         const selectedColorObject = productColors.find((c: any) => c.code === item.selectedColor?.code);
 
         return {
-            order_id: orderId,
             product_id: item.id,
             quantity: item.quantity,
             price: Number(productDetails?.price) || 0,
@@ -150,35 +120,43 @@ serve(async (req) => {
         };
     });
 
-    const { error: itemsError } = await supabaseAdmin.from('order_items').insert(orderItemsPayload);
-    if (itemsError) {
-        // Se falhar, tentamos reverter o pedido
-        await supabaseAdmin.from('orders').delete().eq('id', orderId);
-        throw itemsError;
-    }
+    const metadata = {
+        userId: userId,
+        shippingAddressId: shippingAddressId,
+        shippingCost: finalShippingCost.toFixed(2),
+        shippingRateId: shippingRateId.toString(),
+        shippingRateName: shippingRateName,
+        deliveryTime: deliveryTime?.toString() || 'N/A',
+        totalAmount: totalAmount.toFixed(2),
+        paymentMethod: 'pix',
+        // Snapshot do endereço
+        shipping_street: address.street,
+        shipping_number: address.number,
+        shipping_complement: address.complement,
+        shipping_neighborhood: address.neighborhood,
+        shipping_city: address.city,
+        shipping_state: address.state,
+        shipping_zip_code: address.zip_code,
+        // Itens do pedido serializados
+        orderItems: JSON.stringify(itemsPayload),
+    };
 
     // 6. Chamar a API Abacate Pay
     const requestBody = {
         frequency: "ONE_TIME",
-        methods: ["PIX"], // Usando PIX conforme exemplo. Se precisar de cartão, o usuário deve atualizar.
+        methods: ["PIX"],
         products: abacateProducts,
-        returnUrl: `${baseAppUrl}/checkout`, // URL base completo
-        completionUrl: `${baseAppUrl}/payment-status?abacate_order_id=${orderId}`, // Usamos o ID do pedido como externalId
+        returnUrl: `${baseAppUrl}/checkout`,
+        // O completionUrl agora usa um placeholder, pois o ID do pedido só será criado no webhook
+        completionUrl: `${baseAppUrl}/payment-status?abacate_pay_status=pending`, 
         customer: {
             name: customerName,
             cellphone: customerMobile.replace(/[^\d]/g, ""),
             email: customerEmail,
             taxId: customerDocument.replace(/[^\d]/g, ""),
         },
-        metadata: {
-            orderId: orderId,
-            userId: userId,
-        }
+        metadata: metadata
     };
-
-    // --- LOGGING THE REQUEST BODY ---
-    console.log("Abacate Pay Request Body:", requestBody);
-    // --------------------------------
 
     const apiOptions = {
         method: 'POST',
@@ -194,15 +172,13 @@ serve(async (req) => {
 
     if (!response.ok || responseData.error) {
         console.error("Abacate Pay Billing API Error Response:", responseData);
-        // Se falhar, tentamos reverter o pedido
-        await supabaseAdmin.from('orders').delete().eq('id', orderId);
         throw new Error(responseData.error || responseData.message || "Falha ao criar cobrança na Abacate Pay.");
     }
 
     // 7. Retornar o URL de redirecionamento
     return new Response(JSON.stringify({ 
         billingUrl: responseData.data.url,
-        orderId: orderId
+        // Não retornamos orderId, pois ele não existe ainda
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

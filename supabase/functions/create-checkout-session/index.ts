@@ -17,14 +17,14 @@ const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 )
 
-const APP_BASE_URL = Deno.env.get('APP_BASE_URL') // Novo Secret
+const APP_BASE_URL = Deno.env.get('APP_BASE_URL')
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
-  const baseAppUrl = APP_BASE_URL || 'https://gymstoremoc.vercel.app'; // Fallback para o Vercel
+  const baseAppUrl = APP_BASE_URL || 'https://gymstoremoc.vercel.app';
 
   try {
     const { 
@@ -40,15 +40,16 @@ serve(async (req) => {
     const productIds = items.map((item: any) => item.id);
     const { data: products, error: productsError } = await supabaseAdmin
       .from('products')
-      .select('id, price')
+      .select('id, price, colors')
       .in('id', productIds);
     if (productsError) throw productsError;
 
-    const productPriceMap = new Map(products.map(p => [p.id, p.price]));
+    const productMap = new Map(products.map(p => [p.id, p]));
     let subtotal = 0;
     
     const lineItems = items.map((item: any) => {
-      const price = productPriceMap.get(item.id) || 0;
+      const productDetails = productMap.get(item.id);
+      const price = productDetails?.price || 0;
       subtotal += (price * item.quantity);
 
       // Stripe espera amount em centavos para price data
@@ -100,13 +101,35 @@ serve(async (req) => {
         });
     }
     
-    // 4. Criar a Checkout Session
+    // 4. Preparar metadados para o Webhook (incluindo o snapshot do endereço e itens)
+    const { data: address, error: addressError } = await supabaseAdmin
+        .from('addresses')
+        .select('*')
+        .eq('id', shippingAddressId)
+        .single();
+    
+    if (addressError) throw new Error(`Endereço de entrega não encontrado: ${addressError.message}`);
+
+    // Criar um payload de itens serializado para o metadata do Stripe
+    const itemsPayload = items.map((item: any) => {
+        const productDetails = productMap.get(item.id);
+        const productColors = productDetails?.colors || [];
+        const selectedColorObject = productColors.find((c: any) => c.code === item.selectedColor?.code);
+
+        return {
+            product_id: item.id,
+            quantity: item.quantity,
+            price: Number(productDetails?.price) || 0,
+            selected_size: item.selectedSize,
+            selected_color: selectedColorObject,
+        };
+    });
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       mode: 'payment',
       line_items: lineItems,
       customer_email: customerEmail,
-      // Usamos o URL base configurado
       success_url: `${baseAppUrl}/payment-status?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseAppUrl}/checkout`,
       metadata: {
@@ -116,8 +139,17 @@ serve(async (req) => {
         shipping_rate_id: shippingRateId.toString(),
         shipping_rate_name: shippingRateName,
         delivery_time: deliveryTime?.toString() || 'N/A',
-        birthday_discount_percentage: discountPercentage.toString(),
-        subtotal_before_discount: subtotal.toFixed(2),
+        payment_method: 'credit_card',
+        // Snapshot do endereço
+        shipping_street: address.street,
+        shipping_number: address.number,
+        shipping_complement: address.complement,
+        shipping_neighborhood: address.neighborhood,
+        shipping_city: address.city,
+        shipping_state: address.state,
+        shipping_zip_code: address.zip_code,
+        // Itens do pedido serializados
+        orderItems: JSON.stringify(itemsPayload),
       },
     });
 

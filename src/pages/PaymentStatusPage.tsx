@@ -17,9 +17,9 @@ export default function PaymentStatusPage() {
 
   useEffect(() => {
     const sessionId = searchParams.get('session_id');
-    const abacateOrderId = searchParams.get('abacate_order_id');
+    const abacatePayStatus = searchParams.get('abacate_pay_status'); // Novo parâmetro
 
-    if (!sessionId && !abacateOrderId) {
+    if (!sessionId && !abacatePayStatus) {
       if (searchParams.get('error')) {
         showError("Ocorreu um erro durante o pagamento. Tente novamente.");
         setStatus('error');
@@ -48,42 +48,27 @@ export default function PaymentStatusPage() {
 
         if (paymentStatus === 'paid') {
           // 2. Se pago, verificar se o pedido já foi criado pelo webhook
-          const { data: orderData, error: orderFetchError } = await supabase
-            .from('orders')
-            .select('id, status')
-            .eq('stripe_payment_intent_id', paymentIntentId)
-            .maybeSingle();
+          setMessage('Pagamento aprovado. Aguardando confirmação final do pedido...');
+          
+          // Polling para esperar o webhook criar o pedido
+          const pollOrder = setInterval(async () => {
+              const { data: polledOrder } = await supabase
+                  .from('orders')
+                  .select('id, status')
+                  .eq('stripe_payment_intent_id', paymentIntentId)
+                  .maybeSingle();
+              
+              if (polledOrder) {
+                  clearInterval(pollOrder);
+                  setMessage('Pedido confirmado e processado!');
+                  setStatus('success');
+                  setOrderId(polledOrder.id);
+                  clearCart();
+              }
+          }, 2000); 
+          
+          return () => clearInterval(pollOrder);
 
-          if (orderFetchError) throw orderFetchError;
-
-          if (orderData) {
-            setMessage('Pagamento aprovado com sucesso! Seu pedido está sendo processado.');
-            setStatus('success');
-            setOrderId(orderData.id);
-            // O webhook deve ter limpado o carrinho, mas limpamos o estado local.
-            clearCart(); 
-          } else {
-            // Polling para esperar o webhook
-            setMessage('Pagamento aprovado. Aguardando confirmação final do pedido...');
-            
-            const pollOrder = setInterval(async () => {
-                const { data: polledOrder } = await supabase
-                    .from('orders')
-                    .select('id, status')
-                    .eq('stripe_payment_intent_id', paymentIntentId)
-                    .maybeSingle();
-                
-                if (polledOrder) {
-                    clearInterval(pollOrder);
-                    setMessage('Pedido confirmado e processado!');
-                    setStatus('success');
-                    setOrderId(polledOrder.id);
-                    clearCart();
-                }
-            }, 2000); 
-            
-            return () => clearInterval(pollOrder);
-          }
         } else if (paymentStatus === 'unpaid') {
           setMessage('Falha no pagamento. Por favor, tente outro método.');
           setStatus('error');
@@ -101,68 +86,18 @@ export default function PaymentStatusPage() {
     };
 
     // --- Abacate Pay Hosted Checkout Flow ---
-    const checkAbacatePayStatus = async (orderId: string) => {
-        setMessage('Aguarde enquanto verificamos o status do seu pedido...');
-        setOrderId(orderId);
-
-        try {
-            // 1. Buscar o status do pedido no Supabase
-            const { data: orderData, error: orderFetchError } = await supabase
-                .from('orders')
-                .select('status')
-                .eq('id', orderId)
-                .single();
-
-            if (orderFetchError) throw orderFetchError;
-
-            const orderStatus = orderData.status;
-
-            if (orderStatus === 'processing') {
-                // O webhook da Abacate Pay funcionou e atualizou o status
-                setMessage('Pagamento Pix aprovado! Seu pedido está sendo processado.');
-                setStatus('success');
-                clearCart(); // Clear local cart (already cleared selected items in checkout, but ensures full cleanup)
-            } else if (orderStatus === 'pending') {
-                // O pagamento ainda está pendente de confirmação (comum para Pix)
-                setMessage('Seu pedido foi registrado e está aguardando a confirmação do pagamento Pix. Isso pode levar alguns minutos.');
-                setStatus('pending');
-                
-                // Iniciar polling para verificar se o webhook atualiza o status
-                const pollOrder = setInterval(async () => {
-                    const { data: polledOrder } = await supabase
-                        .from('orders')
-                        .select('status')
-                        .eq('id', orderId)
-                        .single();
-                    
-                    if (polledOrder?.status === 'processing') {
-                        clearInterval(pollOrder);
-                        setMessage('Pagamento Pix aprovado! Seu pedido está sendo processado.');
-                        setStatus('success');
-                        clearCart();
-                    }
-                }, 5000); 
-
-                return () => clearInterval(pollOrder);
-
-            } else {
-                // Status inesperado (e.g., cancelled)
-                setMessage('O status do seu pedido é inesperado. Por favor, verifique a página de pedidos.');
-                setStatus('error');
-            }
-
-        } catch (error: any) {
-            console.error("Erro ao verificar status do pagamento Abacate Pay:", error);
-            showError('Ocorreu um erro ao verificar o status do pedido. Verifique a página de pedidos.');
-            setMessage('Ocorreu um erro ao verificar o status do pedido.');
-            setStatus('error');
-        }
+    const handleAbacatePayPending = () => {
+        setMessage('Seu pedido foi registrado e está aguardando a confirmação do pagamento Pix. Verifique a página de pedidos para o status.');
+        setStatus('pending');
+        // Não podemos fazer polling aqui porque não temos o orderId. O cliente deve verificar a página de pedidos.
+        // O webhook da Abacate Pay criará o pedido quando o pagamento for confirmado.
+        clearCart(); // Limpa o carrinho local, pois o pagamento foi iniciado.
     };
 
     if (sessionId) {
         checkStripeSessionStatus(sessionId);
-    } else if (abacateOrderId) {
-        checkAbacatePayStatus(abacateOrderId);
+    } else if (abacatePayStatus === 'pending') {
+        handleAbacatePayPending();
     }
 
   }, [searchParams, navigate, clearCart]);

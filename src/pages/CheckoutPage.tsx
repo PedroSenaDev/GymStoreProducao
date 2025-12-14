@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useSessionStore } from '@/store/sessionStore';
 import { useCartStore } from '@/store/cartStore';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ export default function CheckoutPage() {
   const session = useSessionStore((state) => state.session);
   const { items, clearNonSelectedItems, removeSelectedItems } = useCartStore();
   const { data: profile, isLoading: isLoadingProfile } = useProfile();
+  const navigate = useNavigate();
   
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [selectedRate, setSelectedRate] = useState<{ id: string | number; name: string; } | null>(null);
@@ -60,10 +61,10 @@ export default function CheckoutPage() {
 
     setIsProcessingPayment(true);
     try {
-        // 1. Limpa itens não selecionados do DB antes de criar o pedido
+        // 1. Limpa itens não selecionados do DB antes de criar a cobrança
         await clearNonSelectedItems();
 
-        // 2. Chamar a função Edge para criar a cobrança na Abacate Pay e o pedido pendente no Supabase
+        // 2. Chamar a função Edge para criar a cobrança na Abacate Pay
         const { data, error } = await supabase.functions.invoke('create-abacate-billing', {
             body: {
                 items: selectedItems,
@@ -89,6 +90,9 @@ export default function CheckoutPage() {
             // Limpa o carrinho localmente (apenas os itens selecionados)
             removeSelectedItems();
             window.open(data.billingUrl, '_blank'); // ABRIR EM NOVA ABA
+            
+            // Redireciona o usuário para a página de status pendente
+            navigate('/payment-status?abacate_pay_status=pending');
         } else {
             throw new Error("URL de cobrança não recebida.");
         }
@@ -130,6 +134,8 @@ export default function CheckoutPage() {
 
         // 3. Redirecionar para a página de checkout da Stripe em uma NOVA ABA
         if (data.sessionUrl) {
+            // Limpa o carrinho localmente (apenas os itens selecionados)
+            removeSelectedItems();
             window.open(data.sessionUrl, '_blank'); // ABRIR EM NOVA ABA
         } else {
             throw new Error("URL de sessão não recebida.");
