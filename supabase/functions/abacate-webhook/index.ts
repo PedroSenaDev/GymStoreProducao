@@ -1,133 +1,99 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0"
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 }
 
 const supabaseAdmin = createClient(
-  Deno.env.get('SUPABASE_URL') ?? '',
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  Deno.env.get("SUPABASE_URL") ?? "",
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
 )
 
-const ABACATE_WEBHOOK_SECRET = Deno.env.get("ABACATE_WEBHOOK_SECRET")
-
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    const body = await req.json();
-    const signature = req.headers.get("X-AbacatePay-Signature");
+    const body = await req.json()
 
-    // 1. Verificar a assinatura do Webhook (Segurança)
-    if (!ABACATE_WEBHOOK_SECRET) {
-        console.error("ABACATE_WEBHOOK_SECRET não configurado.");
-        return new Response("Webhook secret not configured.", { status: 500 });
-    }
-    
-    // 2. Processar o evento
-    const eventType = body.event;
-    const data = body.data;
+    const eventType = body.event
 
-    if (eventType === 'billing.paid') {
-      const metadata = data.metadata;
-      const userId = metadata?.userId;
-      const chargeId = data.id; // ID da cobrança na Abacate Pay
-
-      if (!userId || !metadata?.orderItems) {
-        console.error("Webhook Abacate: Metadados essenciais ausentes (userId ou orderItems).", metadata);
-        return new Response("Missing metadata.", { status: 400 });
-      }
-
-      const orderItemsPayload = JSON.parse(metadata.orderItems);
-      const totalAmount = parseFloat(metadata.totalAmount || '0');
-      const shippingCost = parseFloat(metadata.shippingCost || '0');
-
-      // 3. Criar o Pedido (Status 'processing' porque o pagamento foi confirmado)
-      const { data: orderData, error: orderError } = await supabaseAdmin
-        .from('orders')
-        .insert({
-            user_id: userId,
-            total_amount: totalAmount,
-            status: 'processing',
-            payment_method: metadata.paymentMethod,
-            shipping_cost: shippingCost,
-            pix_charge_id: chargeId,
-            shipping_service_id: metadata.shippingRateId,
-            shipping_service_name: metadata.shippingRateName,
-            delivery_time: metadata.deliveryTime,
-            shipping_address_id: metadata.shippingAddressId,
-            // Snapshot do endereço
-            shipping_street: metadata.shipping_street,
-            shipping_number: metadata.shipping_number,
-            shipping_complement: metadata.shipping_complement,
-            shipping_neighborhood: metadata.shipping_neighborhood,
-            shipping_city: metadata.shipping_city,
-            shipping_state: metadata.shipping_state,
-            shipping_zip_code: metadata.shipping_zip_code,
-        })
-        .select('id')
-        .single();
-      
-      if (orderError) {
-        console.error(`ERRO CRÍTICO AO CRIAR PEDIDO (Abacate Webhook): ${orderError.message}`, { userId, chargeId });
-        throw new Error(`Erro ao criar pedido: ${orderError.message}`);
-      }
-      const orderId = orderData.id;
-
-      // 4. Criar os Itens do Pedido
-      const finalOrderItemsPayload = orderItemsPayload.map((item: any) => ({
-        ...item,
-        order_id: orderId,
-        // selected_color já está no formato JSONB correto
-      }));
-
-      const { error: itemsError } = await supabaseAdmin.from('order_items').insert(finalOrderItemsPayload);
-      if (itemsError) {
-        // Se falhar, tentamos reverter o pedido
-        await supabaseAdmin.from('orders').delete().eq('id', orderId);
-        console.error(`ERRO CRÍTICO AO SALVAR ITENS (Abacate Webhook): ${itemsError.message}`, { orderId });
-        throw new Error(`Erro ao salvar itens do pedido: ${itemsError.message}`);
-      }
-
-      // 5. Decrementar Estoque
-      const stockUpdates = orderItemsPayload.map((item: any) => 
-        supabaseAdmin.rpc('decrement_product_stock', {
-          p_product_id: item.product_id,
-          p_quantity: item.quantity
-        })
-      );
-      
-      await Promise.all(stockUpdates);
-
-      // 6. Limpar os itens do carrinho que foram comprados
-      const { error: cartClearError } = await supabaseAdmin
-          .from('cart_items')
-          .delete()
-          .eq('user_id', userId);
-      
-      if (cartClearError) {
-          console.error(`Falha ao limpar o carrinho do usuário ${userId}:`, cartClearError);
-      }
-
-      console.log(`Webhook Abacate: Pedido ${orderId} criado e atualizado para 'processing'.`);
-      return new Response(JSON.stringify({ received: true, orderId: orderId }), { status: 200 });
+    // Ignorar eventos que não são pagamento confirmado
+    if (eventType !== "billing.paid") {
+      return new Response(
+        JSON.stringify({ ignored: true }),
+        { status: 200, headers: corsHeaders }
+      )
     }
 
-    // Se o evento for 'billing.failed' ou 'billing.canceled', não há pedido para cancelar, pois ele não foi criado.
-    // Apenas logamos o evento.
-    if (eventType === 'billing.failed' || eventType === 'billing.canceled') {
-        console.log(`Webhook Abacate: Evento ${eventType} recebido. Nenhum pedido criado.`);
-        return new Response(JSON.stringify({ received: true }), { status: 200 });
+    const billing = body.data?.billing
+
+    if (!billing) {
+      throw new Error("Payload inválido: billing ausente")
     }
 
-    return new Response(JSON.stringify({ message: `Event type ${eventType} ignored.` }), { status: 200 });
+    // Garantia extra
+    if (billing.status !== "PAID") {
+      return new Response(
+        JSON.stringify({ ignored: true }),
+        { status: 200, headers: corsHeaders }
+      )
+    }
 
-  } catch (err) {
-    console.error("Erro no webhook da Abacate Pay:", err);
-    return new Response(`Webhook Error: ${err.message}`, { status: 400 });
+    const metadata = billing.metadata
+    const orderId = metadata?.orderId
+
+    if (!orderId) {
+      throw new Error("orderId não encontrado no metadata")
+    }
+
+    // Idempotência: já foi processado?
+    const { data: existingOrder, error: findError } = await supabaseAdmin
+      .from("orders")
+      .select("id, status")
+      .eq("id", orderId)
+      .maybeSingle()
+
+    if (findError || !existingOrder) {
+      throw new Error(`Pedido ${orderId} não encontrado`)
+    }
+
+    if (existingOrder.status === "paid") {
+      return new Response(
+        JSON.stringify({ ok: true, duplicated: true }),
+        { status: 200, headers: corsHeaders }
+      )
+    }
+
+    // Atualizar pedido como pago
+    const { error: updateError } = await supabaseAdmin
+      .from("orders")
+      .update({
+        status: "paid",
+        pix_charge_id: billing.id,
+        paid_at: new Date().toISOString(),
+      })
+      .eq("id", orderId)
+
+    if (updateError) {
+      throw updateError
+    }
+
+    console.log(`Webhook Abacate: Pedido ${orderId} confirmado como pago.`)
+
+    return new Response(
+      JSON.stringify({ ok: true }),
+      { status: 200, headers: corsHeaders }
+    )
+
+  } catch (err: any) {
+    console.error("Erro no webhook AbacatePay:", err)
+    return new Response(
+      JSON.stringify({ error: err.message }),
+      { status: 500, headers: corsHeaders }
+    )
   }
-});
+})
