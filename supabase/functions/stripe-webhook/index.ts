@@ -132,14 +132,28 @@ serve(async (req) => {
       await Promise.all(stockUpdates);
 
       // 4. Limpar os itens do carrinho que foram comprados
-      const { error: cartClearError } = await supabaseAdmin
+      const cartItemDeletions = orderItemsPayload.map((item: any) => {
+        // O campo selected_color no payload é um objeto { code: string, name: string }
+        // Mas na tabela cart_items, ele é salvo como string (o código da cor)
+        const colorCode = item.selected_color?.code || null;
+        const size = item.selected_size || null;
+
+        // Deleta o item do carrinho que corresponde à combinação exata
+        return supabaseAdmin
           .from('cart_items')
           .delete()
-          .eq('user_id', userId);
-        
-      if (cartClearError) {
-          console.error(`Falha ao limpar os itens comprados do carrinho do usuário ${userId}:`, cartClearError);
-      }
+          .eq('user_id', userId)
+          .eq('product_id', item.product_id)
+          .eq('selected_size', size)
+          .eq('selected_color', colorCode);
+      });
+      
+      const cartClearResults = await Promise.all(cartItemDeletions);
+      cartClearResults.forEach(result => {
+          if (result.error) {
+              console.error(`Falha ao limpar item do carrinho do usuário ${userId}:`, result.error);
+          }
+      });
     }
 
     return new Response(JSON.stringify({ received: true }), { status: 200 });

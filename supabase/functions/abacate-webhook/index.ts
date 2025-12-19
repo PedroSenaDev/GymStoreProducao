@@ -111,14 +111,28 @@ serve(async (req) => {
       await Promise.all(stockUpdates);
 
       // 6. Limpar os itens do carrinho que foram comprados
-      const { error: cartClearError } = await supabaseAdmin
+      const cartItemDeletions = orderItemsPayload.map((item: any) => {
+        // O campo selected_color no payload é um objeto { code: string, name: string }
+        // Mas na tabela cart_items, ele é salvo como string (o código da cor)
+        const colorCode = item.selected_color?.code || null;
+        const size = item.selected_size || null;
+
+        // Deleta o item do carrinho que corresponde à combinação exata
+        return supabaseAdmin
           .from('cart_items')
           .delete()
-          .eq('user_id', userId);
+          .eq('user_id', userId)
+          .eq('product_id', item.product_id)
+          .eq('selected_size', size)
+          .eq('selected_color', colorCode);
+      });
       
-      if (cartClearError) {
-          console.error(`Falha ao limpar o carrinho do usuário ${userId}:`, cartClearError);
-      }
+      const cartClearResults = await Promise.all(cartItemDeletions);
+      cartClearResults.forEach(result => {
+          if (result.error) {
+              console.error(`Falha ao limpar item do carrinho do usuário ${userId}:`, result.error);
+          }
+      });
 
       console.log(`Webhook Abacate: Pedido ${orderId} criado e atualizado para 'processing'.`);
       return new Response(JSON.stringify({ received: true, orderId: orderId }), { status: 200 });
