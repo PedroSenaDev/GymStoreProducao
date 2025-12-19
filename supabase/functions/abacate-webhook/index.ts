@@ -30,12 +30,19 @@ serve(async (req) => {
     
     // 2. Processar o evento
     const eventType = body.event;
-    const data = body.data;
+    
+    // **CORREÇÃO:** Extrair os dados da cobrança (billing)
+    const billingData = body.data?.billing;
 
     if (eventType === 'billing.paid') {
-      const metadata = data.metadata;
+      if (!billingData) {
+        console.error("Webhook Abacate: Dados de cobrança ausentes no evento 'billing.paid'.", body);
+        return new Response("Missing billing data.", { status: 400 });
+      }
+
+      const metadata = billingData.metadata;
       const userId = metadata?.userId;
-      const chargeId = data.id; // ID da cobrança na Abacate Pay
+      const chargeId = billingData.id; // ID da cobrança na Abacate Pay
 
       if (!userId || !metadata?.orderItems) {
         console.error("Webhook Abacate: Metadados essenciais ausentes (userId ou orderItems).", metadata);
