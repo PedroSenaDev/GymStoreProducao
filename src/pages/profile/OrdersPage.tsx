@@ -14,7 +14,8 @@ import OrderDetailsDialog from "@/components/profile/OrderDetailsDialog";
 async function fetchUserOrders(userId: string): Promise<Order[]> {
   const { data, error } = await supabase
     .from("orders")
-    .select("*, order_items(*, products(*))") // Removido o join com shipping_address
+    // Usando a sintaxe de Left Join para garantir que order_items e products sejam retornados mesmo se o produto for nulo
+    .select("*, order_items(*, products(*))") 
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
@@ -148,7 +149,7 @@ export default function OrdersPage() {
                     className="h-12 w-12 rounded-md object-cover"
                   />
                   <div className="flex-1">
-                    <p className="font-medium">{item.products?.name}</p>
+                    <p className="font-medium">{item.products?.name || 'Produto Excluído'}</p>
                     <p className="text-xs text-muted-foreground">
                       {item.selected_size && `Tamanho: ${item.selected_size}`}
                       {item.selected_size && item.selected_color && ' / '}

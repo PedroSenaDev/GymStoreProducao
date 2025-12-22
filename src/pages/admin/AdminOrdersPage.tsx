@@ -46,14 +46,15 @@ type OrderWithDetails = Order & {
       height_cm: number;
       width_cm: number;
       length_cm: number;
-    }
+    } | null // Adicionado | null para produtos excluídos
   }[];
 };
 
 async function fetchOrders(): Promise<OrderWithDetails[]> {
   const { data, error } = await supabase
     .from("orders")
-    .select("*, profiles(full_name, cpf, email, phone), order_items(*, products(*))")
+    // Usando a sintaxe de Left Join para garantir que order_items e products sejam retornados mesmo se o produto for nulo
+    .select("*, profiles(full_name, cpf, email, phone), order_items(quantity, products(name, price, weight_kg, height_cm, width_cm, length_cm))")
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);
