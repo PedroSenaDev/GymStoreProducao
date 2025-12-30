@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useSessionStore } from '@/store/sessionStore';
 import { useCartStore } from '@/store/cartStore';
@@ -7,10 +7,10 @@ import { AddressStep } from '@/components/checkout/AddressStep';
 import { PaymentStep } from '@/components/checkout/PaymentStep';
 import { OrderSummary } from '@/components/checkout/OrderSummary';
 import { useProfile } from '@/hooks/useProfile';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, ArrowRight, ExternalLink } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
-import { showError, showSuccess } from '@/utils/toast';
+import { showError } from '@/utils/toast';
 
 export default function CheckoutPage() {
   const session = useSessionStore((state) => state.session);
@@ -20,12 +20,18 @@ export default function CheckoutPage() {
   
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [selectedRate, setSelectedRate] = useState<{ id: string | number; name: string; } | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<string | null>('pix'); // Pix como padrão
+  const [paymentMethod, setPaymentMethod] = useState<string | null>('pix');
   const [shippingCost, setShippingCost] = useState(0);
   const [deliveryTime, setDeliveryTime] = useState<string | number | null>(null);
   const [birthdayDiscount, setBirthdayDiscount] = useState(0);
   
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
+
+  // Detecta se o navegador é Safari (incluindo iOS)
+  const isSafari = useMemo(() => {
+    return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  }, []);
 
   const selectedItems = useMemo(() => items.filter(item => item.selected), [items]);
   const subtotal = useMemo(() => selectedItems.reduce((acc, item) => acc + item.price * item.quantity, 0), [selectedItems]);
@@ -61,10 +67,8 @@ export default function CheckoutPage() {
 
     setIsProcessingPayment(true);
     try {
-        // 1. Limpa itens não selecionados do DB antes de criar a cobrança
         await clearNonSelectedItems();
 
-        // 2. Chamar a função Edge para criar a cobrança na Abacate Pay
         const { data, error } = await supabase.functions.invoke('create-abacate-billing', {
             body: {
                 items: selectedItems,
@@ -75,7 +79,6 @@ export default function CheckoutPage() {
                 shippingRateName: selectedRate!.name,
                 deliveryTime: deliveryTime,
                 birthdayDiscount: birthdayDiscount,
-                // Customer details from profile (required by Abacate Pay)
                 customerName: profile.full_name,
                 customerEmail: session.user.email,
                 customerMobile: profile.phone,
@@ -85,21 +88,24 @@ export default function CheckoutPage() {
         
         if (error || data.error) throw new Error(error?.message || data.error);
 
-        // 3. Redirecionar para a página de checkout da Abacate Pay em uma NOVA ABA
         if (data.billingUrl) {
-            // Limpa o carrinho localmente (apenas os itens selecionados)
             removeSelectedItems();
-            window.open(data.billingUrl, '_blank'); // ABRIR EM NOVA ABA
             
-            // Redireciona o usuário para a página de status pendente
-            navigate('/payment-status?abacate_pay_status=pending');
+            if (isSafari) {
+                // Se for Safari, salvamos a URL para o segundo clique síncrono
+                setPaymentUrl(data.billingUrl);
+                setIsProcessingPayment(false);
+            } else {
+                // Outros navegadores seguem o fluxo automático (abre em nova aba conforme solicitado anteriormente)
+                window.open(data.billingUrl, '_blank');
+                navigate('/payment-status?abacate_pay_status=pending');
+            }
         } else {
             throw new Error("URL de cobrança não recebida.");
         }
 
     } catch (err: any) {
         showError(`Erro ao iniciar pagamento: ${err.message}`);
-    } finally {
         setIsProcessingPayment(false);
     }
   };
@@ -112,10 +118,8 @@ export default function CheckoutPage() {
     
     setIsProcessingPayment(true);
     try {
-        // 1. Limpa itens não selecionados do DB antes de criar a sessão Stripe
         await clearNonSelectedItems();
 
-        // 2. Chamar a função Edge para criar a Checkout Session
         const { data, error } = await supabase.functions.invoke('create-checkout-session', {
             body: {
                 items: selectedItems,
@@ -132,18 +136,23 @@ export default function CheckoutPage() {
         
         if (error || data.error) throw new Error(error?.message || data.error);
 
-        // 3. Redirecionar para a página de checkout da Stripe em uma NOVA ABA
         if (data.sessionUrl) {
-            // Limpa o carrinho localmente (apenas os itens selecionados)
             removeSelectedItems();
-            window.open(data.sessionUrl, '_blank'); // ABRIR EM NOVA ABA
+            
+            if (isSafari) {
+                // Se for Safari, salvamos a URL para o segundo clique síncrono
+                setPaymentUrl(data.sessionUrl);
+                setIsProcessingPayment(false);
+            } else {
+                // Fluxo automático para outros navegadores
+                window.open(data.sessionUrl, '_blank');
+            }
         } else {
             throw new Error("URL de sessão não recebida.");
         }
 
     } catch (err: any) {
         showError(`Erro ao iniciar pagamento: ${err.message}`);
-    } finally {
         setIsProcessingPayment(false);
     }
   };
@@ -158,11 +167,32 @@ export default function CheckoutPage() {
     }
   };
 
+  // Função síncrona para o segundo clique no Safari
+  const handleSafariRedirect = useCallback(() => {
+    if (paymentUrl) {
+      // Navegação full-page é mais confiável no Safari do que window.open
+      window.location.assign(paymentUrl);
+      
+      // Se for PIX, avisamos que ao voltar o status estará pendente
+      if (paymentMethod === 'pix') {
+          // Nota: O navigate aqui pode não completar antes da página descarregar, 
+          // mas o returnUrl do gateway trará o usuário de volta.
+      }
+    }
+  }, [paymentUrl, paymentMethod]);
+
   const handleShippingChange = (cost: number, rateId: string | number, rateName: string, time: string | number) => {
     setShippingCost(cost);
     setSelectedRate(rateId ? { id: rateId, name: rateName } : null);
     setDeliveryTime(time);
+    // Limpa a URL de pagamento se o frete mudar para forçar uma nova geração
+    setPaymentUrl(null);
   };
+
+  // Resetar URL de pagamento se o método mudar
+  useEffect(() => {
+    setPaymentUrl(null);
+  }, [paymentMethod]);
 
   if (!session) {
     return <Navigate to="/login" replace />;
@@ -195,7 +225,7 @@ export default function CheckoutPage() {
                 </Alert>
               )}
               <div className={!isShippingSelected ? 'pointer-events-none opacity-50' : ''}>
-                <PaymentStep selectedPaymentMethod={paymentMethod} onPaymentMethodSelect={setPaymentMethod} />
+                <PaymentStep selectedPaymentMethod={paymentMethod} onPaymentMethodSelect={(m) => { setPaymentMethod(m); setPaymentUrl(null); }} />
               </div>
             </div>
           </div>
@@ -203,6 +233,7 @@ export default function CheckoutPage() {
           <div className="lg:col-span-1 sticky top-28 space-y-6">
             <h2 className="text-xl font-semibold">Resumo do Pedido</h2>
             <OrderSummary items={selectedItems} shippingCost={shippingCost} discount={birthdayDiscount} />
+            
             {isProfileIncomplete && !isLoadingProfile && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
@@ -211,17 +242,46 @@ export default function CheckoutPage() {
                 </AlertDescription>
               </Alert>
             )}
-            <Button
-              size="lg"
-              className="w-full"
-              onClick={handleFinalizeOrder}
-              disabled={isCheckoutDisabled || isProcessingPayment}
-            >
-              {isProcessingPayment ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
-              {paymentMethod === 'pix' ? 'Pagar com Pix' : 'Pagar com Cartão'}
-            </Button>
+
+            {paymentUrl ? (
+                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
+                    <Alert className="border-primary bg-primary/5">
+                        <ExternalLink className="h-4 w-4 text-primary" />
+                        <AlertDescription className="text-primary font-medium">
+                            Seu pedido foi preparado! Clique abaixo para ir ao ambiente de pagamento seguro.
+                        </AlertDescription>
+                    </Alert>
+                    <Button
+                        size="lg"
+                        className="w-full bg-green-600 hover:bg-green-700 text-white font-bold"
+                        onClick={handleSafariRedirect}
+                    >
+                        Ir para o Pagamento
+                        <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => setPaymentUrl(null)}>
+                        Alterar algo no pedido
+                    </Button>
+                </div>
+            ) : (
+                <Button
+                    size="lg"
+                    className="w-full"
+                    onClick={handleFinalizeOrder}
+                    disabled={isCheckoutDisabled || isProcessingPayment}
+                >
+                    {isProcessingPayment ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : null}
+                    {paymentMethod === 'pix' ? 'Finalizar e Pagar com Pix' : 'Finalizar e Pagar com Cartão'}
+                </Button>
+            )}
+            
+            {isSafari && !paymentUrl && (
+                <p className="text-[10px] text-center text-muted-foreground mt-2">
+                    Navegador Safari detectado. O pagamento será aberto em uma nova etapa para sua segurança.
+                </p>
+            )}
           </div>
         </div>
       </div>
