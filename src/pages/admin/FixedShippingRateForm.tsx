@@ -14,9 +14,16 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { showError, showSuccess } from "@/utils/toast";
 import { FixedShippingRate } from "@/types/fixedShippingRate";
-import { Loader2 } from "lucide-react";
+import { Loader2, Truck, Store } from "lucide-react";
 
 const formSchema = z.object({
   label: z.string().min(1, "O nome da taxa é obrigatório."),
@@ -24,6 +31,7 @@ const formSchema = z.object({
   price: z.coerce.number().min(0, "O preço do frete não pode ser negativo."),
   delivery_time_days: z.coerce.number().int("O prazo deve ser um número inteiro.").min(0, "O prazo não pode ser negativo."),
   is_active: z.boolean().default(true),
+  icon_type: z.enum(['truck', 'store']).default('truck'),
 });
 
 interface FixedShippingRateFormProps {
@@ -41,6 +49,7 @@ export default function FixedShippingRateForm({ rate, onFinished }: FixedShippin
       price: rate?.price || 0,
       delivery_time_days: rate?.delivery_time_days || 1,
       is_active: rate?.is_active ?? true,
+      icon_type: rate?.icon_type || 'truck',
     },
   });
 
@@ -72,11 +81,12 @@ export default function FixedShippingRateForm({ rate, onFinished }: FixedShippin
           render={({ field }) => (
             <FormItem>
               <FormLabel>Nome da Taxa</FormLabel>
-              <FormControl><Input placeholder="Ex: Frete Padrão" {...field} /></FormControl>
+              <FormControl><Input placeholder="Ex: Retirada na Loja ou Frete Fixo" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
+        
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField
             control={form.control}
@@ -101,17 +111,52 @@ export default function FixedShippingRateForm({ rate, onFinished }: FixedShippin
             )}
           />
         </div>
-        <FormField
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <FormField
+              control={form.control}
+              name="delivery_time_days"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Prazo de Entrega (dias)</FormLabel>
+                  <FormControl><Input type="number" step="1" placeholder="Ex: 1" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+          />
+          <FormField
             control={form.control}
-            name="delivery_time_days"
+            name="icon_type"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Prazo de Entrega (dias)</FormLabel>
-                <FormControl><Input type="number" step="1" placeholder="Ex: 1" {...field} /></FormControl>
+                <FormLabel>Ícone de Exibição</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um ícone" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="truck">
+                      <div className="flex items-center gap-2">
+                        <Truck className="h-4 w-4" />
+                        <span>Entrega (Caminhão)</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="store">
+                      <div className="flex items-center gap-2">
+                        <Store className="h-4 w-4" />
+                        <span>Retirada (Loja)</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}
           />
+        </div>
+
         <FormField
           control={form.control}
           name="is_active"

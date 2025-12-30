@@ -6,4 +6,5 @@ export interface FixedShippingRate {
   is_active: boolean;
   created_at: string;
   delivery_time_days: number;
+  icon_type?: 'truck' | 'store';
 }

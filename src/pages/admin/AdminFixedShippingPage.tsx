@@ -28,7 +28,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Loader2, PlusCircle, MoreHorizontal, ArrowLeft } from "lucide-react";
+import { Loader2, PlusCircle, MoreHorizontal, ArrowLeft, Truck, Store } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -122,10 +122,11 @@ export default function AdminFixedShippingPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[50px]">Ícone</TableHead>
                   <TableHead>Nome</TableHead>
-                  <TableHead>Valor Mínimo do Pedido</TableHead>
-                  <TableHead>Valor do Frete</TableHead>
-                  <TableHead>Prazo de Entrega</TableHead>
+                  <TableHead>Valor Mínimo</TableHead>
+                  <TableHead>Valor Frete</TableHead>
+                  <TableHead>Prazo</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-[80px]"></TableHead>
                 </TableRow>
@@ -133,6 +134,9 @@ export default function AdminFixedShippingPage() {
               <TableBody>
                 {rates?.map((rate) => (
                   <TableRow key={rate.id}>
+                    <TableCell>
+                      {rate.icon_type === 'store' ? <Store className="h-4 w-4" /> : <Truck className="h-4 w-4" />}
+                    </TableCell>
                     <TableCell className="font-medium">{rate.label}</TableCell>
                     <TableCell>{formatCurrency(rate.min_order_value)}</TableCell>
                     <TableCell>{formatCurrency(rate.price)}</TableCell>

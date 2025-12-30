@@ -5,7 +5,7 @@ import { Address } from "@/types/address";
 import { useSessionStore } from "@/store/sessionStore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, PlusCircle, MapPin, AlertCircle, Search, Truck } from "lucide-react";
+import { Loader2, PlusCircle, MapPin, AlertCircle, Search, Truck, Store } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -28,6 +28,7 @@ interface ShippingOption {
   price: number;
   delivery_time: string | number;
   type: 'fixed' | 'gateway';
+  icon_type?: 'truck' | 'store';
   company: {
     name: string;
     picture: string | null;
@@ -45,7 +46,7 @@ async function fetchAddresses(userId: string): Promise<Address[]> {
     .from("addresses")
     .select("*")
     .eq("user_id", userId)
-    .eq("is_active", true) // Apenas busca endereços ativos
+    .eq("is_active", true)
     .order("is_default", { ascending: false })
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
@@ -178,7 +179,7 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
                       {rate.company.picture ? (
                         <img src={rate.company.picture} alt={rate.company.name} className="h-6 w-auto" />
                       ) : (
-                        <Truck className="h-6 w-6 text-muted-foreground" />
+                        rate.icon_type === 'store' ? <Store className="h-6 w-6 text-muted-foreground" /> : <Truck className="h-6 w-6 text-muted-foreground" />
                       )}
                       <div>
                         <p className="font-semibold">{rate.company.name}</p>

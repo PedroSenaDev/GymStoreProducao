@@ -44,13 +44,11 @@ serve(async (req) => {
       totalWeight += (item.weight_kg || 0.1) * quantity;
       subtotal += item.price * quantity;
       
-      // Simula empilhamento para altura e pega as maiores outras dimensões
       totalHeight += (item.height_cm || 1) * quantity;
       maxLength = Math.max(maxLength, item.length_cm || 1);
       maxWidth = Math.max(maxWidth, item.width_cm || 1);
     });
 
-    // Garante que as dimensões atendam aos mínimos dos Correios
     const finalPackage = {
       weight: totalWeight,
       width: Math.max(maxWidth, 11),
@@ -85,6 +83,7 @@ serve(async (req) => {
             price: rate.price,
             delivery_time: `${rate.delivery_time_days} dia(s)`,
             type: 'fixed',
+            icon_type: rate.icon_type, // Enviando o tipo do ícone
             company: { name: "Entrega Local", picture: null }
           });
         });
@@ -96,7 +95,7 @@ serve(async (req) => {
           from: { postal_code: SENDER_ZIP_CODE },
           to: { postal_code: cleanedZipCode },
           package: finalPackage,
-          services: "1,2,3" // 1: PAC, 2: SEDEX, 3: Jadlog .Package
+          services: "1,2,3" 
         };
 
         const meResponse = await fetch('https://sandbox.melhorenvio.com.br/api/v2/me/shipment/calculate', {
@@ -118,7 +117,6 @@ serve(async (req) => {
             if (rate.error) {
               apiErrors.push(`${rate.company.name}: ${rate.error}`);
             } else if (rate.company) {
-              // Parse the delivery time and add a 2-day buffer
               const originalDeliveryTime = parseInt(rate.delivery_time, 10);
               const finalDeliveryTime = !isNaN(originalDeliveryTime) ? originalDeliveryTime + 2 : rate.delivery_time;
 
@@ -128,6 +126,7 @@ serve(async (req) => {
                 price: parseFloat(rate.price),
                 delivery_time: finalDeliveryTime,
                 type: 'gateway',
+                icon_type: 'truck', // Gateway sempre usa caminhão
                 company: {
                   name: rate.company.name,
                   picture: rate.company.picture
