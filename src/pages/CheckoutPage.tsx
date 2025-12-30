@@ -7,7 +7,7 @@ import { AddressStep } from '@/components/checkout/AddressStep';
 import { PaymentStep } from '@/components/checkout/PaymentStep';
 import { OrderSummary } from '@/components/checkout/OrderSummary';
 import { useProfile } from '@/hooks/useProfile';
-import { AlertCircle, Loader2, ArrowRight, ExternalLink, ShieldCheck } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { showError } from '@/utils/toast';
@@ -25,16 +25,8 @@ export default function CheckoutPage() {
   const [birthdayDiscount, setBirthdayDiscount] = useState(0);
   
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
-
-  // Detecção robusta de Safari (incluindo iOS)
-  const isSafari = useMemo(() => {
-    const ua = navigator.userAgent;
-    return /Safari/.test(ua) && !/Chrome/.test(ua) && !/Chromium/.test(ua);
-  }, []);
 
   const selectedItems = useMemo(() => items.filter(item => item.selected), [items]);
-  const subtotal = useMemo(() => selectedItems.reduce((acc, item) => acc + item.price * item.quantity, 0), [selectedItems]);
   
   const isProfileIncomplete = !profile?.full_name || !profile?.cpf || !profile?.phone;
   const isShippingSelected = selectedAddressId && selectedRate;
@@ -91,14 +83,8 @@ export default function CheckoutPage() {
         const url = data.billingUrl || data.sessionUrl;
 
         if (url) {
-            if (isSafari) {
-                // No Safari, apenas guardamos a URL para o clique final síncrono
-                setPaymentUrl(url);
-                setIsProcessingPayment(false);
-            } else {
-                // Outros navegadores redirecionam direto
-                window.location.href = url;
-            }
+            // Redireciona na mesma aba para evitar bloqueio de pop-ups no Safari
+            window.location.href = url;
         } else {
             throw new Error("URL de pagamento não gerada.");
         }
@@ -113,19 +99,13 @@ export default function CheckoutPage() {
     setShippingCost(cost);
     setSelectedRate(rateId ? { id: rateId, name: rateName } : null);
     setDeliveryTime(time);
-    setPaymentUrl(null);
   };
-
-  useEffect(() => {
-    setPaymentUrl(null);
-  }, [paymentMethod]);
 
   if (!session) {
     return <Navigate to="/login" replace />;
   }
 
-  // IMPORTANTE: Só redirecionamos se não houver itens E não estivermos no processo de pagamento
-  if (selectedItems.length === 0 && !paymentUrl) {
+  if (selectedItems.length === 0 && !isProcessingPayment) {
     return <Navigate to="/products" replace />;
   }
 
@@ -152,7 +132,7 @@ export default function CheckoutPage() {
                 </Alert>
               )}
               <div className={!isShippingSelected ? 'pointer-events-none opacity-50' : ''}>
-                <PaymentStep selectedPaymentMethod={paymentMethod} onPaymentMethodSelect={(m) => { setPaymentMethod(m); setPaymentUrl(null); }} />
+                <PaymentStep selectedPaymentMethod={paymentMethod} onPaymentMethodSelect={(m) => setPaymentMethod(m)} />
               </div>
             </div>
           </div>
@@ -170,55 +150,25 @@ export default function CheckoutPage() {
               </Alert>
             )}
 
-            {paymentUrl ? (
-                <div className="space-y-4 p-4 border-2 border-green-200 bg-green-50 rounded-lg animate-in fade-in slide-in-from-bottom-2">
-                    <div className="flex items-center gap-2 text-green-800 font-semibold mb-2">
-                        <ShieldCheck className="h-5 w-5" />
-                        <span>Pronto para pagar!</span>
-                    </div>
-                    <p className="text-sm text-green-700 mb-4">
-                        O link seguro foi gerado com sucesso. Clique no botão abaixo para concluir no ambiente de pagamento.
-                    </p>
-                    
-                    {/* FORMULÁRIO NATIVO: O método mais seguro para o Safari aceitar o clique como síncrono */}
-                    <form action={paymentUrl} method="GET">
-                        <Button
-                            type="submit"
-                            size="lg"
-                            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold h-12 shadow-md"
-                        >
-                            Finalizar e Ir ao Pagamento
-                            <ArrowRight className="ml-2 h-5 w-5" />
-                        </Button>
-                    </form>
-                    
-                    <Button variant="ghost" size="sm" className="w-full text-xs text-green-800" onClick={() => setPaymentUrl(null)}>
-                        Voltar e alterar algo
-                    </Button>
-                </div>
-            ) : (
-                <Button
-                    size="lg"
-                    className="w-full h-12 text-base font-semibold"
-                    onClick={handleStartCheckout}
-                    disabled={isCheckoutDisabled || isProcessingPayment}
-                >
-                    {isProcessingPayment ? (
-                        <>
-                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                            Processando...
-                        </>
-                    ) : (
-                        paymentMethod === 'pix' ? 'Gerar Pagamento Pix' : 'Ir para Pagamento com Cartão'
-                    )}
-                </Button>
-            )}
+            <Button
+                size="lg"
+                className="w-full h-12 text-base font-semibold"
+                onClick={handleStartCheckout}
+                disabled={isCheckoutDisabled || isProcessingPayment}
+            >
+                {isProcessingPayment ? (
+                    <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Processando...
+                    </>
+                ) : (
+                    paymentMethod === 'pix' ? 'Gerar Pagamento Pix' : 'Ir para Pagamento com Cartão'
+                )}
+            </Button>
             
-            {isSafari && !paymentUrl && (
-                <p className="text-[11px] text-center text-muted-foreground mt-3 leading-tight px-4">
-                    Pelo Safari, o pagamento será concluído em uma etapa adicional para garantir sua segurança e privacidade.
-                </p>
-            )}
+            <p className="text-[11px] text-center text-muted-foreground mt-3 leading-tight px-4">
+                Ambiente de pagamento 100% seguro.
+            </p>
           </div>
         </div>
       </div>
