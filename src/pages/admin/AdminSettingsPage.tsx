@@ -48,6 +48,7 @@ import { Link } from "react-router-dom";
 import FooterSettingsForm from "./FooterSettingsForm";
 import BirthdayDiscountForm from "./BirthdayDiscountForm";
 import BirthdayListTab from "./BirthdayListTab";
+import { Separator } from "@/components/ui/separator";
 
 async function fetchPolicies(): Promise<Policy[]> {
   const { data, error } = await supabase.from("policies").select("*").not('display_area', 'eq', 'about_us').order('created_at', { ascending: false });
