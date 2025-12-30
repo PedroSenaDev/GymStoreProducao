@@ -74,8 +74,8 @@ const HeroSection = () => {
                   alt={`Slide ${index + 1}`}
                   className="w-full h-full object-cover"
                 />
-                {/* Gradiente mais suave para melhorar a visibilidade da imagem */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+                {/* Overlay equilibrado para visibilidade do texto */}
+                <div className="absolute inset-0 bg-black/40"></div>
               </CarouselItem>
             ))}
           </CarouselContent>
