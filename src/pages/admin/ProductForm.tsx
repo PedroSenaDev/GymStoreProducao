@@ -11,6 +11,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,6 +32,7 @@ import ColorNamePickerInput from "@/components/admin/ColorNamePickerInput";
 const formSchema = z.object({
   name: z.string().min(2),
   description: z.string().optional(),
+  code: z.string().optional(),
   price: z.coerce.number({ invalid_type_error: "O preço deve ser um número." }).min(0, { message: "O preço não pode ser negativo." }),
   stock: z.coerce.number({ invalid_type_error: "O estoque deve ser um número." }).int({ message: "O estoque deve ser um número inteiro." }).min(0, { message: "O estoque não pode ser negativo." }),
   category_id: z.string().min(1, { message: "Por favor, selecione uma categoria." }).uuid({ message: "Categoria inválida." }),
@@ -58,6 +60,7 @@ export default function ProductForm({ product, onFinished }: ProductFormProps) {
     defaultValues: {
       name: product?.name || "",
       description: product?.description || "",
+      code: product?.code || "",
       price: product?.price || 0,
       stock: product?.stock || 0,
       category_id: product?.category_id || "",
@@ -118,6 +121,18 @@ export default function ProductForm({ product, onFinished }: ProductFormProps) {
             <FormItem>
               <FormLabel>Nome do Produto</FormLabel>
               <FormControl><Input placeholder="Ex: Camiseta Dry Fit" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="code"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Código do Produto</FormLabel>
+              <FormControl><Input placeholder="Ex: ABC-123" {...field} /></FormControl>
+              <FormDescription>Deixe vazio para gerar um código automático.</FormDescription>
               <FormMessage />
             </FormItem>
           )}

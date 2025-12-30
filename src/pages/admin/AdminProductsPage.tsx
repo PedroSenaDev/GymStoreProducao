@@ -64,7 +64,8 @@ export default function AdminProductsPage() {
   const filteredProducts = useMemo(() => {
     if (!products) return [];
     return products.filter(product =>
-      product.name.toLowerCase().includes(searchTerm.toLowerCase())
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.code?.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [products, searchTerm]);
 
@@ -122,7 +123,7 @@ export default function AdminProductsPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Buscar por nome..."
+              placeholder="Buscar por nome ou código..."
               className="pl-10 w-full sm:w-64"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -163,6 +164,7 @@ export default function AdminProductsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[80px]">Imagem</TableHead>
+                  <TableHead>Código</TableHead>
                   <TableHead>Nome</TableHead>
                   <TableHead>Categoria</TableHead>
                   <TableHead>Preço</TableHead>
@@ -177,6 +179,7 @@ export default function AdminProductsPage() {
                     <TableCell>
                       <img src={product.image_urls?.[0] || '/placeholder.svg'} alt={product.name} className="h-12 w-12 object-cover rounded-md" />
                     </TableCell>
+                    <TableCell className="font-mono text-xs">{product.code || '-'}</TableCell>
                     <TableCell className="font-medium">{product.name}</TableCell>
                     {/* @ts-ignore */}
                     <TableCell><Badge variant="outline">{product.categories?.name || 'N/A'}</Badge></TableCell>
@@ -224,6 +227,7 @@ export default function AdminProductsPage() {
                     <img src={product.image_urls?.[0] || '/placeholder.svg'} alt={product.name} className="h-16 w-16 object-cover rounded-md" />
                     <div>
                       <h3 className="font-semibold">{product.name}</h3>
+                      <p className="text-xs font-mono text-muted-foreground">{product.code || '-'}</p>
                       {/* @ts-ignore */}
                       <Badge variant="outline" className="text-xs mt-1">{product.categories?.name || 'N/A'}</Badge>
                     </div>
