@@ -30,10 +30,11 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
   } from "@/components/ui/alert-dialog";
-import { Loader2, PlusCircle, Edit, Trash2, Truck, Gift } from "lucide-react";
+import { Loader2, PlusCircle, Edit, Trash2, Truck, Gift, Image as ImageIcon } from "lucide-react";
 import PolicyForm from "./PolicyForm";
 import AboutUsForm from "./AboutUsForm";
 import SizeChartForm from "./SizeChartForm";
+import HeroCarouselForm from "./HeroCarouselForm";
 import { showError, showSuccess } from "@/utils/toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -147,7 +148,17 @@ export default function AdminSettingsPage() {
             </Select>
           </div>
 
-          <TabsContent value="general" className="mt-6 space-y-6">
+          <TabsContent value="general" className="mt-6 space-y-8">
+            <section className="space-y-6">
+              <div className="flex items-center gap-2">
+                <ImageIcon className="h-6 w-6" />
+                <h2 className="text-xl font-semibold">Carrossel de Destaque</h2>
+              </div>
+              <HeroCarouselForm />
+            </section>
+
+            <Separator />
+
             <Card>
               <CardHeader>
                 <CardTitle>Seção "Sobre Nossa Loja"</CardTitle>

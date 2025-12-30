@@ -3,24 +3,83 @@ import { Link } from "react-router-dom";
 import { FeaturedProducts } from "@/components/FeaturedProducts";
 import { StoreDescription } from "@/components/StoreDescription";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+} from "@/components/ui/carousel";
+import Autoplay from "embla-carousel-autoplay";
+import { Skeleton } from "@/components/ui/skeleton";
+import * as React from "react";
+
+async function fetchCarouselImages() {
+  const { data, error } = await supabase
+    .from("settings")
+    .select("key, value")
+    .in("key", ["hero_carousel_desktop", "hero_carousel_mobile"]);
+
+  if (error) throw error;
+
+  return data.reduce((acc, { key, value }) => {
+    try {
+      acc[key] = value ? JSON.parse(value) : [];
+    } catch {
+      acc[key] = [];
+    }
+    return acc;
+  }, {} as Record<string, string[]>);
+}
 
 const HeroSection = () => {
   const isMobile = useIsMobile();
+  const autoplay = React.useRef(
+    Autoplay({ delay: 5000, stopOnInteraction: false })
+  );
 
-  const desktopImage = "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
-  const mobileImage = "/hero-background.jpg";
+  const { data: carouselData, isLoading } = useQuery({
+    queryKey: ["heroCarousel"],
+    queryFn: fetchCarouselImages,
+  });
+
+  const desktopDefaults = ["https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=2070&auto=format&fit=crop"];
+  const mobileDefaults = ["/hero-background.jpg"];
+
+  const images = isMobile 
+    ? (carouselData?.hero_carousel_mobile?.length ? carouselData.hero_carousel_mobile : mobileDefaults)
+    : (carouselData?.hero_carousel_desktop?.length ? carouselData.hero_carousel_desktop : desktopDefaults);
+
+  if (isLoading) {
+    return <Skeleton className="h-screen w-full" />;
+  }
 
   return (
     <section className="relative min-h-screen w-full flex items-center justify-center text-center text-white overflow-hidden">
-      {/* Background Image */}
+      {/* Background Carousel */}
       <div className="absolute top-0 left-0 w-full h-full z-0">
-        <img
-          src={isMobile ? mobileImage : desktopImage}
-          alt="Pessoa se exercitando na academia"
-          className="w-full h-full object-cover"
-        />
-        {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-black/20"></div>
+        <Carousel 
+          plugins={[autoplay.current]}
+          opts={{
+            loop: true,
+            align: "start",
+          }}
+          className="w-full h-full"
+        >
+          <CarouselContent className="h-screen ml-0">
+            {images.map((src, index) => (
+              <CarouselItem key={index} className="pl-0 h-screen w-full relative">
+                <img
+                  src={src}
+                  alt={`Slide ${index + 1}`}
+                  className="w-full h-full object-cover"
+                />
+                {/* Gradient Overlay por slide para garantir legibilidade durante a transição */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-black/20"></div>
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
       </div>
 
       {/* Content */}
