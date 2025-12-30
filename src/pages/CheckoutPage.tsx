@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useSessionStore } from '@/store/sessionStore';
 import { useCartStore } from '@/store/cartStore';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { AddressStep } from '@/components/checkout/AddressStep';
 import { PaymentStep } from '@/components/checkout/PaymentStep';
 import { OrderSummary } from '@/components/checkout/OrderSummary';
 import { useProfile } from '@/hooks/useProfile';
-import { AlertCircle, Loader2, ArrowRight, ExternalLink } from 'lucide-react';
+import { AlertCircle, Loader2, ArrowRight, ExternalLink, ShieldCheck } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { showError } from '@/utils/toast';
@@ -16,7 +16,6 @@ export default function CheckoutPage() {
   const session = useSessionStore((state) => state.session);
   const { items, clearNonSelectedItems } = useCartStore();
   const { data: profile, isLoading: isLoadingProfile } = useProfile();
-  const navigate = useNavigate();
   
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [selectedRate, setSelectedRate] = useState<{ id: string | number; name: string; } | null>(null);
@@ -28,14 +27,14 @@ export default function CheckoutPage() {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
 
-  // Detecta Safari para aplicar fluxo de duas etapas
+  // Detecção robusta de Safari (incluindo iOS)
   const isSafari = useMemo(() => {
-    return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    const ua = navigator.userAgent;
+    return /Safari/.test(ua) && !/Chrome/.test(ua) && !/Chromium/.test(ua);
   }, []);
 
   const selectedItems = useMemo(() => items.filter(item => item.selected), [items]);
   const subtotal = useMemo(() => selectedItems.reduce((acc, item) => acc + item.price * item.quantity, 0), [selectedItems]);
-  const discountAmount = (subtotal * birthdayDiscount) / 100;
   
   const isProfileIncomplete = !profile?.full_name || !profile?.cpf || !profile?.phone;
   const isShippingSelected = selectedAddressId && selectedRate;
@@ -58,7 +57,7 @@ export default function CheckoutPage() {
     checkBirthdayDiscount();
   }, [session?.user.id]);
 
-  const handleAbacatePayCheckout = async () => {
+  const handleStartCheckout = async () => {
     if (!session?.user.id || !profile || !session.user.email) {
         showError("Sessão de usuário ou perfil incompleto.");
         return;
@@ -66,91 +65,47 @@ export default function CheckoutPage() {
 
     setIsProcessingPayment(true);
     try {
+        // Limpa apenas itens que NÃO estão sendo comprados agora
         await clearNonSelectedItems();
 
-        const { data, error } = await supabase.functions.invoke('create-abacate-billing', {
-            body: {
-                items: selectedItems,
-                shippingAddressId: selectedAddressId,
-                userId: session.user.id,
-                shippingCost,
-                shippingRateId: selectedRate!.id,
-                shippingRateName: selectedRate!.name,
-                deliveryTime: deliveryTime,
-                birthdayDiscount: birthdayDiscount,
-                customerName: profile.full_name,
-                customerEmail: session.user.email,
-                customerMobile: profile.phone,
-                customerDocument: profile.cpf,
-            },
-        });
+        const functionName = paymentMethod === 'pix' ? 'create-abacate-billing' : 'create-checkout-session';
+        const body = {
+            items: selectedItems,
+            shippingAddressId: selectedAddressId,
+            userId: session.user.id,
+            shippingCost,
+            shippingRateId: selectedRate!.id,
+            shippingRateName: selectedRate!.name,
+            deliveryTime: deliveryTime,
+            birthdayDiscount: birthdayDiscount,
+            customerName: profile.full_name,
+            customerEmail: session.user.email,
+            customerMobile: profile.phone,
+            customerDocument: profile.cpf,
+        };
+
+        const { data, error } = await supabase.functions.invoke(functionName, { body });
         
         if (error || data.error) throw new Error(error?.message || data.error);
 
-        if (data.billingUrl) {
+        const url = data.billingUrl || data.sessionUrl;
+
+        if (url) {
             if (isSafari) {
-                setPaymentUrl(data.billingUrl);
+                // No Safari, apenas guardamos a URL para o clique final síncrono
+                setPaymentUrl(url);
                 setIsProcessingPayment(false);
             } else {
-                window.location.href = data.billingUrl;
+                // Outros navegadores redirecionam direto
+                window.location.href = url;
             }
         } else {
-            throw new Error("URL de cobrança não recebida.");
+            throw new Error("URL de pagamento não gerada.");
         }
+
     } catch (err: any) {
-        showError(`Erro ao iniciar pagamento: ${err.message}`);
+        showError(`Erro ao preparar checkout: ${err.message}`);
         setIsProcessingPayment(false);
-    }
-  };
-
-  const handleStripeCheckout = async () => {
-    if (!session?.user.id || !profile) {
-        showError("Sessão de usuário ou perfil incompleto.");
-        return;
-    }
-    
-    setIsProcessingPayment(true);
-    try {
-        await clearNonSelectedItems();
-
-        const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-            body: {
-                items: selectedItems,
-                shippingAddressId: selectedAddressId,
-                userId: session.user.id,
-                shippingCost,
-                shippingRateId: selectedRate!.id,
-                shippingRateName: selectedRate!.name,
-                deliveryTime: deliveryTime,
-                customerEmail: session.user.email,
-                birthdayDiscount: birthdayDiscount,
-            },
-        });
-        
-        if (error || data.error) throw new Error(error?.message || data.error);
-
-        if (data.sessionUrl) {
-            if (isSafari) {
-                setPaymentUrl(data.sessionUrl);
-                setIsProcessingPayment(false);
-            } else {
-                window.location.href = data.sessionUrl;
-            }
-        } else {
-            throw new Error("URL de sessão não recebida.");
-        }
-    } catch (err: any) {
-        showError(`Erro ao iniciar pagamento: ${err.message}`);
-        setIsProcessingPayment(false);
-    }
-  };
-
-  const handleFinalizeOrder = () => {
-    if (isCheckoutDisabled) return;
-    if (paymentMethod === 'pix') {
-        handleAbacatePayCheckout();
-    } else if (paymentMethod === 'credit_card') {
-        handleStripeCheckout();
     }
   };
 
@@ -169,7 +124,7 @@ export default function CheckoutPage() {
     return <Navigate to="/login" replace />;
   }
 
-  // Se já temos a URL de pagamento, não redirecionamos por carrinho vazio, pois estamos aguardando o clique final
+  // IMPORTANTE: Só redirecionamos se não houver itens E não estivermos no processo de pagamento
   if (selectedItems.length === 0 && !paymentUrl) {
     return <Navigate to="/products" replace />;
   }
@@ -210,48 +165,58 @@ export default function CheckoutPage() {
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  Por favor, <a href="/profile/details" className="font-semibold underline">complete seu perfil</a> para continuar.
+                  Complete seu <a href="/profile/details" className="font-bold underline">perfil</a> (Nome, CPF e Telefone) para continuar.
                 </AlertDescription>
               </Alert>
             )}
 
             {paymentUrl ? (
-                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
-                    <Alert className="border-primary bg-primary/5">
-                        <ExternalLink className="h-4 w-4 text-primary" />
-                        <AlertDescription className="text-primary font-medium">
-                            Pagamento gerado! Clique abaixo para finalizar.
-                        </AlertDescription>
-                    </Alert>
-                    {/* Link nativo estilizado como botão - o clique mais síncrono possível */}
-                    <a 
-                        href={paymentUrl}
-                        className="flex items-center justify-center w-full h-11 px-8 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-md transition-colors"
-                    >
-                        Ir para o Pagamento
-                        <ArrowRight className="ml-2 h-5 w-5" />
-                    </a>
-                    <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => setPaymentUrl(null)}>
-                        Alterar algo no pedido
+                <div className="space-y-4 p-4 border-2 border-green-200 bg-green-50 rounded-lg animate-in fade-in slide-in-from-bottom-2">
+                    <div className="flex items-center gap-2 text-green-800 font-semibold mb-2">
+                        <ShieldCheck className="h-5 w-5" />
+                        <span>Pronto para pagar!</span>
+                    </div>
+                    <p className="text-sm text-green-700 mb-4">
+                        O link seguro foi gerado com sucesso. Clique no botão abaixo para concluir no ambiente de pagamento.
+                    </p>
+                    
+                    {/* FORMULÁRIO NATIVO: O método mais seguro para o Safari aceitar o clique como síncrono */}
+                    <form action={paymentUrl} method="GET">
+                        <Button
+                            type="submit"
+                            size="lg"
+                            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold h-12 shadow-md"
+                        >
+                            Finalizar e Ir ao Pagamento
+                            <ArrowRight className="ml-2 h-5 w-5" />
+                        </Button>
+                    </form>
+                    
+                    <Button variant="ghost" size="sm" className="w-full text-xs text-green-800" onClick={() => setPaymentUrl(null)}>
+                        Voltar e alterar algo
                     </Button>
                 </div>
             ) : (
                 <Button
                     size="lg"
-                    className="w-full"
-                    onClick={handleFinalizeOrder}
+                    className="w-full h-12 text-base font-semibold"
+                    onClick={handleStartCheckout}
                     disabled={isCheckoutDisabled || isProcessingPayment}
                 >
                     {isProcessingPayment ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : null}
-                    {paymentMethod === 'pix' ? 'Gerar Pagamento Pix' : 'Pagar com Cartão'}
+                        <>
+                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                            Processando...
+                        </>
+                    ) : (
+                        paymentMethod === 'pix' ? 'Gerar Pagamento Pix' : 'Ir para Pagamento com Cartão'
+                    )}
                 </Button>
             )}
             
             {isSafari && !paymentUrl && (
-                <p className="text-[10px] text-center text-muted-foreground mt-2">
-                    Navegador Safari detectado. O pagamento será aberto em uma nova etapa por segurança.
+                <p className="text-[11px] text-center text-muted-foreground mt-3 leading-tight px-4">
+                    Pelo Safari, o pagamento será concluído em uma etapa adicional para garantir sua segurança e privacidade.
                 </p>
             )}
           </div>
