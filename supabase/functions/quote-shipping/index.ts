@@ -79,12 +79,15 @@ serve(async (req) => {
         fixedRates.forEach((rate: any) => {
           shippingOptions.push({
             id: rate.id,
-            name: rate.label,
+            name: '', // Removemos o nome secundário para evitar repetição
             price: rate.price,
             delivery_time: `${rate.delivery_time_days} dia(s)`,
             type: 'fixed',
-            icon_type: rate.icon_type, // Enviando o tipo do ícone
-            company: { name: "Entrega Local", picture: null }
+            icon_type: rate.icon_type,
+            company: { 
+              name: rate.label, // O título principal passa a ser o label do painel admin
+              picture: null 
+            }
           });
         });
       }
@@ -126,7 +129,7 @@ serve(async (req) => {
                 price: parseFloat(rate.price),
                 delivery_time: finalDeliveryTime,
                 type: 'gateway',
-                icon_type: 'truck', // Gateway sempre usa caminhão
+                icon_type: 'truck',
                 company: {
                   name: rate.company.name,
                   picture: rate.company.picture

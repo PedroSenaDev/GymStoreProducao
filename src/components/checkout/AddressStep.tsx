@@ -119,7 +119,10 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
     const selectedRate = shippingOptions.find(r => r.id.toString() === rateId);
     if (selectedRate) {
       setSelectedRateId(rateId);
-      onShippingChange(selectedRate.price, selectedRate.id, `${selectedRate.company.name} - ${selectedRate.name}`, selectedRate.delivery_time);
+      const rateName = selectedRate.name 
+        ? `${selectedRate.company.name} - ${selectedRate.name}` 
+        : selectedRate.company.name;
+      onShippingChange(selectedRate.price, selectedRate.id, rateName, selectedRate.delivery_time);
     }
   };
 
@@ -183,12 +186,14 @@ export function AddressStep({ selectedAddressId, onAddressSelect, onShippingChan
                       )}
                       <div>
                         <p className="font-semibold">{rate.company.name}</p>
-                        <p className="text-xs text-muted-foreground">{rate.name}</p>
+                        {rate.name && <p className="text-xs text-muted-foreground">{rate.name}</p>}
                       </div>
                     </div>
                     <div className="text-left sm:text-right">
                       <p className="font-bold">{rate.price === 0 ? 'Grátis' : formatCurrency(rate.price)}</p>
-                      {rate.type === 'gateway' && <p className="text-xs text-muted-foreground">{rate.delivery_time} dias</p>}
+                      <p className="text-xs text-muted-foreground">
+                        {typeof rate.delivery_time === 'number' ? `Prazo: ${rate.delivery_time} dias` : rate.delivery_time}
+                      </p>
                     </div>
                   </div>
                 </Label>
