@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useSessionStore } from '@/store/sessionStore';
 import { useCartStore } from '@/store/cartStore';
@@ -14,7 +14,7 @@ import { showError } from '@/utils/toast';
 
 export default function CheckoutPage() {
   const session = useSessionStore((state) => state.session);
-  const { items, clearNonSelectedItems, removeSelectedItems } = useCartStore();
+  const { items, clearNonSelectedItems } = useCartStore();
   const { data: profile, isLoading: isLoadingProfile } = useProfile();
   const navigate = useNavigate();
   
@@ -28,7 +28,7 @@ export default function CheckoutPage() {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
 
-  // Detecta se o navegador é Safari (incluindo iOS)
+  // Detecta Safari para aplicar fluxo de duas etapas
   const isSafari = useMemo(() => {
     return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
   }, []);
@@ -36,8 +36,7 @@ export default function CheckoutPage() {
   const selectedItems = useMemo(() => items.filter(item => item.selected), [items]);
   const subtotal = useMemo(() => selectedItems.reduce((acc, item) => acc + item.price * item.quantity, 0), [selectedItems]);
   const discountAmount = (subtotal * birthdayDiscount) / 100;
-  const total = subtotal - discountAmount + shippingCost;
-
+  
   const isProfileIncomplete = !profile?.full_name || !profile?.cpf || !profile?.phone;
   const isShippingSelected = selectedAddressId && selectedRate;
   const isCheckoutDisabled = !isShippingSelected || isProfileIncomplete || isLoadingProfile || !paymentMethod;
@@ -89,21 +88,15 @@ export default function CheckoutPage() {
         if (error || data.error) throw new Error(error?.message || data.error);
 
         if (data.billingUrl) {
-            removeSelectedItems();
-            
             if (isSafari) {
-                // Se for Safari, salvamos a URL para o segundo clique síncrono
                 setPaymentUrl(data.billingUrl);
                 setIsProcessingPayment(false);
             } else {
-                // Outros navegadores seguem o fluxo automático (abre em nova aba conforme solicitado anteriormente)
-                window.open(data.billingUrl, '_blank');
-                navigate('/payment-status?abacate_pay_status=pending');
+                window.location.href = data.billingUrl;
             }
         } else {
             throw new Error("URL de cobrança não recebida.");
         }
-
     } catch (err: any) {
         showError(`Erro ao iniciar pagamento: ${err.message}`);
         setIsProcessingPayment(false);
@@ -137,20 +130,15 @@ export default function CheckoutPage() {
         if (error || data.error) throw new Error(error?.message || data.error);
 
         if (data.sessionUrl) {
-            removeSelectedItems();
-            
             if (isSafari) {
-                // Se for Safari, salvamos a URL para o segundo clique síncrono
                 setPaymentUrl(data.sessionUrl);
                 setIsProcessingPayment(false);
             } else {
-                // Fluxo automático para outros navegadores
-                window.open(data.sessionUrl, '_blank');
+                window.location.href = data.sessionUrl;
             }
         } else {
             throw new Error("URL de sessão não recebida.");
         }
-
     } catch (err: any) {
         showError(`Erro ao iniciar pagamento: ${err.message}`);
         setIsProcessingPayment(false);
@@ -159,7 +147,6 @@ export default function CheckoutPage() {
 
   const handleFinalizeOrder = () => {
     if (isCheckoutDisabled) return;
-
     if (paymentMethod === 'pix') {
         handleAbacatePayCheckout();
     } else if (paymentMethod === 'credit_card') {
@@ -167,29 +154,13 @@ export default function CheckoutPage() {
     }
   };
 
-  // Função síncrona para o segundo clique no Safari
-  const handleSafariRedirect = useCallback(() => {
-    if (paymentUrl) {
-      // Navegação full-page é mais confiável no Safari do que window.open
-      window.location.assign(paymentUrl);
-      
-      // Se for PIX, avisamos que ao voltar o status estará pendente
-      if (paymentMethod === 'pix') {
-          // Nota: O navigate aqui pode não completar antes da página descarregar, 
-          // mas o returnUrl do gateway trará o usuário de volta.
-      }
-    }
-  }, [paymentUrl, paymentMethod]);
-
   const handleShippingChange = (cost: number, rateId: string | number, rateName: string, time: string | number) => {
     setShippingCost(cost);
     setSelectedRate(rateId ? { id: rateId, name: rateName } : null);
     setDeliveryTime(time);
-    // Limpa a URL de pagamento se o frete mudar para forçar uma nova geração
     setPaymentUrl(null);
   };
 
-  // Resetar URL de pagamento se o método mudar
   useEffect(() => {
     setPaymentUrl(null);
   }, [paymentMethod]);
@@ -198,7 +169,8 @@ export default function CheckoutPage() {
     return <Navigate to="/login" replace />;
   }
 
-  if (selectedItems.length === 0) {
+  // Se já temos a URL de pagamento, não redirecionamos por carrinho vazio, pois estamos aguardando o clique final
+  if (selectedItems.length === 0 && !paymentUrl) {
     return <Navigate to="/products" replace />;
   }
 
@@ -238,7 +210,7 @@ export default function CheckoutPage() {
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  Por favor, <a href="/profile/details" className="font-semibold underline">complete seu perfil</a> (nome, CPF e telefone) para continuar.
+                  Por favor, <a href="/profile/details" className="font-semibold underline">complete seu perfil</a> para continuar.
                 </AlertDescription>
               </Alert>
             )}
@@ -248,17 +220,17 @@ export default function CheckoutPage() {
                     <Alert className="border-primary bg-primary/5">
                         <ExternalLink className="h-4 w-4 text-primary" />
                         <AlertDescription className="text-primary font-medium">
-                            Seu pedido foi preparado! Clique abaixo para ir ao ambiente de pagamento seguro.
+                            Pagamento gerado! Clique abaixo para finalizar.
                         </AlertDescription>
                     </Alert>
-                    <Button
-                        size="lg"
-                        className="w-full bg-green-600 hover:bg-green-700 text-white font-bold"
-                        onClick={handleSafariRedirect}
+                    {/* Link nativo estilizado como botão - o clique mais síncrono possível */}
+                    <a 
+                        href={paymentUrl}
+                        className="flex items-center justify-center w-full h-11 px-8 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-md transition-colors"
                     >
                         Ir para o Pagamento
                         <ArrowRight className="ml-2 h-5 w-5" />
-                    </Button>
+                    </a>
                     <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => setPaymentUrl(null)}>
                         Alterar algo no pedido
                     </Button>
@@ -273,13 +245,13 @@ export default function CheckoutPage() {
                     {isProcessingPayment ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : null}
-                    {paymentMethod === 'pix' ? 'Finalizar e Pagar com Pix' : 'Finalizar e Pagar com Cartão'}
+                    {paymentMethod === 'pix' ? 'Gerar Pagamento Pix' : 'Pagar com Cartão'}
                 </Button>
             )}
             
             {isSafari && !paymentUrl && (
                 <p className="text-[10px] text-center text-muted-foreground mt-2">
-                    Navegador Safari detectado. O pagamento será aberto em uma nova etapa para sua segurança.
+                    Navegador Safari detectado. O pagamento será aberto em uma nova etapa por segurança.
                 </p>
             )}
           </div>
