@@ -21,6 +21,13 @@ export default function ImageUpload({ value, onChange }: ImageUploadProps) {
       }
 
       const files = Array.from(event.target.files);
+      
+      // Validação extra no lado do cliente
+      const invalidFiles = files.filter(file => !file.type.startsWith('image/'));
+      if (invalidFiles.length > 0) {
+        throw new Error("Apenas arquivos de imagem são permitidos.");
+      }
+
       const uploadPromises = files.map(async (file) => {
         const fileExt = file.name.split(".").pop();
         const fileName = `${Math.random()}.${fileExt}`;
@@ -48,20 +55,20 @@ export default function ImageUpload({ value, onChange }: ImageUploadProps) {
       showError(error.message);
     } finally {
       setIsUploading(false);
+      // Limpa o input para permitir selecionar o mesmo arquivo novamente se necessário
+      event.target.value = "";
     }
   };
 
   const handleRemove = (urlToRemove: string) => {
     onChange(value.filter((url) => url !== urlToRemove));
-    // Note: This doesn't remove the file from Supabase Storage to keep it simple.
-    // A more robust implementation would do that.
   };
 
   return (
     <div>
-      <div className="mb-4 flex items-center gap-4">
+      <div className="mb-4 flex items-center gap-4 overflow-x-auto pb-2">
         {value.map((url) => (
-          <div key={url} className="relative w-32 h-32">
+          <div key={url} className="relative w-32 h-32 flex-shrink-0">
             <img
               src={url}
               alt="Imagem do produto"
@@ -83,6 +90,7 @@ export default function ImageUpload({ value, onChange }: ImageUploadProps) {
         <Input
             id="image-upload"
             type="file"
+            accept="image/*"
             multiple
             onChange={handleUpload}
             disabled={isUploading}
