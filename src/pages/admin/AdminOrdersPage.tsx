@@ -27,7 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Eye, Search } from "lucide-react";
+import { Loader2, Eye, Search, AlertCircle } from "lucide-react";
 import { format, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import OrderDetails from "./OrderDetails";
@@ -42,22 +42,24 @@ type OrderWithDetails = Order & {
     products: {
       name: string;
       price: number;
-      weight_kg: number;
-      height_cm: number;
-      width_cm: number;
-      length_cm: number;
-    } | null // Adicionado | null para produtos excluídos
+    } | null
   }[];
 };
 
 async function fetchOrders(): Promise<OrderWithDetails[]> {
   const { data, error } = await supabase
     .from("orders")
-    // Usando a sintaxe de Left Join para garantir que order_items e products sejam retornados mesmo se o produto for nulo
-    .select("*, profiles(full_name, cpf, email, phone), order_items(quantity, products(name, price, weight_kg, height_cm, width_cm, length_cm))")
+    .select(`
+      *,
+      profiles:user_id (full_name, cpf, email, phone),
+      order_items (quantity, products (name, price))
+    `)
     .order("created_at", { ascending: false });
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("Erro ao buscar pedidos:", error);
+    throw new Error(error.message);
+  }
   return data as OrderWithDetails[];
 }
 
@@ -88,16 +90,18 @@ export default function AdminOrdersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
-  const { data: orders, isLoading } = useQuery({
+  const { data: orders, isLoading, isError, error } = useQuery({
     queryKey: ["adminOrders"],
     queryFn: fetchOrders,
+    retry: 1
   });
 
   const filteredOrders = useMemo(() => {
     if (!orders) return [];
     return orders.filter(order => {
-      const customerName = order.profiles?.full_name?.toLowerCase() || '';
-      const matchesSearch = customerName.includes(searchTerm.toLowerCase());
+      const customerName = order.profiles?.full_name?.toLowerCase() || 'cliente não identificado';
+      const matchesSearch = customerName.includes(searchTerm.toLowerCase()) || 
+                           order.id.toLowerCase().includes(searchTerm.toLowerCase());
 
       const orderDate = new Date(order.created_at);
       let matchesDate = true;
@@ -124,7 +128,7 @@ export default function AdminOrdersPage() {
             <div>
               <CardTitle>Histórico de Pedidos</CardTitle>
               <CardDescription>
-                {filteredOrders ? `${filteredOrders.length} pedido(s) encontrado(s).` : 'Carregando...'}
+                {isLoading ? 'Carregando...' : `${filteredOrders.length} pedido(s) encontrado(s).`}
               </CardDescription>
             </div>
           </div>
@@ -133,7 +137,7 @@ export default function AdminOrdersPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input
                 type="search"
-                placeholder="Buscar por nome do cliente..."
+                placeholder="Buscar por nome ou ID do pedido..."
                 className="pl-10 w-full"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -146,6 +150,16 @@ export default function AdminOrdersPage() {
           {isLoading ? (
             <div className="flex justify-center items-center h-64">
               <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          ) : isError ? (
+            <div className="flex flex-col items-center justify-center h-64 text-center space-y-2">
+              <AlertCircle className="h-10 w-10 text-destructive" />
+              <p className="font-semibold text-destructive">Erro ao carregar pedidos</p>
+              <p className="text-sm text-muted-foreground">{(error as Error)?.message}</p>
+            </div>
+          ) : filteredOrders.length === 0 ? (
+            <div className="text-center py-20 text-muted-foreground">
+              Nenhum pedido encontrado com os filtros aplicados.
             </div>
           ) : (
             <>
@@ -162,9 +176,11 @@ export default function AdminOrdersPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredOrders?.map((order) => (
+                    {filteredOrders.map((order) => (
                       <TableRow key={order.id}>
-                        <TableCell className="font-medium">{order.profiles?.full_name || 'Cliente não encontrado'}</TableCell>
+                        <TableCell className="font-medium">
+                          {order.profiles?.full_name || <span className="text-muted-foreground italic">Cliente não identificado</span>}
+                        </TableCell>
                         <TableCell>{formatDate(order.created_at)}</TableCell>
                         <TableCell>
                           <Badge 
@@ -192,12 +208,12 @@ export default function AdminOrdersPage() {
 
               {/* Layout de Cartões para Telas Pequenas */}
               <div className="md:hidden space-y-4">
-                {filteredOrders?.map((order) => (
+                {filteredOrders.map((order) => (
                   <Card key={order.id}>
                     <CardHeader>
                       <div className="flex justify-between items-start">
                         <div>
-                          <CardTitle className="text-base">{order.profiles?.full_name || 'Cliente não encontrado'}</CardTitle>
+                          <CardTitle className="text-base">{order.profiles?.full_name || 'Cliente não identificado'}</CardTitle>
                           <CardDescription>{formatDate(order.created_at)}</CardDescription>
                         </div>
                         <Badge 
