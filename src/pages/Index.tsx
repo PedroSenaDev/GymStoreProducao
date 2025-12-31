@@ -51,11 +51,11 @@ const HeroSection = () => {
     : (carouselData?.hero_carousel_desktop?.length ? carouselData.hero_carousel_desktop : desktopDefaults);
 
   if (isLoading) {
-    return <Skeleton className="h-screen w-full" />;
+    return <Skeleton className="h-screen w-full bg-zinc-900" />;
   }
 
   return (
-    <section className="relative min-h-screen w-full flex items-center justify-center text-center text-white overflow-hidden">
+    <section className="relative min-h-screen w-full flex items-center justify-center text-center text-white overflow-hidden bg-zinc-950">
       {/* Background Carousel */}
       <div className="absolute top-0 left-0 w-full h-full z-0">
         <Carousel 
@@ -72,7 +72,13 @@ const HeroSection = () => {
                 <img
                   src={src}
                   alt={`Slide ${index + 1}`}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover transition-opacity duration-700 ease-in"
+                  // Otimizações de carregamento:
+                  loading={index === 0 ? "eager" : "lazy"}
+                  // @ts-ignore
+                  fetchpriority={index === 0 ? "high" : "low"}
+                  onLoad={(e) => (e.currentTarget.style.opacity = "1")}
+                  style={{ opacity: index === 0 ? 1 : 0 }}
                 />
                 {/* Overlay equilibrado para visibilidade do texto */}
                 <div className="absolute inset-0 bg-black/40"></div>
