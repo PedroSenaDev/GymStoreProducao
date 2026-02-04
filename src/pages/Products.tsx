@@ -7,7 +7,7 @@ import { ProductCard } from '@/components/ProductCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search } from 'lucide-react';
+import { Search, SlidersHorizontal } from 'lucide-react';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { cn } from '@/lib/utils';
 
@@ -61,68 +61,65 @@ export default function ProductsPage() {
 
   return (
     <div className="container py-8 md:py-16">
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Nossos Produtos</h1>
-        <p className="mt-4 text-lg text-muted-foreground">Confira nossa coleção premium de roupas de performance.</p>
+      <div className="text-center mb-10">
+        <h1 className="text-4xl font-black tracking-tighter sm:text-6xl uppercase italic">Coleção</h1>
+        <p className="mt-4 text-lg text-muted-foreground">Alta performance para o seu melhor treino.</p>
       </div>
 
-      <div className="space-y-8 mb-12">
-        {/* Busca centralizada */}
+      <div className="space-y-10 mb-16">
+        {/* Busca Minimalista */}
         <div className="flex justify-center">
-            <div className="relative w-full max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <div className="relative w-full max-w-lg group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground transition-colors group-focus-within:text-black" />
                 <Input
                     type="search"
-                    placeholder="Buscar produtos..."
-                    className="pl-10 w-full h-11"
+                    placeholder="O que você está procurando?"
+                    className="pl-12 w-full h-14 bg-muted/30 border-none rounded-2xl text-base shadow-inner focus-visible:ring-1 focus-visible:ring-black/10"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
             </div>
         </div>
 
-        {/* Categorias em Barra de Rolagem Horizontal */}
-        <div className="relative border-b pb-1">
-            <ScrollArea className="w-full whitespace-nowrap">
-                <div className="flex w-max space-x-2 p-1">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelectedCategory(null)}
-                        className={cn(
-                            "rounded-full px-6 transition-all",
-                            !selectedCategory 
-                                ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm" 
-                                : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                        )}
-                    >
-                        Todos
-                    </Button>
-                    {isLoadingCategories ? (
-                        Array.from({ length: 4 }).map((_, i) => (
-                            <Skeleton key={i} className="h-9 w-24 rounded-full" />
-                        ))
-                    ) : (
-                        categories?.map(category => (
-                            <Button
-                                key={category.id}
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setSelectedCategory(category.id)}
-                                className={cn(
-                                    "rounded-full px-6 transition-all",
-                                    selectedCategory === category.id 
-                                        ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm" 
-                                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                                )}
-                            >
-                                {category.name}
-                            </Button>
-                        ))
+        {/* Categorias - Estilo Modern Chips */}
+        <div className="flex flex-col items-center gap-4">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">
+                <SlidersHorizontal className="h-3 w-3" />
+                Filtrar por
+            </div>
+            <div className="flex flex-wrap justify-center gap-2 max-w-3xl">
+                <button
+                    onClick={() => setSelectedCategory(null)}
+                    className={cn(
+                        "px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 border",
+                        !selectedCategory 
+                            ? "bg-black text-white border-black shadow-md scale-105" 
+                            : "bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400"
                     )}
-                </div>
-                <ScrollBar orientation="horizontal" className="invisible" />
-            </ScrollArea>
+                >
+                    Todos
+                </button>
+                {isLoadingCategories ? (
+                    Array.from({ length: 4 }).map((_, i) => (
+                        <Skeleton key={i} className="h-10 w-28 rounded-full" />
+                    ))
+                ) : (
+                    categories?.map(category => (
+                        <button
+                            key={category.id}
+                            onClick={() => setSelectedCategory(category.id)}
+                            className={cn(
+                                "px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 border whitespace-nowrap",
+                                selectedCategory === category.id 
+                                    ? "bg-black text-white border-black shadow-md scale-105" 
+                                    : "bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400"
+                            )}
+                        >
+                            {category.name}
+                        </button>
+                    ))
+                )}
+            </div>
         </div>
       </div>
       
@@ -130,23 +127,25 @@ export default function ProductsPage() {
         {isLoadingProducts ? (
           Array.from({ length: 8 }).map((_, index) => (
             <div key={index} className="space-y-4">
-              <Skeleton className="h-64 w-full" />
+              <Skeleton className="h-64 w-full rounded-2xl" />
               <Skeleton className="h-6 w-3/4" />
               <Skeleton className="h-6 w-1/4" />
             </div>
           ))
         ) : isError ? (
-          <div className="col-span-full text-center text-red-500">
-            <p>Ocorreu um erro ao carregar os produtos. Tente novamente mais tarde.</p>
+          <div className="col-span-full text-center text-red-500 py-20">
+            <p className="font-bold">Ocorreu um erro ao carregar os produtos.</p>
+            <Button variant="link" onClick={() => window.location.reload()}>Tentar novamente</Button>
           </div>
         ) : filteredProducts.length > 0 ? (
           filteredProducts.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))
         ) : (
-          <div className="col-span-full text-center text-muted-foreground py-16">
-            <h3 className="text-2xl font-semibold">Nenhum produto encontrado</h3>
-            <p className="mt-2">Tente ajustar sua busca ou filtros.</p>
+          <div className="col-span-full text-center text-muted-foreground py-24 bg-muted/20 rounded-3xl border-2 border-dashed">
+            <h3 className="text-xl font-bold text-black">Nenhum resultado</h3>
+            <p className="mt-1">Não encontramos produtos nesta categoria com esse nome.</p>
+            <Button variant="outline" className="mt-6" onClick={() => {setSearchTerm(''); setSelectedCategory(null);}}>Limpar Filtros</Button>
           </div>
         )}
       </div>

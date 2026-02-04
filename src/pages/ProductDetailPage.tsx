@@ -204,42 +204,46 @@ export default function ProductDetailPage() {
             </div>
           )}
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-4">
-            <div className="flex items-center justify-center rounded-md border h-11">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-full rounded-none px-3"
-                onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                disabled={isOutOfStock || availableStock <= 0}
-              >
-                -
-              </Button>
-              <span className="w-10 text-center font-medium">{quantity}</span>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-full rounded-none px-3"
-                onClick={() => setQuantity(q => Math.min(availableStock, q + 1))}
-                disabled={isOutOfStock || quantity >= availableStock}
-              >
-                +
-              </Button>
+          {/* Botão de compra otimizado para Mobile */}
+          <div className="flex flex-col sm:flex-row items-stretch gap-3 pt-4">
+            <div className="flex items-center justify-between rounded-md border h-14 sm:h-11 px-4 sm:px-0">
+              <span className="text-sm font-medium sm:hidden">Quantidade</span>
+              <div className="flex items-center">
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-full rounded-none px-4 sm:px-3"
+                    onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                    disabled={isOutOfStock || availableStock <= 0}
+                >
+                    -
+                </Button>
+                <span className="w-10 text-center font-bold">{quantity}</span>
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-full rounded-none px-4 sm:px-3"
+                    onClick={() => setQuantity(q => Math.min(availableStock, q + 1))}
+                    disabled={isOutOfStock || quantity >= availableStock}
+                >
+                    +
+                </Button>
+              </div>
             </div>
             <Button 
                 size="lg" 
-                className="flex-1 h-11" 
+                className="flex-1 h-14 sm:h-11 text-base font-bold shadow-lg shadow-black/5" 
                 onClick={handleAddToCart} 
                 disabled={isOutOfStock || (selectedSize ? availableStock <= 0 : false)}
             >
               <ShoppingCart className="mr-2 h-5 w-5" />
-              {isOutOfStock ? 'Esgotado' : (selectedSize && availableStock <= 0 ? 'Tamanho Esgotado' : 'Adicionar ao Carrinho')}
+              {isOutOfStock ? 'ESGOTADO' : (selectedSize && availableStock <= 0 ? 'TAMANHO ESGOTADO' : 'ADICIONAR AO CARRINHO')}
             </Button>
           </div>
 
           {selectedSize && availableStock > 0 && availableStock <= 3 && (
-            <div className="flex items-center gap-2 text-xs text-orange-600 bg-orange-50 p-2 rounded-md border border-orange-100">
-                <AlertTriangle className="h-3 w-3" />
+            <div className="flex items-center gap-2 text-xs text-orange-600 bg-orange-50 p-3 rounded-md border border-orange-100">
+                <AlertTriangle className="h-4 w-4" />
                 Corra! Apenas {availableStock} unidades restantes deste tamanho.
             </div>
           )}
@@ -258,7 +262,7 @@ export default function ProductDetailPage() {
               <AccordionItem value="size-chart">
                 <AccordionTrigger>{product.size_charts.title}</AccordionTrigger>
                 <AccordionContent>
-                  <img src={product.size_charts.image_url} alt={product.size_charts.title} className="w-full rounded-md" />
+                  <img src={product.size_charts.image_url} alt={product.size_charts.title} className="w-full rounded-md shadow-sm border" />
                 </AccordionContent>
               </AccordionItem>
             )}
