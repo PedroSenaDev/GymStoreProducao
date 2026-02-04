@@ -23,41 +23,28 @@ serve(async (req) => {
       Deno.env.get("STRIPE_WEBHOOK_SECRET")!
     );
 
-    // O evento principal para Checkout Sessions é 'checkout.session.completed'
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
       
-      // Verifica se o pagamento foi bem-sucedido
       if (session.payment_status !== 'paid') {
-        console.log(`Checkout Session ${session.id} não paga. Status: ${session.payment_status}. Ignorando.`);
         return new Response("Sessão não paga.", { status: 200 });
       }
 
-      // O total é o amount_total da sessão (em centavos)
       const totalAmount = (session.amount_total || 0) / 100; 
       const metadata = session.metadata;
       
-      // Metadados essenciais
       const userId = metadata?.user_id;
       const shippingAddressId = metadata?.shipping_address_id;
       const shippingCost = parseFloat(metadata?.shipping_cost || '0');
-      const shippingRateId = metadata?.shipping_rate_id;
-      const shippingRateName = metadata?.shipping_rate_name;
-      const deliveryTime = metadata?.delivery_time;
-      const paymentMethod = metadata?.payment_method;
       const orderItemsJson = metadata?.orderItems;
-      
-      // O ID do Payment Intent está aninhado na sessão
       const paymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id;
 
-      if (!userId || !shippingAddressId || !shippingRateId || !shippingRateName || !paymentIntentId || !orderItemsJson) {
-        console.error("Webhook: Metadados essenciais ausentes na sessão de checkout.", metadata);
+      if (!userId || !shippingAddressId || !paymentIntentId || !orderItemsJson) {
         return new Response("Metadados ausentes.", { status: 400 });
       }
 
       const orderItemsPayload = JSON.parse(orderItemsJson);
 
-      // Verificar se o pedido já existe (proteção contra reenvio de webhook)
       const { data: existingOrder } = await supabaseAdmin
         .from('orders')
         .select('id')
@@ -65,13 +52,7 @@ serve(async (req) => {
         .maybeSingle();
 
       if (existingOrder) {
-        console.log(`Pedido já processado para Payment Intent ${paymentIntentId}. Ignorando.`);
         return new Response("Pedido já processado.", { status: 200 });
-      }
-      
-      if (orderItemsPayload.length === 0) {
-        console.error(`ERRO: Checkout Session concluída, mas payload de itens está vazio.`);
-        return new Response("Payload de itens vazio.", { status: 200 });
       }
 
       // 1. Criar o Pedido
@@ -82,13 +63,12 @@ serve(async (req) => {
           total_amount: totalAmount,
           status: 'processing',
           shipping_address_id: shippingAddressId,
-          payment_method: paymentMethod,
+          payment_method: metadata.payment_method,
           shipping_cost: shippingCost,
           stripe_payment_intent_id: paymentIntentId,
-          shipping_service_id: shippingRateId,
-          shipping_service_name: shippingRateName,
-          delivery_time: deliveryTime,
-          // Snapshot do endereço
+          shipping_service_id: metadata.shipping_rate_id,
+          shipping_service_name: metadata.shipping_rate_name,
+          delivery_time: metadata.delivery_time,
           shipping_street: metadata.shipping_street,
           shipping_number: metadata.shipping_number,
           shipping_complement: metadata.shipping_complement,
@@ -100,32 +80,27 @@ serve(async (req) => {
         .select('id')
         .single();
       
-      if (orderError) {
-        console.error(`ERRO CRÍTICO AO CRIAR PEDIDO (Stripe Webhook): ${orderError.message}`, { userId, paymentIntentId });
-        throw new Error(`Erro ao criar pedido: ${orderError.message}`);
-      }
+      if (orderError) throw new Error(`Erro ao criar pedido: ${orderError.message}`);
       const orderId = orderData.id;
 
       // 2. Criar os Itens do Pedido
       const finalOrderItemsPayload = orderItemsPayload.map((item: any) => ({
         ...item,
         order_id: orderId,
-        // selected_color já está no formato JSONB correto
       }));
 
       const { error: itemsError } = await supabaseAdmin.from('order_items').insert(finalOrderItemsPayload);
       if (itemsError) {
-        // Se falhar, tentamos reverter o pedido
         await supabaseAdmin.from('orders').delete().eq('id', orderId);
-        console.error(`ERRO CRÍTICO AO SALVAR ITENS (Stripe Webhook): ${itemsError.message}`, { orderId });
         throw new Error(`Erro ao salvar itens do pedido: ${itemsError.message}`);
       }
 
-      // 3. Decrementar Estoque
+      // 3. Baixa de Estoque Cirúrgica (POR TAMANHO)
       const stockUpdates = orderItemsPayload.map((item: any) => 
-        supabaseAdmin.rpc('decrement_product_stock', {
+        supabaseAdmin.rpc('decrement_product_size_stock', {
           p_product_id: item.product_id,
-          p_quantity: item.quantity
+          p_quantity: item.quantity,
+          p_size: item.selected_size // Passando o tamanho exato
         })
       );
       
@@ -133,12 +108,8 @@ serve(async (req) => {
 
       // 4. Limpar os itens do carrinho que foram comprados
       const cartItemDeletions = orderItemsPayload.map((item: any) => {
-        // O campo selected_color no payload é um objeto { code: string, name: string }
-        // Mas na tabela cart_items, ele é salvo como string (o código da cor)
         const colorCode = item.selected_color?.code || null;
         const size = item.selected_size || null;
-
-        // Deleta o item do carrinho que corresponde à combinação exata
         return supabaseAdmin
           .from('cart_items')
           .delete()
@@ -148,12 +119,7 @@ serve(async (req) => {
           .eq('selected_color', colorCode);
       });
       
-      const cartClearResults = await Promise.all(cartItemDeletions);
-      cartClearResults.forEach(result => {
-          if (result.error) {
-              console.error(`Falha ao limpar item do carrinho do usuário ${userId}:`, result.error);
-          }
-      });
+      await Promise.all(cartItemDeletions);
     }
 
     return new Response(JSON.stringify({ received: true }), { status: 200 });

@@ -20,32 +20,21 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const signature = req.headers.get("X-AbacatePay-Signature");
-
-    // 1. Verificar a assinatura do Webhook (Segurança)
-    if (!ABACATE_WEBHOOK_SECRET) {
-        console.error("ABACATE_WEBHOOK_SECRET não configurado.");
-        return new Response("Webhook secret not configured.", { status: 500 });
-    }
     
-    // 2. Processar o evento
+    // Processar o evento
     const eventType = body.event;
-    
-    // **CORREÇÃO:** Extrair os dados da cobrança (billing)
     const billingData = body.data?.billing;
 
     if (eventType === 'billing.paid') {
       if (!billingData) {
-        console.error("Webhook Abacate: Dados de cobrança ausentes no evento 'billing.paid'.", body);
         return new Response("Missing billing data.", { status: 400 });
       }
 
       const metadata = billingData.metadata;
       const userId = metadata?.userId;
-      const chargeId = billingData.id; // ID da cobrança na Abacate Pay
+      const chargeId = billingData.id;
 
       if (!userId || !metadata?.orderItems) {
-        console.error("Webhook Abacate: Metadados essenciais ausentes (userId ou orderItems).", metadata);
         return new Response("Missing metadata.", { status: 400 });
       }
 
@@ -53,7 +42,7 @@ serve(async (req) => {
       const totalAmount = parseFloat(metadata.totalAmount || '0');
       const shippingCost = parseFloat(metadata.shippingCost || '0');
 
-      // 3. Criar o Pedido (Status 'processing' porque o pagamento foi confirmado)
+      // 3. Criar o Pedido
       const { data: orderData, error: orderError } = await supabaseAdmin
         .from('orders')
         .insert({
@@ -67,7 +56,6 @@ serve(async (req) => {
             shipping_service_name: metadata.shippingRateName,
             delivery_time: metadata.deliveryTime,
             shipping_address_id: metadata.shippingAddressId,
-            // Snapshot do endereço
             shipping_street: metadata.shipping_street,
             shipping_number: metadata.shipping_number,
             shipping_complement: metadata.shipping_complement,
@@ -79,32 +67,27 @@ serve(async (req) => {
         .select('id')
         .single();
       
-      if (orderError) {
-        console.error(`ERRO CRÍTICO AO CRIAR PEDIDO (Abacate Webhook): ${orderError.message}`, { userId, chargeId });
-        throw new Error(`Erro ao criar pedido: ${orderError.message}`);
-      }
+      if (orderError) throw new Error(`Erro ao criar pedido: ${orderError.message}`);
       const orderId = orderData.id;
 
       // 4. Criar os Itens do Pedido
       const finalOrderItemsPayload = orderItemsPayload.map((item: any) => ({
         ...item,
         order_id: orderId,
-        // selected_color já está no formato JSONB correto
       }));
 
       const { error: itemsError } = await supabaseAdmin.from('order_items').insert(finalOrderItemsPayload);
       if (itemsError) {
-        // Se falhar, tentamos reverter o pedido
         await supabaseAdmin.from('orders').delete().eq('id', orderId);
-        console.error(`ERRO CRÍTICO AO SALVAR ITENS (Abacate Webhook): ${itemsError.message}`, { orderId });
         throw new Error(`Erro ao salvar itens do pedido: ${itemsError.message}`);
       }
 
-      // 5. Decrementar Estoque
+      // 5. Baixa de Estoque Cirúrgica (POR TAMANHO)
       const stockUpdates = orderItemsPayload.map((item: any) => 
-        supabaseAdmin.rpc('decrement_product_stock', {
+        supabaseAdmin.rpc('decrement_product_size_stock', {
           p_product_id: item.product_id,
-          p_quantity: item.quantity
+          p_quantity: item.quantity,
+          p_size: item.selected_size // Passando o tamanho exato
         })
       );
       
@@ -112,12 +95,8 @@ serve(async (req) => {
 
       // 6. Limpar os itens do carrinho que foram comprados
       const cartItemDeletions = orderItemsPayload.map((item: any) => {
-        // O campo selected_color no payload é um objeto { code: string, name: string }
-        // Mas na tabela cart_items, ele é salvo como string (o código da cor)
         const colorCode = item.selected_color?.code || null;
         const size = item.selected_size || null;
-
-        // Deleta o item do carrinho que corresponde à combinação exata
         return supabaseAdmin
           .from('cart_items')
           .delete()
@@ -127,22 +106,10 @@ serve(async (req) => {
           .eq('selected_color', colorCode);
       });
       
-      const cartClearResults = await Promise.all(cartItemDeletions);
-      cartClearResults.forEach(result => {
-          if (result.error) {
-              console.error(`Falha ao limpar item do carrinho do usuário ${userId}:`, result.error);
-          }
-      });
+      await Promise.all(cartItemDeletions);
 
-      console.log(`Webhook Abacate: Pedido ${orderId} criado e atualizado para 'processing'.`);
+      console.log(`Webhook Abacate: Pedido ${orderId} processado com sucesso.`);
       return new Response(JSON.stringify({ received: true, orderId: orderId }), { status: 200 });
-    }
-
-    // Se o evento for 'billing.failed' ou 'billing.canceled', não há pedido para cancelar, pois ele não foi criado.
-    // Apenas logamos o evento.
-    if (eventType === 'billing.failed' || eventType === 'billing.canceled') {
-        console.log(`Webhook Abacate: Evento ${eventType} recebido. Nenhum pedido criado.`);
-        return new Response(JSON.stringify({ received: true }), { status: 200 });
     }
 
     return new Response(JSON.stringify({ message: `Event type ${eventType} ignored.` }), { status: 200 });
