@@ -8,6 +8,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { cn } from '@/lib/utils';
 
 async function fetchPublicProducts(): Promise<Product[]> {
   const { data, error } = await supabase
@@ -64,39 +66,63 @@ export default function ProductsPage() {
         <p className="mt-4 text-lg text-muted-foreground">Confira nossa coleção premium de roupas de performance.</p>
       </div>
 
-      <div className="flex flex-col items-center gap-6 mb-10">
-        <div className="relative w-full max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Buscar produtos..."
-            className="pl-10 w-full"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+      <div className="space-y-8 mb-12">
+        {/* Busca centralizada */}
+        <div className="flex justify-center">
+            <div className="relative w-full max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input
+                    type="search"
+                    placeholder="Buscar produtos..."
+                    className="pl-10 w-full h-11"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
         </div>
-        <div className="flex items-center justify-center flex-wrap gap-2">
-          <Button
-            variant={!selectedCategory ? 'default' : 'outline'}
-            onClick={() => setSelectedCategory(null)}
-            className="flex-shrink-0"
-          >
-            Todos
-          </Button>
-          {isLoadingCategories ? (
-            <Skeleton className="h-10 w-24 rounded-md" />
-          ) : (
-            categories?.map(category => (
-              <Button
-                key={category.id}
-                variant={selectedCategory === category.id ? 'default' : 'outline'}
-                onClick={() => setSelectedCategory(category.id)}
-                className="flex-shrink-0"
-              >
-                {category.name}
-              </Button>
-            ))
-          )}
+
+        {/* Categorias em Barra de Rolagem Horizontal */}
+        <div className="relative border-b pb-1">
+            <ScrollArea className="w-full whitespace-nowrap">
+                <div className="flex w-max space-x-2 p-1">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedCategory(null)}
+                        className={cn(
+                            "rounded-full px-6 transition-all",
+                            !selectedCategory 
+                                ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm" 
+                                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                        )}
+                    >
+                        Todos
+                    </Button>
+                    {isLoadingCategories ? (
+                        Array.from({ length: 4 }).map((_, i) => (
+                            <Skeleton key={i} className="h-9 w-24 rounded-full" />
+                        ))
+                    ) : (
+                        categories?.map(category => (
+                            <Button
+                                key={category.id}
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSelectedCategory(category.id)}
+                                className={cn(
+                                    "rounded-full px-6 transition-all",
+                                    selectedCategory === category.id 
+                                        ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm" 
+                                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                                )}
+                            >
+                                {category.name}
+                            </Button>
+                        ))
+                    )}
+                </div>
+                <ScrollBar orientation="horizontal" className="invisible" />
+            </ScrollArea>
         </div>
       </div>
       

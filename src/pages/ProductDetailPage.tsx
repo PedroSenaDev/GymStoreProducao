@@ -70,13 +70,11 @@ export default function ProductDetailPage() {
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
-  // Calcula o estoque disponível para o tamanho selecionado
   const availableStock = useMemo(() => {
     if (!product || !selectedSize) return product?.stock || 0;
     return product.stock_by_size?.[selectedSize] || 0;
   }, [product, selectedSize]);
 
-  // Reseta a quantidade se ela for maior que o estoque do novo tamanho selecionado
   const handleSizeChange = (size: string) => {
     setSelectedSize(size);
     const sizeStock = product?.stock_by_size?.[size] || 0;
@@ -96,7 +94,6 @@ export default function ProductDetailPage() {
       return;
     }
     
-    // Validação extra de segurança no front
     if (availableStock <= 0) {
         showError("Desculpe, este tamanho acabou de esgotar.");
         return;
@@ -207,20 +204,22 @@ export default function ProductDetailPage() {
             </div>
           )}
 
-          <div className="flex items-center gap-4 pt-4">
-            <div className="flex items-center rounded-md border">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-4">
+            <div className="flex items-center justify-center rounded-md border h-11">
               <Button 
                 variant="ghost" 
                 size="icon" 
+                className="h-full rounded-none px-3"
                 onClick={() => setQuantity(q => Math.max(1, q - 1))}
                 disabled={isOutOfStock || availableStock <= 0}
               >
                 -
               </Button>
-              <span className="w-12 text-center font-medium">{quantity}</span>
+              <span className="w-10 text-center font-medium">{quantity}</span>
               <Button 
                 variant="ghost" 
                 size="icon" 
+                className="h-full rounded-none px-3"
                 onClick={() => setQuantity(q => Math.min(availableStock, q + 1))}
                 disabled={isOutOfStock || quantity >= availableStock}
               >
@@ -229,7 +228,7 @@ export default function ProductDetailPage() {
             </div>
             <Button 
                 size="lg" 
-                className="flex-1" 
+                className="flex-1 h-11" 
                 onClick={handleAddToCart} 
                 disabled={isOutOfStock || (selectedSize ? availableStock <= 0 : false)}
             >
