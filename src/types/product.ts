@@ -4,7 +4,8 @@ export interface Product {
   description?: string;
   code: string;
   price: number;
-  stock: number;
+  stock: number; // Estoque total (soma de todos os tamanhos)
+  stock_by_size: Record<string, number>; // Novo campo: { "P": 10, "M": 5 }
   category_id: string;
   image_urls: string[];
   sizes: string[];
