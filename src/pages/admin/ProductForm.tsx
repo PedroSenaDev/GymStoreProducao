@@ -28,16 +28,16 @@ import { Category } from "@/types/category";
 import { Loader2 } from "lucide-react";
 import ImageUpload from "@/components/admin/ImageUpload";
 import ColorNamePickerInput from "@/components/admin/ColorNamePickerInput";
+import StockBySizeInput from "@/components/admin/StockBySizeInput";
 
 const formSchema = z.object({
   name: z.string().min(2),
   description: z.string().optional(),
   code: z.string().optional(),
   price: z.coerce.number({ invalid_type_error: "O preço deve ser um número." }).min(0, { message: "O preço não pode ser negativo." }),
-  stock: z.coerce.number({ invalid_type_error: "O estoque deve ser um número." }).int({ message: "O estoque deve ser um número inteiro." }).min(0, { message: "O estoque não pode ser negativo." }),
   category_id: z.string().min(1, { message: "Por favor, selecione uma categoria." }).uuid({ message: "Categoria inválida." }),
   image_urls: z.array(z.string().url({ message: "URL da imagem inválida." })).optional().default([]),
-  sizes: z.string().optional(),
+  stock_by_size: z.record(z.string(), z.number()).default({}),
   colors: z.array(z.object({
     code: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Código de cor inválido."),
     name: z.string().min(1, "O nome da cor é obrigatório."),
@@ -62,10 +62,9 @@ export default function ProductForm({ product, onFinished }: ProductFormProps) {
       description: product?.description || "",
       code: product?.code || "",
       price: product?.price || 0,
-      stock: product?.stock || 0,
       category_id: product?.category_id || "",
       image_urls: product?.image_urls || [],
-      sizes: product?.sizes?.join(", ") || "",
+      stock_by_size: product?.stock_by_size || {},
       colors: product?.colors || [],
       weight_kg: product?.weight_kg || 0,
       length_cm: product?.length_cm || 0,
@@ -85,9 +84,14 @@ export default function ProductForm({ product, onFinished }: ProductFormProps) {
 
   const { mutate, isPending } = useMutation({
     mutationFn: async (values: z.infer<typeof formSchema>) => {
+      // Calculamos o estoque total e extraímos o array de tamanhos a partir da grade
+      const totalStock = Object.values(values.stock_by_size).reduce((acc, curr) => acc + curr, 0);
+      const sizesArray = Object.keys(values.stock_by_size);
+
       const processedValues = {
         ...values,
-        sizes: values.sizes?.split(",").map(s => s.trim()).filter(Boolean) || [],
+        stock: totalStock,
+        sizes: sizesArray,
       };
 
       const { data, error } = await (product?.id
@@ -148,13 +152,14 @@ export default function ProductForm({ product, onFinished }: ProductFormProps) {
             </FormItem>
           )}
         />
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField
                 control={form.control}
                 name="price"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>Preço</FormLabel>
+                    <FormLabel>Preço (R$)</FormLabel>
                     <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
                     <FormMessage />
                     </FormItem>
@@ -162,12 +167,40 @@ export default function ProductForm({ product, onFinished }: ProductFormProps) {
             />
             <FormField
                 control={form.control}
-                name="stock"
+                name="category_id"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>Estoque</FormLabel>
-                    <FormControl><Input type="number" {...field} /></FormControl>
+                    <FormLabel>Categoria</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoadingCategories}>
+                        <FormControl>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Selecione uma categoria" />
+                        </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                        {categories?.map(cat => <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
                     <FormMessage />
+                    </FormItem>
+                )}
+            />
+        </div>
+
+        <div className="space-y-4 rounded-lg border p-4 bg-zinc-50/50">
+            <div className="space-y-1">
+                <FormLabel>Grade de Tamanhos e Estoque</FormLabel>
+                <FormDescription>Adicione os tamanhos e defina a quantidade para cada um.</FormDescription>
+            </div>
+            <FormField
+                control={form.control}
+                name="stock_by_size"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormControl>
+                            <StockBySizeInput value={field.value} onChange={field.onChange} />
+                        </FormControl>
+                        <FormMessage />
                     </FormItem>
                 )}
             />
@@ -228,37 +261,6 @@ export default function ProductForm({ product, onFinished }: ProductFormProps) {
             </div>
         </div>
 
-        <FormField
-            control={form.control}
-            name="category_id"
-            render={({ field }) => (
-                <FormItem>
-                <FormLabel>Categoria</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoadingCategories}>
-                    <FormControl>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma categoria" />
-                    </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                    {categories?.map(cat => <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-                <FormMessage />
-                </FormItem>
-            )}
-        />
-        <FormField
-            control={form.control}
-            name="sizes"
-            render={({ field }) => (
-                <FormItem>
-                <FormLabel>Tamanhos</FormLabel>
-                <FormControl><Input placeholder="P, M, G (separados por vírgula)" {...field} /></FormControl>
-                <FormMessage />
-                </FormItem>
-            )}
-        />
         <FormField
             control={form.control}
             name="colors"
