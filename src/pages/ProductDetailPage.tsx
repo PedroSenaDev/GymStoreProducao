@@ -4,14 +4,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { Product } from '@/types/product';
 import { Policy } from '@/types/policy';
 import { SizeChart } from '@/types/sizeChart';
-import { Loader2, ShoppingCart, ArrowLeft } from 'lucide-react';
+import { Loader2, ShoppingCart, ArrowLeft, AlertTriangle } from 'lucide-react';
 import { ProductImageGallery } from '@/components/ProductImageGallery';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Accordion,
@@ -22,6 +22,7 @@ import {
 import { useCartStore } from '@/store/cartStore';
 import { showError, showSuccess } from '@/utils/toast';
 import { RelatedProducts } from '@/components/RelatedProducts';
+import { cn } from '@/lib/utils';
 
 interface ProductWithDetails extends Product {
   categories?: { name: string };
@@ -69,6 +70,21 @@ export default function ProductDetailPage() {
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
+  // Calcula o estoque disponível para o tamanho selecionado
+  const availableStock = useMemo(() => {
+    if (!product || !selectedSize) return product?.stock || 0;
+    return product.stock_by_size?.[selectedSize] || 0;
+  }, [product, selectedSize]);
+
+  // Reseta a quantidade se ela for maior que o estoque do novo tamanho selecionado
+  const handleSizeChange = (size: string) => {
+    setSelectedSize(size);
+    const sizeStock = product?.stock_by_size?.[size] || 0;
+    if (quantity > sizeStock) {
+        setQuantity(Math.max(1, sizeStock));
+    }
+  };
+
   const handleAddToCart = () => {
     if (!product) return;
     if (product.sizes && product.sizes.length > 0 && !selectedSize) {
@@ -79,6 +95,13 @@ export default function ProductDetailPage() {
       showError("Por favor, selecione uma cor.");
       return;
     }
+    
+    // Validação extra de segurança no front
+    if (availableStock <= 0) {
+        showError("Desculpe, este tamanho acabou de esgotar.");
+        return;
+    }
+
     addItemToCart(product, quantity, selectedSize, selectedColor);
     showSuccess(`${product.name} adicionado ao carrinho!`);
   };
@@ -110,7 +133,7 @@ export default function ProductDetailPage() {
     );
   }
 
-  const isAddToCartDisabled = product.stock <= 0;
+  const isOutOfStock = product.stock <= 0;
 
   return (
     <div className="container mx-auto max-w-6xl px-4 py-8 md:py-16">
@@ -135,14 +158,36 @@ export default function ProductDetailPage() {
 
           {product.sizes && product.sizes.length > 0 && (
             <div className="space-y-3">
-              <Label className="font-semibold">Tamanho</Label>
-              <RadioGroup value={selectedSize || ''} onValueChange={setSelectedSize} className="flex flex-wrap gap-2">
-                {product.sizes.map(size => (
-                  <Label key={size} htmlFor={`size-${size}`} className={`flex cursor-pointer items-center justify-center rounded-md border-2 px-4 py-2 text-sm font-medium transition-colors hover:bg-accent [&:has([data-state=checked])]:border-primary`}>
-                    <RadioGroupItem value={size} id={`size-${size}`} className="sr-only" />
-                    {size.toUpperCase()}
-                  </Label>
-                ))}
+              <div className="flex items-center justify-between">
+                <Label className="font-semibold">Tamanho</Label>
+                {selectedSize && (
+                    <span className={cn(
+                        "text-xs font-medium",
+                        availableStock <= 3 ? "text-orange-600" : "text-muted-foreground"
+                    )}>
+                        {availableStock > 0 ? `${availableStock} disponíveis` : 'Esgotado'}
+                    </span>
+                )}
+              </div>
+              <RadioGroup value={selectedSize || ''} onValueChange={handleSizeChange} className="flex flex-wrap gap-2">
+                {product.sizes.map(size => {
+                  const hasStock = (product.stock_by_size?.[size] || 0) > 0;
+                  return (
+                    <Label 
+                        key={size} 
+                        htmlFor={`size-${size}`} 
+                        className={cn(
+                            "flex cursor-pointer items-center justify-center rounded-md border-2 px-4 py-2 text-sm font-medium transition-all",
+                            hasStock 
+                                ? "hover:bg-accent [&:has([data-state=checked])]:border-primary" 
+                                : "opacity-40 bg-muted cursor-not-allowed line-through grayscale"
+                        )}
+                    >
+                      <RadioGroupItem value={size} id={`size-${size}`} className="sr-only" disabled={!hasStock} />
+                      {size.toUpperCase()}
+                    </Label>
+                  );
+                })}
               </RadioGroup>
             </div>
           )}
@@ -152,7 +197,7 @@ export default function ProductDetailPage() {
               <Label className="font-semibold">Cor</Label>
               <RadioGroup value={selectedColor?.code || ''} onValueChange={(code) => setSelectedColor(product.colors.find(c => c.code === code) || null)} className="flex flex-wrap gap-2">
                 {product.colors.map(color => (
-                  <Label key={color.code} htmlFor={`color-${color.code}`} className={`flex cursor-pointer items-center justify-center rounded-md border-2 p-1 transition-colors hover:bg-accent [&:has([data-state=checked])]:border-primary`}>
+                  <Label key={color.code} htmlFor={`color-${color.code}`} className={`flex cursor-pointer items-center justify-center rounded-full border-2 p-1 transition-colors hover:bg-accent [&:has([data-state=checked])]:border-primary`}>
                     <RadioGroupItem value={color.code} id={`color-${color.code}`} className="sr-only" />
                     <span className="h-8 w-8 rounded-full border" style={{ backgroundColor: color.code.toLowerCase() }} />
                   </Label>
@@ -164,19 +209,40 @@ export default function ProductDetailPage() {
 
           <div className="flex items-center gap-4 pt-4">
             <div className="flex items-center rounded-md border">
-              <Button variant="ghost" size="icon" onClick={() => setQuantity(q => Math.max(1, q - 1))}>-</Button>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                disabled={isOutOfStock || availableStock <= 0}
+              >
+                -
+              </Button>
               <span className="w-12 text-center font-medium">{quantity}</span>
-              <Button variant="ghost" size="icon" onClick={() => setQuantity(q => Math.min(product.stock, q + 1))}>+</Button>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setQuantity(q => Math.min(availableStock, q + 1))}
+                disabled={isOutOfStock || quantity >= availableStock}
+              >
+                +
+              </Button>
             </div>
-            <Button size="sm" className="flex-1" onClick={handleAddToCart} disabled={isAddToCartDisabled}>
+            <Button 
+                size="lg" 
+                className="flex-1" 
+                onClick={handleAddToCart} 
+                disabled={isOutOfStock || (selectedSize ? availableStock <= 0 : false)}
+            >
               <ShoppingCart className="mr-2 h-5 w-5" />
-              Adicionar ao Carrinho
+              {isOutOfStock ? 'Esgotado' : (selectedSize && availableStock <= 0 ? 'Tamanho Esgotado' : 'Adicionar ao Carrinho')}
             </Button>
           </div>
-          {product.stock > 0 ? (
-            <p className="text-sm text-muted-foreground">{product.stock} em estoque</p>
-          ) : (
-            <p className="text-sm font-semibold text-destructive">Produto esgotado</p>
+
+          {selectedSize && availableStock > 0 && availableStock <= 3 && (
+            <div className="flex items-center gap-2 text-xs text-orange-600 bg-orange-50 p-2 rounded-md border border-orange-100">
+                <AlertTriangle className="h-3 w-3" />
+                Corra! Apenas {availableStock} unidades restantes deste tamanho.
+            </div>
           )}
 
           <div className="space-y-2 pt-4">
