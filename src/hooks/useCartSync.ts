@@ -26,7 +26,8 @@ const fetchCartProducts = async (dbItems: any[]): Promise<CartItem[]> => {
         const product = productsMap.get(item.product_id);
         if (!product) return null;
 
-        const selectedColorObject = product.colors.find(c => c.code === item.selected_color) || null;
+        // Reconstrói o objeto de cor completo (nome + código) com base no código salvo no DB
+        const selectedColorObject = product.colors?.find(c => c.code === item.selected_color) || null;
 
         return {
             ...product,
@@ -34,8 +35,8 @@ const fetchCartProducts = async (dbItems: any[]): Promise<CartItem[]> => {
             selectedSize: item.selected_size,
             selectedColor: selectedColorObject,
             cartItemId: `${product.id}-${item.selected_size || 'none'}-${item.selected_color || 'none'}`,
-            selected: true, // Default to selected when fetching from DB
-            dbCartItemId: item.id, // Capture the database ID
+            selected: true,
+            dbCartItemId: item.id,
         };
     }).filter((item): item is CartItem => item !== null);
 };
@@ -50,7 +51,6 @@ export const useCartSync = () => {
         const syncCart = async () => {
             if (isSyncing.current || !session) {
                 if (!session && hasSynced.current) {
-                    // User logged out, clear the cart
                     clearLocalCart();
                     hasSynced.current = false;
                 }
@@ -62,7 +62,6 @@ export const useCartSync = () => {
             isSyncing.current = true;
 
             try {
-                // 1. Fetch remote cart
                 const { data: remoteDbItems, error: fetchError } = await supabase
                     .from('cart_items')
                     .select('*')
@@ -73,7 +72,6 @@ export const useCartSync = () => {
                 const remoteCart = await fetchCartProducts(remoteDbItems);
                 const remoteCartMap = new Map(remoteCart.map(item => [item.cartItemId, item]));
 
-                // 2. Merge local (anonymous) cart with remote cart
                 const itemsToUpload = localCart.filter(localItem => !remoteCartMap.has(localItem.cartItemId));
 
                 if (itemsToUpload.length > 0) {
@@ -90,7 +88,6 @@ export const useCartSync = () => {
                     if (uploadError) console.error("Error syncing local cart to DB:", uploadError);
                 }
 
-                // 3. Fetch the final, merged cart from DB
                 const { data: finalDbItems, error: finalFetchError } = await supabase
                     .from('cart_items')
                     .select('*')
