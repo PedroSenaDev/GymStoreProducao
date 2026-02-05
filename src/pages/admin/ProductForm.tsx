@@ -28,7 +28,7 @@ import { Category } from "@/types/category";
 import { Loader2 } from "lucide-react";
 import ImageUpload from "@/components/admin/ImageUpload";
 import ColorNamePickerInput from "@/components/admin/ColorNamePickerInput";
-import StockBySizeInput from "@/components/admin/StockBySizeInput";
+import StockByVariantInput from "@/components/admin/StockByVariantInput";
 
 const formSchema = z.object({
   name: z.string().min(2),
@@ -73,6 +73,9 @@ export default function ProductForm({ product, onFinished }: ProductFormProps) {
     },
   });
 
+  // Observa as cores para passar ao componente de estoque
+  const colors = form.watch("colors");
+
   const { data: categories, isLoading: isLoadingCategories } = useQuery({
     queryKey: ["categories"],
     queryFn: async (): Promise<Category[]> => {
@@ -84,14 +87,19 @@ export default function ProductForm({ product, onFinished }: ProductFormProps) {
 
   const { mutate, isPending } = useMutation({
     mutationFn: async (values: z.infer<typeof formSchema>) => {
-      // Calculamos o estoque total e extraímos o array de tamanhos a partir da grade
+      // Calculamos o estoque total
       const totalStock = Object.values(values.stock_by_size).reduce((acc, curr) => acc + curr, 0);
-      const sizesArray = Object.keys(values.stock_by_size);
+      
+      // Extraímos os tamanhos únicos para manter a compatibilidade com filtros de tamanho
+      const uniqueSizes = new Set<string>();
+      Object.keys(values.stock_by_size).forEach(key => {
+        uniqueSizes.add(key.split('_')[0]);
+      });
 
       const processedValues = {
         ...values,
         stock: totalStock,
-        sizes: sizesArray,
+        sizes: Array.from(uniqueSizes),
       };
 
       const { data, error } = await (product?.id
@@ -102,7 +110,7 @@ export default function ProductForm({ product, onFinished }: ProductFormProps) {
       return data;
     },
     onSuccess: () => {
-      showSuccess(`Produto ${product?.id ? 'atualizado' : 'criado'} com sucesso!`);
+      showSuccess(`Produto ${product?.id ? 'atualizado' : 'criada'} com sucesso!`);
       queryClient.invalidateQueries({ queryKey: ["products"] });
       onFinished();
     },
@@ -187,10 +195,27 @@ export default function ProductForm({ product, onFinished }: ProductFormProps) {
             />
         </div>
 
+        <FormField
+            control={form.control}
+            name="colors"
+            render={({ field }) => (
+                <FormItem className="space-y-4 rounded-lg border p-4 bg-zinc-50/20">
+                <div className="space-y-0.5">
+                    <FormLabel>Cores do Produto</FormLabel>
+                    <FormDescription>Cadastre as cores antes de definir o estoque.</FormDescription>
+                </div>
+                <FormControl>
+                    <ColorNamePickerInput value={field.value} onChange={field.onChange} />
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+        />
+
         <div className="space-y-4 rounded-lg border p-4 bg-zinc-50/50">
             <div className="space-y-1">
-                <FormLabel>Grade de Tamanhos e Estoque</FormLabel>
-                <FormDescription>Adicione os tamanhos e defina a quantidade para cada um.</FormDescription>
+                <FormLabel>Grade de Variantes e Estoque</FormLabel>
+                <FormDescription>Defina a quantidade para cada combinação de tamanho e cor.</FormDescription>
             </div>
             <FormField
                 control={form.control}
@@ -198,7 +223,11 @@ export default function ProductForm({ product, onFinished }: ProductFormProps) {
                 render={({ field }) => (
                     <FormItem>
                         <FormControl>
-                            <StockBySizeInput value={field.value} onChange={field.onChange} />
+                            <StockByVariantInput 
+                                value={field.value} 
+                                onChange={field.onChange} 
+                                colors={colors}
+                            />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -261,19 +290,6 @@ export default function ProductForm({ product, onFinished }: ProductFormProps) {
             </div>
         </div>
 
-        <FormField
-            control={form.control}
-            name="colors"
-            render={({ field }) => (
-                <FormItem>
-                <FormLabel>Cores</FormLabel>
-                <FormControl>
-                    <ColorNamePickerInput value={field.value} onChange={field.onChange} />
-                </FormControl>
-                <FormMessage />
-                </FormItem>
-            )}
-        />
         <FormField
             control={form.control}
             name="image_urls"

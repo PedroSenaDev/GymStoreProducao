@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 async function fetchProductsForStock(): Promise<Product[]> {
   const { data, error } = await supabase
     .from("products")
-    .select("id, name, code, stock, image_urls, stock_by_size")
+    .select("id, name, code, stock, image_urls, stock_by_size, colors")
     .order("name", { ascending: true });
   if (error) throw new Error(error.message);
   return data;
@@ -45,11 +45,18 @@ const StockControl = ({ product }: { product: Product }) => {
     },
   });
 
-  const handleUpdateSize = (size: string, qty: number) => {
-    setLocalStockMap(prev => ({ ...prev, [size]: Math.max(0, qty) }));
+  const handleUpdateSize = (key: string, qty: number) => {
+    setLocalStockMap(prev => ({ ...prev, [key]: Math.max(0, qty) }));
   };
 
   const hasChanges = JSON.stringify(localStockMap) !== JSON.stringify(product.stock_by_size);
+
+  // Helper para formatar a label da variante amigavelmente
+  const getVariantLabel = (key: string) => {
+    const [size, colorCode] = key.split('_');
+    const colorName = product.colors?.find(c => c.code === colorCode)?.name || colorCode;
+    return { size, colorName, colorCode };
+  };
 
   return (
     <div className="w-full border rounded-lg overflow-hidden transition-all duration-200">
@@ -80,24 +87,35 @@ const StockControl = ({ product }: { product: Product }) => {
 
       {isExpanded && (
         <div className="p-4 bg-white animate-accordion-down">
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3 mb-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-4">
             {Object.keys(localStockMap).length > 0 ? (
-                Object.entries(localStockMap).map(([size, quantity]) => (
-                    <div key={size} className="space-y-1">
-                        <label className="text-[10px] uppercase font-bold text-muted-foreground ml-1">{size}</label>
-                        <Input
-                            type="number"
-                            min="0"
-                            value={quantity}
-                            onChange={(e) => handleUpdateSize(size, parseInt(e.target.value) || 0)}
-                            className="h-9 text-center"
-                            disabled={isPending}
-                        />
-                    </div>
-                ))
+                Object.entries(localStockMap).map(([key, quantity]) => {
+                    const { size, colorName, colorCode } = getVariantLabel(key);
+                    return (
+                        <div key={key} className="space-y-1 p-2 border rounded-md bg-zinc-50/30">
+                            <div className="flex flex-col mb-1 px-1">
+                                <span className="text-[10px] font-black uppercase text-zinc-900">{size}</span>
+                                {colorCode && (
+                                    <div className="flex items-center gap-1">
+                                        <div className="h-1.5 w-1.5 rounded-full border" style={{ backgroundColor: colorCode }} />
+                                        <span className="text-[8px] font-bold text-muted-foreground truncate">{colorName}</span>
+                                    </div>
+                                )}
+                            </div>
+                            <Input
+                                type="number"
+                                min="0"
+                                value={quantity}
+                                onChange={(e) => handleUpdateSize(key, parseInt(e.target.value) || 0)}
+                                className="h-8 text-center font-medium bg-white"
+                                disabled={isPending}
+                            />
+                        </div>
+                    );
+                })
             ) : (
                 <p className="col-span-full text-sm text-muted-foreground italic py-2">
-                    Nenhum tamanho cadastrado. Edite o produto para adicionar uma grade.
+                    Nenhuma variante cadastrada. Edite o produto para adicionar uma grade.
                 </p>
             )}
           </div>
