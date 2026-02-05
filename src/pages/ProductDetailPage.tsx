@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Product } from '@/types/product';
 import { Policy } from '@/types/policy';
 import { SizeChart } from '@/types/sizeChart';
-import { Loader2, ShoppingCart, ArrowLeft, AlertTriangle, Minus, Plus, Box } from 'lucide-react';
+import { Loader2, ShoppingCart, ArrowLeft, AlertTriangle, Minus, Plus } from 'lucide-react';
 import { ProductImageGallery } from '@/components/ProductImageGallery';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -250,10 +250,9 @@ export default function ProductDetailPage() {
           {/* INDICADOR DE ESTOQUE DINÂMICO */}
           {!isOutOfStock && (
             <div className="flex items-center gap-2 px-1">
-                <Box className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-medium text-muted-foreground">
                     {selectedSize && selectedColor ? (
-                        <>Em estoque: <span className="text-foreground font-bold">{availableStock} unidades</span></>
+                        <>Disponíveis: <span className="text-foreground font-bold">{availableStock} unidades</span></>
                     ) : selectedSize ? (
                         <>Total disponível neste tamanho: <span className="text-foreground font-bold">{availableStock}</span></>
                     ) : (
