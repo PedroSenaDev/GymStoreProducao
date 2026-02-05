@@ -262,37 +262,39 @@ export default function ProductDetailPage() {
             </div>
           )}
 
-          <div className="flex flex-col sm:flex-row items-stretch gap-3 pt-2">
-            <div className="flex items-center justify-between border-2 rounded-xl px-2 h-14 bg-background shadow-sm w-full sm:w-auto sm:min-w-[140px]">
+          <div className="flex items-stretch gap-2 sm:gap-3 pt-2">
+            <div className="flex items-center justify-between border-2 rounded-xl px-1 h-14 bg-background shadow-sm min-w-[110px] sm:min-w-[140px]">
                 <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-10 w-10 rounded-full hover:bg-muted"
+                    className="h-8 w-8 sm:h-10 sm:w-10 rounded-full hover:bg-muted"
                     onClick={() => setQuantity(q => Math.max(1, q - 1))}
                     disabled={isOutOfStock || quantity <= 1}
                 >
-                    <Minus className="h-4 w-4" />
+                    <Minus className="h-3 w-3 sm:h-4 sm:w-4" />
                 </Button>
-                <span className="w-8 text-center font-bold text-lg">{quantity}</span>
+                <span className="w-6 sm:w-8 text-center font-bold text-base sm:text-lg">{quantity}</span>
                 <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-10 w-10 rounded-full hover:bg-muted"
+                    className="h-8 w-8 sm:h-10 sm:w-10 rounded-full hover:bg-muted"
                     onClick={() => setQuantity(q => Math.min(availableStock || 1, q + 1))}
                     disabled={isOutOfStock || quantity >= (availableStock || 1)}
                 >
-                    <Plus className="h-4 w-4" />
+                    <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
                 </Button>
             </div>
 
             <Button 
                 size="lg" 
-                className="flex-1 h-14 rounded-xl text-base font-black tracking-tight shadow-xl shadow-black/10 transition-all active:scale-[0.98] w-full" 
+                className="flex-1 h-14 rounded-xl text-xs sm:text-base font-black tracking-tight shadow-xl shadow-black/10 transition-all active:scale-[0.98] px-2 sm:px-4" 
                 onClick={handleAddToCart} 
                 disabled={isOutOfStock || (selectedSize && selectedColor && availableStock <= 0)}
             >
-              <ShoppingCart className="mr-2 h-5 w-5" />
-              {isOutOfStock ? 'ESGOTADO' : (selectedSize && selectedColor && availableStock <= 0 ? 'SEM ESTOQUE' : 'ADICIONAR AO CARRINHO')}
+              <ShoppingCart className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5 hidden min-[360px]:inline-block" />
+              <span className="truncate">
+                {isOutOfStock ? 'ESGOTADO' : (selectedSize && selectedColor && availableStock <= 0 ? 'SEM ESTOQUE' : 'ADICIONAR')}
+              </span>
             </Button>
           </div>
 
