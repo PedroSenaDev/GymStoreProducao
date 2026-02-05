@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Product } from '@/types/product';
 import { Policy } from '@/types/policy';
 import { SizeChart } from '@/types/sizeChart';
-import { Loader2, ShoppingCart, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { Loader2, ShoppingCart, ArrowLeft, AlertTriangle, Minus, Plus } from 'lucide-react';
 import { ProductImageGallery } from '@/components/ProductImageGallery';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -204,47 +204,46 @@ export default function ProductDetailPage() {
             </div>
           )}
 
-          {/* Botão de compra otimizado para Mobile */}
-          <div className="flex flex-col sm:flex-row items-stretch gap-3 pt-4">
-            <div className="flex items-center justify-between rounded-md border h-14 sm:h-11 px-4 sm:px-0">
-              <span className="text-sm font-medium sm:hidden">Quantidade</span>
-              <div className="flex items-center">
+          <div className="flex items-stretch gap-3 pt-4">
+            {/* Seletor de Quantidade Minimalista e Elegante */}
+            <div className="flex items-center justify-between border-2 rounded-xl px-2 h-14 bg-background shadow-sm">
                 <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-full rounded-none px-4 sm:px-3"
+                    className="h-10 w-10 rounded-full hover:bg-muted"
                     onClick={() => setQuantity(q => Math.max(1, q - 1))}
                     disabled={isOutOfStock || availableStock <= 0}
                 >
-                    -
+                    <Minus className="h-4 w-4" />
                 </Button>
-                <span className="w-10 text-center font-bold">{quantity}</span>
+                <span className="w-8 text-center font-bold text-lg">{quantity}</span>
                 <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-full rounded-none px-4 sm:px-3"
+                    className="h-10 w-10 rounded-full hover:bg-muted"
                     onClick={() => setQuantity(q => Math.min(availableStock, q + 1))}
                     disabled={isOutOfStock || quantity >= availableStock}
                 >
-                    +
+                    <Plus className="h-4 w-4" />
                 </Button>
-              </div>
             </div>
+
+            {/* Botão Robustos */}
             <Button 
                 size="lg" 
-                className="flex-1 h-14 sm:h-11 text-base font-bold shadow-lg shadow-black/5" 
+                className="flex-1 h-14 rounded-xl text-base font-black tracking-tight shadow-xl shadow-black/10 transition-all active:scale-[0.98]" 
                 onClick={handleAddToCart} 
                 disabled={isOutOfStock || (selectedSize ? availableStock <= 0 : false)}
             >
               <ShoppingCart className="mr-2 h-5 w-5" />
-              {isOutOfStock ? 'ESGOTADO' : (selectedSize && availableStock <= 0 ? 'TAMANHO ESGOTADO' : 'ADICIONAR AO CARRINHO')}
+              {isOutOfStock ? 'ESGOTADO' : (selectedSize && availableStock <= 0 ? 'SEM ESTOQUE' : 'ADICIONAR')}
             </Button>
           </div>
 
           {selectedSize && availableStock > 0 && availableStock <= 3 && (
-            <div className="flex items-center gap-2 text-xs text-orange-600 bg-orange-50 p-3 rounded-md border border-orange-100">
+            <div className="flex items-center gap-2 text-xs font-bold text-orange-600 bg-orange-50 p-3 rounded-xl border border-orange-100">
                 <AlertTriangle className="h-4 w-4" />
-                Corra! Apenas {availableStock} unidades restantes deste tamanho.
+                Últimas {availableStock} unidades!
             </div>
           )}
 
@@ -259,18 +258,22 @@ export default function ProductDetailPage() {
           
           <Accordion type="single" collapsible className="w-full">
             {product.size_charts && (
-              <AccordionItem value="size-chart">
-                <AccordionTrigger>{product.size_charts.title}</AccordionTrigger>
+              <AccordionItem value="size-chart" className="border-none">
+                <AccordionTrigger className="hover:no-underline font-semibold py-4">
+                    {product.size_charts.title}
+                </AccordionTrigger>
                 <AccordionContent>
-                  <img src={product.size_charts.image_url} alt={product.size_charts.title} className="w-full rounded-md shadow-sm border" />
+                  <img src={product.size_charts.image_url} alt={product.size_charts.title} className="w-full rounded-xl shadow-md border" />
                 </AccordionContent>
               </AccordionItem>
             )}
 
             {policies?.map(policy => (
-              <AccordionItem value={policy.id} key={policy.id}>
-                <AccordionTrigger>{policy.title}</AccordionTrigger>
-                <AccordionContent className="prose prose-sm max-w-none text-muted-foreground">
+              <AccordionItem value={policy.id} key={policy.id} className="border-none">
+                <AccordionTrigger className="hover:no-underline font-semibold py-4">
+                    {policy.title}
+                </AccordionTrigger>
+                <AccordionContent className="prose prose-sm max-w-none text-muted-foreground bg-muted/30 p-4 rounded-xl">
                   <p style={{ whiteSpace: 'pre-line' }}>{policy.content}</p>
                 </AccordionContent>
               </AccordionItem>
