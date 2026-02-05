@@ -27,7 +27,7 @@ serve(async (req) => {
       const session = event.data.object;
       
       if (session.payment_status !== 'paid') {
-        return new Response("Sessão não paga.", { status: 200 });
+        return new Response("Session not paid.", { status: 200 });
       }
 
       const totalAmount = (session.amount_total || 0) / 100; 
@@ -40,7 +40,7 @@ serve(async (req) => {
       const paymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id;
 
       if (!userId || !shippingAddressId || !paymentIntentId || !orderItemsJson) {
-        return new Response("Metadados ausentes.", { status: 400 });
+        return new Response("Missing metadata.", { status: 400 });
       }
 
       const orderItemsPayload = JSON.parse(orderItemsJson);
@@ -52,7 +52,7 @@ serve(async (req) => {
         .maybeSingle();
 
       if (existingOrder) {
-        return new Response("Pedido já processado.", { status: 200 });
+        return new Response("Order already processed.", { status: 200 });
       }
 
       // 1. Criar o Pedido
@@ -95,18 +95,19 @@ serve(async (req) => {
         throw new Error(`Erro ao salvar itens do pedido: ${itemsError.message}`);
       }
 
-      // 3. Baixa de Estoque Cirúrgica (POR TAMANHO)
+      // 3. Baixa de Estoque por Variante (Tamanho + Cor)
       const stockUpdates = orderItemsPayload.map((item: any) => 
-        supabaseAdmin.rpc('decrement_product_size_stock', {
+        supabaseAdmin.rpc('decrement_product_variant_stock', {
           p_product_id: item.product_id,
           p_quantity: item.quantity,
-          p_size: item.selected_size // Passando o tamanho exato
+          p_size: item.selected_size,
+          p_color_code: item.selected_color?.code || null
         })
       );
       
       await Promise.all(stockUpdates);
 
-      // 4. Limpar os itens do carrinho que foram comprados
+      // 4. Limpar o carrinho
       const cartItemDeletions = orderItemsPayload.map((item: any) => {
         const colorCode = item.selected_color?.code || null;
         const size = item.selected_size || null;
@@ -125,7 +126,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({ received: true }), { status: 200 });
 
   } catch (err) {
-    console.error("Erro no webhook do Stripe:", err);
+    console.error("[stripe-webhook] Erro:", err);
     return new Response(`Webhook Error: ${err.message}`, { status: 400 });
   }
 });

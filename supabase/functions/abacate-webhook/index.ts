@@ -11,8 +11,6 @@ const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 )
 
-const ABACATE_WEBHOOK_SECRET = Deno.env.get("ABACATE_WEBHOOK_SECRET")
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -20,8 +18,6 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    
-    // Processar o evento
     const eventType = body.event;
     const billingData = body.data?.billing;
 
@@ -42,7 +38,7 @@ serve(async (req) => {
       const totalAmount = parseFloat(metadata.totalAmount || '0');
       const shippingCost = parseFloat(metadata.shippingCost || '0');
 
-      // 3. Criar o Pedido
+      // 1. Criar o Pedido
       const { data: orderData, error: orderError } = await supabaseAdmin
         .from('orders')
         .insert({
@@ -70,7 +66,7 @@ serve(async (req) => {
       if (orderError) throw new Error(`Erro ao criar pedido: ${orderError.message}`);
       const orderId = orderData.id;
 
-      // 4. Criar os Itens do Pedido
+      // 2. Criar os Itens do Pedido
       const finalOrderItemsPayload = orderItemsPayload.map((item: any) => ({
         ...item,
         order_id: orderId,
@@ -82,18 +78,19 @@ serve(async (req) => {
         throw new Error(`Erro ao salvar itens do pedido: ${itemsError.message}`);
       }
 
-      // 5. Baixa de Estoque Cirúrgica (POR TAMANHO)
+      // 3. Baixa de Estoque por Variante (Tamanho + Cor)
       const stockUpdates = orderItemsPayload.map((item: any) => 
-        supabaseAdmin.rpc('decrement_product_size_stock', {
+        supabaseAdmin.rpc('decrement_product_variant_stock', {
           p_product_id: item.product_id,
           p_quantity: item.quantity,
-          p_size: item.selected_size // Passando o tamanho exato
+          p_size: item.selected_size,
+          p_color_code: item.selected_color?.code || null
         })
       );
       
       await Promise.all(stockUpdates);
 
-      // 6. Limpar os itens do carrinho que foram comprados
+      // 4. Limpar o carrinho
       const cartItemDeletions = orderItemsPayload.map((item: any) => {
         const colorCode = item.selected_color?.code || null;
         const size = item.selected_size || null;
@@ -108,14 +105,14 @@ serve(async (req) => {
       
       await Promise.all(cartItemDeletions);
 
-      console.log(`Webhook Abacate: Pedido ${orderId} processado com sucesso.`);
+      console.log(`[abacate-webhook] Pedido ${orderId} processado.`);
       return new Response(JSON.stringify({ received: true, orderId: orderId }), { status: 200 });
     }
 
-    return new Response(JSON.stringify({ message: `Event type ${eventType} ignored.` }), { status: 200 });
+    return new Response(JSON.stringify({ message: `Event ${eventType} ignored.` }), { status: 200 });
 
   } catch (err) {
-    console.error("Erro no webhook da Abacate Pay:", err);
+    console.error("[abacate-webhook] Erro:", err);
     return new Response(`Webhook Error: ${err.message}`, { status: 400 });
   }
 });
