@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Product } from '@/types/product';
 import { Policy } from '@/types/policy';
 import { SizeChart } from '@/types/sizeChart';
-import { Loader2, ShoppingCart, ArrowLeft, AlertTriangle, Minus, Plus } from 'lucide-react';
+import { Loader2, ShoppingCart, ArrowLeft, AlertTriangle, Minus, Plus, Box } from 'lucide-react';
 import { ProductImageGallery } from '@/components/ProductImageGallery';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -117,7 +117,6 @@ export default function ProductDetailPage() {
       return;
     }
     
-    // Verificação final de estoque antes de adicionar
     if (availableStock <= 0) {
         showError("Desculpe, esta combinação acabou de esgotar.");
         return;
@@ -181,11 +180,10 @@ export default function ProductDetailPage() {
           {product.sizes && product.sizes.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label className="font-semibold text-base">Tamanho</Label>
+                <Label className="font-semibold text-base uppercase tracking-wider">Tamanho</Label>
               </div>
               <RadioGroup value={selectedSize || ''} onValueChange={setSelectedSize} className="flex flex-wrap gap-2">
                 {product.sizes.map(size => {
-                  // Verifica se este tamanho tem estoque em QUALQUER cor
                   const hasAnyStock = Object.entries(product.stock_by_size || {})
                     .some(([key, val]) => (key.startsWith(`${size}_`) || key === size) && val > 0);
                   
@@ -194,7 +192,7 @@ export default function ProductDetailPage() {
                         key={size} 
                         htmlFor={`size-${size}`} 
                         className={cn(
-                            "flex cursor-pointer items-center justify-center rounded-md border-2 px-4 py-2 text-sm font-bold transition-all",
+                            "flex cursor-pointer items-center justify-center rounded-md border-2 px-4 py-2 text-sm font-bold transition-all min-w-[50px]",
                             hasAnyStock 
                                 ? "hover:bg-accent [&:has([data-state=checked])]:border-black [&:has([data-state=checked])]:bg-zinc-50" 
                                 : "opacity-30 bg-muted cursor-not-allowed line-through grayscale"
@@ -212,20 +210,18 @@ export default function ProductDetailPage() {
           {/* Seleção de Cor */}
           {product.colors && product.colors.length > 0 && (
             <div className="space-y-3">
-              <Label className="font-semibold text-base">Cor</Label>
+              <Label className="font-semibold text-base uppercase tracking-wider">Cor</Label>
               <RadioGroup 
                 value={selectedColor?.code || ''} 
                 onValueChange={(code) => setSelectedColor(product.colors.find(c => c.code === code) || null)} 
                 className="flex flex-wrap gap-2"
               >
                 {product.colors.map(color => {
-                  // Se um tamanho foi selecionado, só habilita cores com estoque para esse tamanho
                   let isEnabled = true;
                   if (selectedSize) {
                       const variantKey = `${selectedSize}_${color.code}`;
                       isEnabled = (product.stock_by_size?.[variantKey] || 0) > 0;
                   } else {
-                      // Se nenhum tamanho selecionado, mostra cores que tem estoque em pelo menos um tamanho
                       isEnabled = Object.entries(product.stock_by_size || {})
                         .some(([key, val]) => key.endsWith(`_${color.code}`) && val > 0);
                   }
@@ -247,12 +243,27 @@ export default function ProductDetailPage() {
                   );
                 })}
               </RadioGroup>
-              {selectedColor && <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Selecionado: {selectedColor.name}</p>}
+              {selectedColor && <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">Cor: {selectedColor.name}</p>}
             </div>
           )}
 
-          <div className="flex items-stretch gap-3 pt-4">
-            {/* Seletor de Quantidade */}
+          {/* INDICADOR DE ESTOQUE DINÂMICO */}
+          {!isOutOfStock && (
+            <div className="flex items-center gap-2 px-1">
+                <Box className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-muted-foreground">
+                    {selectedSize && selectedColor ? (
+                        <>Em estoque: <span className="text-foreground font-bold">{availableStock} unidades</span></>
+                    ) : selectedSize ? (
+                        <>Total disponível neste tamanho: <span className="text-foreground font-bold">{availableStock}</span></>
+                    ) : (
+                        <>Selecione tamanho e cor para ver a disponibilidade</>
+                    )}
+                </span>
+            </div>
+          )}
+
+          <div className="flex items-stretch gap-3 pt-2">
             <div className="flex items-center justify-between border-2 rounded-xl px-2 h-14 bg-background shadow-sm">
                 <Button 
                     variant="ghost" 
@@ -282,15 +293,14 @@ export default function ProductDetailPage() {
                 disabled={isOutOfStock || (selectedSize && selectedColor && availableStock <= 0)}
             >
               <ShoppingCart className="mr-2 h-5 w-5" />
-              {isOutOfStock ? 'ESGOTADO' : (selectedSize && selectedColor && availableStock <= 0 ? 'SEM ESTOQUE' : 'ADICIONAR')}
+              {isOutOfStock ? 'ESGOTADO' : (selectedSize && selectedColor && availableStock <= 0 ? 'SEM ESTOQUE' : 'ADICIONAR AO CARRINHO')}
             </Button>
           </div>
 
-          {/* Alerta de Poucas Unidades */}
           {selectedSize && selectedColor && availableStock > 0 && availableStock <= 3 && (
             <div className="flex items-center gap-2 text-xs font-bold text-orange-600 bg-orange-50 p-3 rounded-xl border border-orange-100 animate-pulse">
                 <AlertTriangle className="h-4 w-4" />
-                Últimas {availableStock} unidades deste modelo!
+                Últimas {availableStock} unidades deste modelo! Corra!
             </div>
           )}
 
@@ -306,8 +316,8 @@ export default function ProductDetailPage() {
           <Accordion type="single" collapsible className="w-full">
             {product.size_charts && (
               <AccordionItem value="size-chart" className="border-none">
-                <AccordionTrigger className="hover:no-underline font-semibold py-4 text-zinc-900">
-                    {product.size_charts.title}
+                <AccordionTrigger className="hover:no-underline font-semibold py-4 text-zinc-900 uppercase text-xs tracking-widest">
+                    Tabela de Medidas
                 </AccordionTrigger>
                 <AccordionContent>
                   <img src={product.size_charts.image_url} alt={product.size_charts.title} className="w-full rounded-xl shadow-md border" />
@@ -317,7 +327,7 @@ export default function ProductDetailPage() {
 
             {policies?.map(policy => (
               <AccordionItem value={policy.id} key={policy.id} className="border-none">
-                <AccordionTrigger className="hover:no-underline font-semibold py-4 text-zinc-900">
+                <AccordionTrigger className="hover:no-underline font-semibold py-4 text-zinc-900 uppercase text-xs tracking-widest">
                     {policy.title}
                 </AccordionTrigger>
                 <AccordionContent className="prose prose-sm max-w-none text-muted-foreground bg-muted/30 p-4 rounded-xl">
