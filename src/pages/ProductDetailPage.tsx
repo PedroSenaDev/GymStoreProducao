@@ -262,8 +262,8 @@ export default function ProductDetailPage() {
             </div>
           )}
 
-          <div className="flex items-stretch gap-3 pt-2">
-            <div className="flex items-center justify-between border-2 rounded-xl px-2 h-14 bg-background shadow-sm">
+          <div className="flex flex-col sm:flex-row items-stretch gap-3 pt-2">
+            <div className="flex items-center justify-between border-2 rounded-xl px-2 h-14 bg-background shadow-sm w-full sm:w-auto sm:min-w-[140px]">
                 <Button 
                     variant="ghost" 
                     size="icon" 
@@ -287,7 +287,7 @@ export default function ProductDetailPage() {
 
             <Button 
                 size="lg" 
-                className="flex-1 h-14 rounded-xl text-base font-black tracking-tight shadow-xl shadow-black/10 transition-all active:scale-[0.98]" 
+                className="flex-1 h-14 rounded-xl text-base font-black tracking-tight shadow-xl shadow-black/10 transition-all active:scale-[0.98] w-full" 
                 onClick={handleAddToCart} 
                 disabled={isOutOfStock || (selectedSize && selectedColor && availableStock <= 0)}
             >
